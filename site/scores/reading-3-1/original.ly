@@ -1,0 +1,3 @@
+\version "2.24.4"
+\header { title = "First-reading miniature 3.1" composer = "My Journey" license = "CC0 1.0" maintainer = "My Journey" subtitle = "Complete original eight-bar study" }
+\score { \new PianoStaff << \new Staff = "upper" { \clef treble \key f \major \time 4/4 { f'4 g'8 a' g'4 f' | g'4 a'8 g' f'4 a' | a'4 g'8 f' a'4 bes' | g'4 f'8 a' bes'4 a' | f'4 a'8 bes' a'4 f' | a'4 bes'8 a' f'4 g' | bes'4 a'8 f' g'4 a' | f'1 \bar "|." } } \new Staff = "lower" { \clef bass \key f \major \time 4/4 { f2 a2 | f2 a2 | f2 a2 | c'2 a2 | c'2 a2 | f2 a2 | c'2 a2 | f2 a2 \bar "|." } } >> \layout {} \midi { \tempo 4=60 } }

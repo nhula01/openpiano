@@ -1,0 +1,3 @@
+\version "2.24.3"
+\header { title="Twinkle, Twinkle · learning arrangement" composer="Traditional" subtitle="Simple two-hand arrangement by My Journey" maintainer="My Journey" copyright="CC0 1.0" }
+\score { \new PianoStaff << \new Staff = "upper" { \clef treble \key c \major \time 4/4 \relative c' { c4 c g' g | a a g2 | f4 f e e | d d c2 | g'4 g f f | e e d2 | g4 g f f | e e d2 | c4 c g' g | a a g2 | f4 f e e | d d c2 \bar "|." } } \new Staff = "lower" { \clef bass \key c \major \time 4/4 \relative c { c1 | f | c | g | c | g | c | g | c | f | c | c } } >> \layout {} \midi { \tempo 4=60 } }

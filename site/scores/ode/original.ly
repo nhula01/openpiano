@@ -1,0 +1,3 @@
+\version "2.24.3"
+\header { title="Ode to Joy · theme arrangement" composer="Ludwig van Beethoven" subtitle="Simple two-hand arrangement by My Journey" maintainer="My Journey" copyright="CC0 1.0" }
+\score { \new PianoStaff << \new Staff = "upper" { \clef treble \key c \major \time 4/4 \relative c' { e4 e f g | g f e d | c c d e | e4. d8 d2 | e4 e f g | g f e d | c c d e | d4. c8 c2 | d4 d e c | d e8 f e4 c | d e8 f e4 d | c d g2 | e4 e f g | g f e d | c c d e | d4. c8 c2 \bar "|." } } \new Staff = "lower" { \clef bass \key c \major \time 4/4 \relative c { c1 | c | g | g | c | c | g | c | g | c | g | g | c | c | g | c } } >> \layout {} \midi { \tempo 4=60 } }

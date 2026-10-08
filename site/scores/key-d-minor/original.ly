@@ -1,0 +1,3 @@
+\version "2.24.4"
+\header { title = "D minor · scale fragments and cadence" composer = "My Journey" license = "CC0 1.0" maintainer = "My Journey" subtitle = "Complete original eight-bar study" }
+\score { \new PianoStaff << \new Staff = "upper" { \clef treble \key d \minor \time 4/4 { d'4 e' f' g' | a' g' f' e' | d' f' a' f' | g' bes' d' bes' | a' cis'' e' cis'' | d' f' a' f' | e' cis'' d'2 | d'1 \bar "|." } } \new Staff = "lower" { \clef bass \key d \minor \time 4/4 { <d f a>1 | <d f a> | <d f a> | <g bes d'> | <a cis' e' g'> | <d f a> | <a cis' e' g'> | <d f a> \bar "|." } } >> \layout {} \midi { \tempo 4=60 } }

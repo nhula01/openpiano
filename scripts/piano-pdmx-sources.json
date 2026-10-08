@@ -1,0 +1,94 @@
+{
+ "campanella": {
+  "title": "La Campanella (Grandes études de Paganini No. 3)",
+  "composer": "Franz Liszt",
+  "transcriber": "venson72150",
+  "url": "https://musescore.com/user/33306646/scores/6225893",
+  "license": "CC0 1.0"
+ },
+ "liebestraum": {
+  "title": "Liebestraum No. 3 in A-flat major",
+  "composer": "Franz Liszt",
+  "transcriber": "venson72150",
+  "url": "https://musescore.com/user/33306646/scores/6282292",
+  "license": "CC0 1.0"
+ },
+ "ballade1": {
+  "title": "Ballade No. 1 in G minor, Op. 23",
+  "composer": "Frédéric Chopin",
+  "transcriber": "Psamtik",
+  "url": "https://musescore.com/user/3177366/scores/2182146",
+  "license": "CC0 1.0"
+ },
+ "heroic": {
+  "title": "Polonaise in A-flat major, Op. 53 “Heroic”",
+  "composer": "Frédéric Chopin",
+  "transcriber": "Hishaism",
+  "url": "https://musescore.com/user/119691/scores/1800506",
+  "license": "CC0 1.0"
+ },
+ "tristesse": {
+  "title": "Étude in E major, Op. 10 No. 3 “Tristesse”",
+  "composer": "Frédéric Chopin",
+  "transcriber": "venson72150",
+  "url": "https://musescore.com/user/33306646/scores/6075555",
+  "license": "CC0 1.0",
+  "fingeringFrom": {
+   "credit": "the OpenScore Transcriptions edition",
+   "url": "https://musescore.com/openscore-transcriptions/scores/6307507",
+   "license": "CC0 1.0"
+  }
+ },
+ "winter-wind": {
+  "title": "Étude in A minor, Op. 25 No. 11 “Winter Wind”",
+  "composer": "Frédéric Chopin",
+  "transcriber": "venson72150",
+  "url": "https://musescore.com/user/33306646/scores/6033733",
+  "license": "CC0 1.0"
+ },
+ "etude-op10-4": {
+  "title": "Étude in C-sharp minor, Op. 10 No. 4",
+  "composer": "Frédéric Chopin",
+  "transcriber": "venson72150",
+  "url": "https://musescore.com/user/33306646/scores/5820504",
+  "license": "CC0 1.0",
+  "fingeringFrom": {
+   "credit": "the OpenScore Transcriptions edition",
+   "url": "https://musescore.com/openscore-transcriptions/scores/6307509",
+   "license": "CC0 1.0"
+  }
+ },
+ "nocturne-csharp": {
+  "title": "Nocturne in C-sharp minor, B. 49",
+  "composer": "Frédéric Chopin",
+  "transcriber": "janiyaaaaa",
+  "url": "https://musescore.com/user/32306455/scores/5615774",
+  "license": "CC0 1.0"
+ },
+ "nocturne-op9-1": {
+  "title": "Nocturne in B-flat minor, Op. 9 No. 1",
+  "composer": "Frédéric Chopin",
+  "transcriber": "venson72150",
+  "url": "https://musescore.com/user/33306646/scores/6306868",
+  "license": "CC0 1.0"
+ },
+ "nocturne-op48": {
+  "title": "Nocturne in C minor, Op. 48 No. 1",
+  "composer": "Frédéric Chopin",
+  "transcriber": "venson72150",
+  "url": "https://musescore.com/user/33306646/scores/6224476",
+  "license": "CC0 1.0"
+ },
+ "waltz-csharp": {
+  "title": "Waltz in C-sharp minor, Op. 64 No. 2",
+  "composer": "Frédéric Chopin",
+  "transcriber": "Forsythe9891",
+  "url": "https://musescore.com/forsythe/scores/6110150",
+  "license": "CC0 1.0",
+  "fingeringFrom": {
+   "credit": "theclarkster's transcription",
+   "url": "https://musescore.com/theclarkmeister/scores/5345085",
+   "license": "CC0 1.0"
+  }
+ }
+}

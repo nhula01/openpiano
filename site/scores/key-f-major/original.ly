@@ -1,0 +1,3 @@
+\version "2.24.4"
+\header { title = "F major · scale fragments and cadence" composer = "My Journey" license = "CC0 1.0" maintainer = "My Journey" subtitle = "Complete original eight-bar study" }
+\score { \new PianoStaff << \new Staff = "upper" { \clef treble \key f \major \time 4/4 { f'4 g' a' bes' | c'' bes' a' g' | f' a' c'' a' | bes' d'' f' d'' | c'' e'' g' e'' | f' a' c'' a' | g' e'' f'2 | f'1 \bar "|." } } \new Staff = "lower" { \clef bass \key f \major \time 4/4 { <f a c'>1 | <f a c'> | <f a c'> | <bes d' f'> | <c' e' g' bes'> | <f a c'> | <c' e' g' bes'> | <f a c'> \bar "|." } } >> \layout {} \midi { \tempo 4=60 } }

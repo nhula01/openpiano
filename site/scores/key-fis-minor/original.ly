@@ -1,0 +1,3 @@
+\version "2.24.4"
+\header { title = "F-sharp minor · scale fragments and cadence" composer = "My Journey" license = "CC0 1.0" maintainer = "My Journey" subtitle = "Complete original eight-bar study" }
+\score { \new PianoStaff << \new Staff = "upper" { \clef treble \key fis \minor \time 4/4 { fis'4 gis' a' b' | cis'' b' a' gis' | fis' a' cis'' a' | b' d'' fis' d'' | cis'' eis'' gis' eis'' | fis' a' cis'' a' | gis' eis'' fis'2 | fis'1 \bar "|." } } \new Staff = "lower" { \clef bass \key fis \minor \time 4/4 { <fis a cis'>1 | <fis a cis'> | <fis a cis'> | <b d' fis'> | <cis' eis' gis' b'> | <fis a cis'> | <cis' eis' gis' b'> | <fis a cis'> \bar "|." } } >> \layout {} \midi { \tempo 4=60 } }

@@ -1,0 +1,105 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="OpenPiano is a free piano studio: learn complete pieces by composer, build skills level by level, import your own scores and practice with a MIDI keyboard or microphone."><meta name="theme-color" content="#a3263b"><title>OpenPiano · Free piano practice</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&display=swap"><link rel="stylesheet" href="verovio-text.css?v=3a9d66f0e6ed"><link rel="stylesheet" href="piano.css?v=37e4ab28d7e1"><script src="piano-engine.js?v=8b5227a0c019" defer></script><script src="piano-repertoire.js?v=ea5988da9d7c" defer></script><script src="piano-library.js?v=8ff73ceb0a70" defer></script><script src="piano-additions.js?v=03f590264608" defer></script><script src="piano-famous.js?v=7a0136ff2bd0" defer></script><script src="piano-pdmx.js?v=b5d320c96739" defer></script><script src="piano-studies.js?v=7b93e663cb60" defer></script><script src="piano-skills.js?v=f2d1d384a919" defer></script><script src="piano-curriculum.js?v=1b6594d0d813" defer></script><script src="piano-engraving.js?v=53e059302927" defer></script><script src="piano-score-view.js?v=ddc0406768f4" defer></script><script src="piano-grand.js?v=7fd0de3a8a69" defer></script><script src="piano-fingering.js?v=7dc2cd7eb76c" defer></script><script src="piano-import-engine.js?v=b287ddc146dd" defer></script><script src="piano-import-renderer.js?v=6144e0880e9d" defer></script><script src="piano-player.js?v=f31858b6ece6" defer></script><script src="piano-course.js?v=bd77d0c41766" defer></script><script src="piano-skill-studio.js?v=c4a9c4374e42" defer></script><script src="piano-import.js?v=f0005080a619" defer></script><script src="piano-support.js?v=3dc57cf11f2f" defer></script><script src="piano-app.js?v=816ddc5085b4" defer></script><script src="piano-cloud-config.js?v=6143e3ccd169" defer></script><script src="piano-score-import.js?v=d67dde461e8b" defer></script><script src="piano-account.js?v=b49eadf54061" defer></script></head>
+<body data-page="piano"><a class="skip" href="#main">Skip to content</a>
+<div class="app">
+<aside class="rail" aria-label="Piano studio">
+ <a class="brand" href="#home" title="OpenPiano home"><svg viewBox="0 0 28 28" aria-hidden="true"><rect x="1" y="4" width="26" height="20" rx="4"/><path d="M8 4v12M14 4v12M20 4v12" /><path class="bk" d="M6 4h4v11H6zM12 4h4v11h-4zM18 4h4v11h-4z"/></svg><span>OpenPiano<small>Free piano studio</small></span></a>
+ <nav class="tabs" aria-label="Sections">
+  <a href="#home" data-tab="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z"/></svg><span>Home</span></a>
+  <a href="#library" data-tab="library"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h4v16H5zM10.5 4h4v16h-4zM16 5l3.6-1 2.6 15.4-3.6 1z"/></svg><span>Library</span></a>
+  <a href="#practice" data-tab="practice"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M8 5v14M12 5v14M16 5v14"/></svg><span>Practice</span></a>
+  <a href="#learn" data-tab="learn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V6l11-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg><span>Skills</span></a>
+  <a href="#import" data-tab="import"><span>＋</span><span>Your scores</span></a>
+  <a href="#support" data-tab="support"><span>♡</span><span>Support</span></a>
+ </nav>
+ <div id="account-box" class="account-box"></div>
+ <section class="rail-metronome tempo-tools" aria-labelledby="tempo-title">
+  <h2 id="tempo-title">Metronome</h2>
+  <div class="tempo-row"><label for="tempo" class="sr">Beats per minute</label><button type="button" class="step" data-step="-5" aria-label="Slower">−</button><input id="tempo" type="number" min="30" max="200" value="60" inputmode="numeric"><button type="button" class="step" data-step="5" aria-label="Faster">+</button></div>
+  <button id="metronome" type="button">Start metronome</button>
+  <span id="beat-status" role="status">Stopped</span>
+ </section>
+ <nav class="rail-legal" aria-label="Site information"><a href="terms.html">Terms</a><a href="privacy.html">Privacy</a><a href="copyright.html">Copyright</a></nav>
+</aside>
+
+<main id="main">
+ <!-- HOME -->
+ <section class="view" data-view="home" aria-labelledby="home-title">
+  <div class="home-hero">
+   <div>
+    <h1 id="home-title">Ready when you are.</h1>
+    <p class="lead">Pick up your piece, learn the skill behind it, and play along with a MIDI keyboard or your microphone. Free, in your browser.</p>
+   </div>
+   <article id="up-next" class="up-next" aria-label="Up next"></article>
+  </div>
+
+  <section class="range" aria-labelledby="range-title">
+   <div class="range-head"><h2 id="range-title">Your keyboard</h2><p>Seven levels, seven octaves. Black keys light up as you finish each level’s five skill units; white keys fill as you tick its readiness checks. Pick an octave to open that level.</p></div>
+   <div id="range-keys" class="range-keys"></div>
+  </section>
+
+  <p class="free-promise">Free practice · No subscription · Voluntary community support <a href="#support">Help keep it free →</a></p>
+  <section class="home-paths" aria-label="Ways to practice">
+   <a href="#import" class="path-tile"><strong>Bring your own score</strong><span>Import, review and practice your music.</span></a>
+   <a href="#library" class="path-tile"><strong>Play a piece</strong><span>Browse by composer, from Twinkle to Chopin.</span></a>
+   <a href="#learn/units" class="path-tile"><strong>Learn a skill</strong><span>35 short units on reading and technique.</span></a>
+   <a href="#learn/harmony-lab" class="path-tile"><strong>Keys &amp; chords</strong><span>Hear a scale, then move it to a new key.</span></a>
+   <a href="#learn/reading-studio" class="path-tile"><strong>Sight-read</strong><span>Unseen miniatures. One take, then review.</span></a>
+  </section>
+ </section>
+
+ <!-- YOUR SCORES -->
+ <section class="view" data-view="import" aria-labelledby="import-title" hidden>
+  <header class="view-head"><h1 id="import-title">Your scores</h1></header>
+  <p class="lead">Bring your own music. Review it, then practice at your pace. Free, with no account required.</p>
+  <section id="score-import" aria-label="Self-service score import"></section>
+ </section>
+ <section class="view" data-view="support" aria-labelledby="support-title" hidden>
+  <header class="view-head"><h1 id="support-title">Free to learn. Supported by people.</h1></header>
+  <p class="lead">The piano studio is free to use. Contributions are voluntary and never unlock extra practice features.</p>
+  <div id="community-support"></div>
+  <h2>Help in a way that suits you.</h2>
+  <div class="home-paths"><a class="path-tile" href="https://github.com/nhula01/openpiano/issues/new" target="_blank" rel="noopener"><strong>Report a problem</strong><span>Tell us about a wrong note, missing fingering or a difficult screen. Keep personal files out of public reports.</span></a><a class="path-tile" href="https://github.com/nhula01/openpiano" target="_blank" rel="noopener"><strong>Contribute</strong><span>Help with code, accessibility, translations or teacher-reviewed lessons.</span></a><a class="path-tile" href="#home"><strong>Share the studio</strong><span>Introduce a friend or teacher to free piano practice.</span></a></div>
+  <p class="muted">Your imported scores stay in this browser unless you choose a separate scanner or share a file yourself. Browser data can be removed by clearing site storage, so keep your original files.</p>
+ </section>
+ <!-- LIBRARY -->
+ <section class="view" data-view="library" aria-labelledby="library-title" hidden>
+  <div class="lib-browse" data-sub="browse">
+   <header class="view-head"><h1 id="library-title">Library</h1>
+    <div class="lib-tools"><label class="search"><span class="sr">Find a piece, composer or skill</span><input id="lib-search" type="search" placeholder="Find a piece or composer" autocomplete="off"></label></div>
+   </header>
+   <section id="my-songs" class="my-songs" aria-labelledby="mine-title"><h2 id="mine-title" class="shelf-title">My songs</h2></section>
+   <section aria-labelledby="composers-title"><h2 id="composers-title" class="shelf-title">Composers</h2><div id="composer-row" class="composer-row"></div></section>
+   <div id="level-shelves"></div>
+   <p class="credit">Portraits from Wikimedia Commons, public domain.</p>
+  </div>
+  <div class="lib-composer" data-sub="composer" hidden><div id="composer-page"></div></div>
+  <div class="lib-piece" data-sub="piece" hidden>
+   <a href="#library" class="back">Library</a>
+   <div class="piece-layout"><a id="piece-art" class="piece-art" href="#library"></a>
+   <section id="piece-course" class="piece-course" aria-label="Guided piece lessons"></section></div>
+  </div>
+  <!-- original repertoire controls, kept for the lesson engine -->
+  <section class="repertoire" aria-labelledby="library-legacy-title" hidden>
+   <div class="section-head"><div><h2 id="library-legacy-title">Choose your next piece.</h2></div><label>Study level<select id="piece-filter"><option value="all">All pieces</option></select></label></div>
+   <div id="piece-library" class="piece-library"></div>
+  </section>
+ </section>
+
+ <!-- PRACTICE -->
+ <section class="view" data-view="practice" aria-label="Practice" hidden>
+  <section id="note-trainer" class="note-trainer" aria-label="Interactive note practice"></section>
+ </section>
+
+ <!-- LEARN -->
+ <section class="view" data-view="learn" aria-labelledby="learn-title" hidden>
+  <header class="view-head"><h1 id="learn-title">Skills</h1>
+   <nav class="chips" aria-label="Skill areas"><a href="#learn/units">Skill units</a><a href="#learn/harmony-lab">Keys &amp; chords</a><a href="#learn/reading-studio">Sight-reading</a><a href="#learn/level-path">Level guide</a></nav>
+  </header>
+  <section id="skill-studio" class="skill-studio" aria-label="Method technique and sight reading"></section>
+  <div id="level-slot"></div>
+ </section>
+ <p id="course-status" class="toast" role="status" aria-live="polite"></p>
+ <p id="status" role="status" aria-live="polite"></p>
+</main>
+</div>
+</body></html>
