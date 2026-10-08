@@ -89,7 +89,8 @@ let current = '';
 function go(route) { if (location.hash.slice(1) === route) apply(route); else location.hash = route; }
 function apply(route, opts = {}) {
   // A sign-in link returns with its tokens in the hash; the account script reads them.
-  if (/^(access_token|refresh_token|error)=/.test(route || '')) route = 'library/mine';
+  if (/^(access_token|refresh_token|error)=/.test(route || '')) route = 'import';
+  if (route === 'library/mine') route = 'import';
   const [view = 'home', sub = '', arg = ''] = (route || 'home').split('/');
   const target = views.find(v => v.dataset.view === view) ? view : 'home';
   for (const v of views) v.hidden = v.dataset.view !== target;
@@ -236,7 +237,6 @@ function showLibrary(sub, arg) {
   const which = sub === 'composer' ? 'composer' : sub === 'piece' ? 'piece' : 'browse';
   for (const [k, n] of Object.entries(parts)) n.hidden = k !== which;
   if (which === 'browse') renderBrowse();
-  if (sub === 'mine') requestAnimationFrame(() => origScroll.call($('#my-songs'), { block: 'start' }));
   if (which === 'composer') renderComposer(arg);
   if (which === 'piece') renderPieceArt();
 }

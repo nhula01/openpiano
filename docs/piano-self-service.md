@@ -10,7 +10,7 @@ The public site has a Your scores area and a voluntary Support page. There is no
 4. Correct an individual pitch in the browser, download the corrected MusicXML, or correct rhythm/layout/navigation in a notation editor and re-import. The user checks the source before opening practice.
 5. Save optionally in IndexedDB on the visitor's device. Imported files, attached sheets and scores never enter the repository or public catalog. Source files remain necessary backups. Saved copies can be removed without affecting the originals.
 
-The supported MusicXML subset is partwise, 1 piano part with up to 2 staves or 2 single-staff parts, pitches A0–C8, ordinary notes/rests/chords/voices, numeric durations including tuplets, ties, pickups, ordinary repeated sections and numbered endings. Nested repeats, D.C./D.S./coda/fine, grace-note playback, transposition, microtones, tremolos and ornamental playback must be written out first. They fail explicitly rather than silently omitting music. Limits: 8 MB XML/MXL, 2 MB MIDI, 15 MB original image/PDF, 500 written/1500 unfolded measures, 10,000 playable attacks and 20 saved imports. These are resource limits, not paywalls.
+The supported MusicXML subset is partwise, 1 piano part with up to 2 staves or 2 single-staff parts, pitches A0–C8, ordinary notes/rests/chords/voices, simple grace notes, numeric durations including tuplets, ties, pickups, ordinary repeated sections and numbered endings. Nested repeats, D.C./D.S./coda/fine, grace-note chords, transposition, microtones, tremolos and ornamental playback must be written out first. They fail explicitly rather than silently omitting music. Limits: 8 MB XML/MXL, 2 MB MIDI, 15 MB original image/PDF, 500 written/1500 unfolded measures, 10,000 playable attacks and 20 saved imports. These are resource limits, not paywalls.
 
 ## Automatic PDF/photo recognition
 
@@ -19,3 +19,13 @@ The supported MusicXML subset is partwise, 1 piano part with up to 2 staves or 2
 ## Tests
 
 Install test dependencies with `npm ci`, then run `npm run test:piano` and `python3 tests/test_score_scanner.py`. Parser tests cover complete repeats, two hands, chords, ties, first/second endings, successive repeat starts, rests, corrections, compressed exports and explicit unsupported cases. Scanner boundary tests use controlled exports and do not claim real OCR accuracy. Browser QA verifies actual rendering, correction, private storage, sheet/scroll playback and support routing. Real MIDI hardware and hosted OCR need their own deployment verification.
+
+Simple grace notes keep their printed small-note notation and receive a fixed 0.04-beat playback duration just before their main note (or from the main note at the very start). This is an explicit playback approximation, not a rule for expressive performance. Positioned rests are excluded from pitched-head validation even if the renderer assigns a display pitch. Overfull regular measures fail with a measure-number message, so misread tuplets cannot silently extend the piece.
+
+## Unified My songs page
+
+Import, review, original-sheet comparison and saved scores share the My songs page.
+The old `#library/mine` link opens the same page. Previously saved browser songs
+remain available; no storage is erased. When accounts are configured and signed in,
+Save reviewed score to my account uploads only the reviewed MusicXML/MIDI. Attached
+original sheets stay in browser storage.

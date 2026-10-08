@@ -8,7 +8,7 @@ Anyone can import their own MusicXML or MIDI scores and keep them private.
   license on every score. Printed fingerings only; none are generated.
 - **Practice** — waiting sheet or moving score, both hands, MIDI or microphone input.
 - **Skills** — 35 short units, key and chord lab, first-reading miniatures.
-- **Your scores / My songs** — import MusicXML or MIDI; private to your browser, or to
+- **My songs** — import MusicXML or MIDI; private to your browser, or to
   your account when signed in.
 - **Free** — donations are voluntary and never unlock features.
 

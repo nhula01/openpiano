@@ -84,7 +84,8 @@ function renderAccount() {
     const out = el('button', 'Sign out', 'secondary'); out.type = 'button'; out.onclick = async () => { await sb.auth.signOut(); };
     accountBox.append(out);
   } else {
-    const a = el('a', CLOUD ? 'Sign in to sync your songs' : 'My songs', 'acct-link'); a.href = '#library/mine'; accountBox.append(a);
+    if (!CLOUD) return;
+    const a = el('a', CLOUD ? 'Sign in to sync your songs' : 'My songs', 'acct-link'); a.href = '#import'; accountBox.append(a);
   }
 }
 
@@ -107,32 +108,9 @@ function signInForm() {
   return form;
 }
 
-function addForm() {
-  const form = el('form', undefined, 'add-song');
-  const fileLabel = el('label', 'Score file'); const file = el('input'); file.type = 'file'; file.accept = ACCEPT; file.required = true; fileLabel.append(file);
-  const titleLabel = el('label', 'Title'); const title = el('input'); title.maxLength = 200; title.placeholder = 'Taken from the file if empty'; titleLabel.append(title);
-  const compLabel = el('label', 'Composer or artist'); const comp = el('input'); comp.maxLength = 200; compLabel.append(comp);
-  const rights = el('label', undefined, 'check'); const ok = el('input'); ok.type = 'checkbox'; ok.required = true;
-  rights.append(ok, el('span', 'I’m allowed to use this music for my own practice. It stays private: only I can see it.'));
-  const go = el('button', 'Add to my songs'); go.type = 'submit';
-  form.append(el('p', 'MusicXML (.mxl, .musicxml, from MuseScore: File → Export → MusicXML) shows the sheet music. MIDI (.mid) plays the notes without sheet music.', 'muted'), fileLabel, titleLabel, compLabel, rights, go);
-  file.onchange = () => { if (!title.value && file.files[0]) title.value = file.files[0].name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' '); };
-  form.onsubmit = async e => {
-    e.preventDefault(); const f = file.files[0]; if (!f) return;
-    go.disabled = true; say('Reading the score…');
-    try {
-      const format = /\.midi?$/i.test(f.name) ? 'midi' : 'musicxml';
-      const entry = await window.PianoScoreImport.fromFile(f, { id: 'check', title: title.value.trim(), composer: comp.value.trim() });
-      const rec = await store().add(f, { title: entry.title.slice(0, 200), composer: comp.value.trim().slice(0, 200), format });
-      form.reset(); say(`Added “${entry.title}” · ${entry.notes.length} notes${entry.engraving ? '' : ' · no sheet music (MIDI)'}.`);
-      await refresh(); open(rec);
-    } catch (err) { say(err.message || String(err), true); }
-    go.disabled = false;
-  };
-  return form;
-}
 
 function render() {
+  section.hidden = !CLOUD && !songs.length;
   section.querySelector('.mine-body').replaceChildren();
   const body = section.querySelector('.mine-body');
   const where = el('p', user ? `Private to ${user.email}. Synced to your account.` : (CLOUD ? 'Saved in this browser only. Sign in to keep them in your account.' : 'Saved in this browser only.'), 'mine-where');
@@ -153,7 +131,7 @@ function render() {
   const left = el('div'); left.append(el('h3', 'Your songs', 'mine-h'), list);
   const right = el('div', undefined, 'mine-side');
   if (CLOUD && !user) right.append(signInForm());
-  right.append(addForm());
+  const add = el('a', 'Import and review a score above', 'secondary'); add.href = '#import'; right.append(add);
   if (user) right.append(dangerZone());
   grid.append(left, right); body.append(grid);
 }
@@ -226,5 +204,8 @@ async function init() {
   renderAccount(); refresh();
 }
 document.addEventListener('DOMContentLoaded', init);
-window.PianoAccount = { open, refresh };
+window.PianoAccount = { open, refresh, canSync: () => !!user, async saveReviewed(file, meta) {
+  if (!user) throw Error('Sign in before saving to your account.');
+  const rec = await cloud.add(file, meta); await refresh(); return rec;
+} };
 })();
