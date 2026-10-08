@@ -4,6 +4,8 @@
 // MusicXML follows the same rules as scripts/build-musicxml-library.py: timing from the
 // MusicXML durations, every attack tied to its printed notehead through its note id,
 // hidden playback-only notes left out, tied notes sounding once, hands from the staff.
+// Repeats and numbered endings are written out first with PianoImportEngine (piano-import-engine.js)
+// so practice follows the performed order; scores it can't unfold are kept as written.
 (() => {
 const VEROVIO = 'https://cdn.jsdelivr.net/npm/verovio@6.3.0/dist/verovio-toolkit-wasm.js';
 const OPTIONS = { pageHeight: 2970, pageWidth: 2100, pageMarginLeft: 100, pageMarginRight: 100, adjustPageHeight: false,
@@ -24,6 +26,16 @@ function loadVerovio() {
 }
 
 // ---- Minimal zip reader for .mxl (stored or deflated entries) ----
+const MAX_XML = 8_000_000;
+async function inflate(raw, limit) {
+  const reader = new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader(), chunks = []; let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read(); if (done) break;
+    size += value.length; if (size > limit) { reader.cancel(); throw new Error('This .mxl file is too large once unpacked (8 MB limit).'); }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(size); let at = 0; for (const c of chunks) { out.set(c, at); at += c.length; } return out;
+}
 async function unzip(buffer) {
   const view = new DataView(buffer), files = {};
   let eocd = -1;
@@ -31,16 +43,16 @@ async function unzip(buffer) {
   if (eocd < 0) throw new Error('This .mxl file is not a valid compressed MusicXML file.');
   let p = view.getUint32(eocd + 16, true); const count = view.getUint16(eocd + 10, true);
   for (let n = 0; n < count; n++) {
-    const method = view.getUint16(p + 10, true), size = view.getUint32(p + 20, true), nameLen = view.getUint16(p + 28, true),
+    const method = view.getUint16(p + 10, true), size = view.getUint32(p + 20, true), full = view.getUint32(p + 24, true), nameLen = view.getUint16(p + 28, true),
       extraLen = view.getUint16(p + 30, true), commentLen = view.getUint16(p + 32, true), local = view.getUint32(p + 42, true);
     const name = new TextDecoder().decode(new Uint8Array(buffer, p + 46, nameLen));
     const dataStart = local + 30 + view.getUint16(local + 26, true) + view.getUint16(local + 28, true);
     const raw = new Uint8Array(buffer, dataStart, size);
     files[name] = async () => {
+      if (full > MAX_XML || (method === 0 && size > MAX_XML)) throw new Error('This .mxl file is too large once unpacked (8 MB limit).');
       if (method === 0) return raw;
       if (method !== 8) throw new Error('Unsupported compression in this .mxl file.');
-      const stream = new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
-      return new Uint8Array(await new Response(stream).arrayBuffer());
+      return inflate(raw, MAX_XML);
     };
     p += 46 + nameLen + extraLen + commentLen;
   }
@@ -72,8 +84,9 @@ const text = (el, tag) => kid(el, tag)?.textContent ?? null;
 function clean(doc, title) {
   const root = doc.documentElement; let hidden = 0, metronomes = 0;
   if (root.tagName !== 'score-partwise') throw new Error('Only part-wise MusicXML is supported. Export from MuseScore with File → Export → MusicXML.');
+  if (kids(root, 'part').length === 2) mergeParts(doc);
   const parts = kids(root, 'part');
-  if (parts.length !== 1) throw new Error('Choose a piano score with a single part (two staves).');
+  if (parts.length !== 1) throw new Error('Choose a piano score with one part (two staves) or two single-staff parts.');
   for (const c of [...root.children]) if (['credit', 'movement-title', 'movement-number', 'work'].includes(c.tagName)) c.remove();
   const work = doc.createElement('work'), wt = doc.createElement('work-title'); wt.textContent = title; work.append(wt); root.prepend(work);
   for (const el of root.querySelectorAll('part-name, part-abbreviation')) el.textContent = '';
@@ -108,6 +121,57 @@ function clean(doc, title) {
     }
   }
   return hidden;
+}
+
+// Two single-staff parts (right hand, left hand) become one part with two staves.
+function mergeParts(doc) {
+  const root = doc.documentElement, [upper, lower] = kids(root, 'part'), m1 = kids(upper, 'measure'), m2 = kids(lower, 'measure');
+  const div = m => kids(m, 'attributes').map(a => text(a, 'divisions')).filter(Boolean);
+  if (m1.length !== m2.length) throw new Error('The two parts have different measure counts. Export the score as one piano part.');
+  const staves = parts => { for (const a of parts) if (Number(text(a, 'staves') || 1) > 1) throw new Error('Use one piano part with two staves, or two single-staff parts.'); };
+  let d1 = null, d2 = null;
+  m1.forEach((a, i) => {
+    const b = m2[i]; staves(kids(a, 'attributes')); staves(kids(b, 'attributes'));
+    d1 = div(a).at(-1) ?? d1; d2 = div(b).at(-1) ?? d2;
+    if (d1 !== d2) throw new Error('The two parts use different rhythmic divisions. Export the score as one piano part.');
+    let pos = 0, end = 0;
+    for (const c of [...a.children]) {
+      if (c.tagName === 'backup') pos -= Number(text(c, 'duration'));
+      else if (c.tagName === 'forward') pos += Number(text(c, 'duration'));
+      else if (c.tagName === 'note' && !kid(c, 'chord') && !kid(c, 'grace')) { pos += Number(text(c, 'duration') || 0); }
+      end = Math.max(end, pos);
+    }
+    if (end > 0) { const back = doc.createElement('backup'), dur = doc.createElement('duration'); dur.textContent = end; back.append(dur); a.append(back); }
+    for (const c of [...b.children]) {
+      if (['barline', 'print'].includes(c.tagName)) continue;
+      const n = c.cloneNode(true);
+      if (['note', 'direction', 'forward'].includes(n.tagName)) {
+        kid(n, 'staff')?.remove(); const st = doc.createElement('staff'); st.textContent = '2'; n.append(st);
+        const v = kid(n, 'voice'); if (v) v.textContent = String(Number(v.textContent || 1) + 4);
+      }
+      if (n.tagName === 'attributes') {
+        for (const x of [...n.children]) if (x.tagName !== 'clef') x.remove();
+        if (!kid(n, 'clef')) continue;
+        for (const clef of kids(n, 'clef')) clef.setAttribute('number', '2');
+      }
+      a.append(n);
+    }
+  });
+  const first = kids(m1[0], 'attributes')[0] || m1[0].insertBefore(doc.createElement('attributes'), m1[0].firstChild);
+  const st = doc.createElement('staves'); st.textContent = '2';
+  const before = kids(first, 'clef')[0] || kids(first, 'staff-details')[0] || null; first.insertBefore(st, before);
+  for (const clef of kids(first, 'clef')) if (!clef.getAttribute('number')) clef.setAttribute('number', '1');
+  const id = lower.getAttribute('id'); lower.remove();
+  root.querySelector(`part-list > score-part[id="${id}"]`)?.remove();
+}
+
+// Repeats, endings and multi-pass sections written out in performed order (see header).
+function prepare(xml) {
+  const E = window.PianoImportEngine; let parsed = null, problem = null;
+  if (E) try { parsed = E.parse(xml); } catch (e) { problem = e.message; }
+  const navigation = /<repeat\b|<ending\b|\b(?:dacapo|dalsegno|tocoda)=/.test(xml);
+  return { xml: parsed ? parsed.xml.replace(/ data-import-id="\d+"/g, '') : xml, parsed, problem,
+    unfolded: !!parsed && parsed.performedMeasures !== parsed.writtenMeasures, repeatsAsWritten: !parsed && navigation };
 }
 
 function timeline(doc) {
@@ -162,10 +226,16 @@ const numbers = s => (s.match(/[-\d.]+/g) || []).map(Number);
 const compact = s => s.replace(/ data-(?:id|class)="[^"]*"/g, '').replace(/>\n\s*</g, '><');
 
 async function fromMusicXML(file, meta) {
-  const xml = await readMusicXML(file);
+  return fromXML(await readMusicXML(file), { ...meta, fileName: meta.fileName || file.name });
+}
+
+async function fromXML(source, meta = {}) {
+  if (source.length > MAX_XML) throw new Error('Choose a MusicXML score smaller than 8 MB.');
+  if (/<!ENTITY|<!DOCTYPE[^>]*\[/i.test(source)) throw new Error('XML entity declarations are not supported.');
+  const prep = prepare(source), xml = prep.xml;
   const doc = new DOMParser().parseFromString(xml, 'application/xml');
   if (doc.querySelector('parsererror')) throw new Error('This file is not readable MusicXML.');
-  const title = meta.title || doc.querySelector('work-title, movement-title')?.textContent?.trim() || file.name.replace(/\.[^.]+$/, '');
+  const title = meta.title || doc.querySelector('work-title, movement-title')?.textContent?.trim() || (meta.fileName || 'Your score').replace(/\.[^.]+$/, '');
   const hidden = clean(doc, title);
   const time = doc.querySelector('time'), meter = time ? Number(text(time, 'beats')) * 4 / Number(text(time, 'beat-type')) : 4;
   const { notes: timed, total } = timeline(doc);
@@ -220,8 +290,11 @@ async function fromMusicXML(file, meta) {
   if (!notes.length) throw new Error('No playable notes were found in this score.');
   const end = Math.max(total, ...notes.map(n => n.beat + n.duration));
   systems.forEach((s, i) => { s.end = i + 1 < systems.length ? systems[i + 1].start : end; });
-  return finish(meta, title, notes, end, meter, { pages, systems, version: 2, source: 'private upload' },
-    `Your private MusicXML${hidden ? ` · ${hidden} hidden playback notes left out` : ''}${skipped ? ` · ${skipped} notes the engraver could not place were left out` : ''}`);
+  const entry = finish(meta, title, notes, end, meter, { pages, systems, version: 2, source: 'private upload' },
+    `Your private MusicXML${prep.unfolded ? ' · repeats written out' : ''}${prep.repeatsAsWritten ? ' · repeats played once, as printed' : ''}${hidden ? ` · ${hidden} hidden playback notes left out` : ''}${skipped ? ` · ${skipped} notes the engraver could not place were left out` : ''}`);
+  entry.review = { format: 'musicxml', xml: source, records: prep.parsed?.records || null, problem: prep.problem, unfolded: prep.unfolded, repeatsAsWritten: prep.repeatsAsWritten,
+    writtenMeasures: prep.parsed?.writtenMeasures ?? doc.querySelectorAll('part > measure').length, performedMeasures: prep.parsed?.performedMeasures ?? null, skipped, hidden };
+  return entry;
 }
 
 function dedupe(notes) {
@@ -239,13 +312,17 @@ function dedupe(notes) {
 async function fromMIDI(file, meta) {
   const buffer = await file.arrayBuffer(), parsed = window.PianoEngine.parseMidi(buffer);
   if (!parsed.length) throw new Error('No notes were found in this MIDI file.');
+  if (parsed.some(n => n.midi < 21 || n.midi > 108)) throw new Error('This MIDI file has notes outside the 88-key piano range.');
   const tracks = [...new Set(parsed.map(n => n.track))];
   const avg = t => { const xs = parsed.filter(n => n.track === t).map(n => n.midi); return xs.reduce((a, b) => a + b, 0) / xs.length; };
   const low = tracks.length > 1 ? tracks.reduce((a, b) => avg(a) < avg(b) ? a : b) : null;
-  const notes = dedupe(parsed.map(n => ({ midi: n.midi, beat: Math.round(n.beat * 1e6) / 1e6, duration: Math.round(n.duration * 1e6) / 1e6,
-    hand: low === null ? (n.midi < 60 ? 'left' : 'right') : (n.track === low ? 'left' : 'right') })));
+  // One track: split at middle C. Several: the lowest-sounding track is the left hand, unless the person chose otherwise.
+  const chosen = meta.hands || {}, hand = n => chosen[n.track] || (low === null ? (n.midi < 60 ? 'left' : 'right') : (n.track === low ? 'left' : 'right'));
+  const notes = dedupe(parsed.map(n => ({ midi: n.midi, beat: Math.round(n.beat * 1e6) / 1e6, duration: Math.round(n.duration * 1e6) / 1e6, hand: hand(n) })));
   const title = meta.title || file.name.replace(/\.[^.]+$/, '');
-  return finish(meta, title, notes, Math.max(parsed.endBeat || 0, ...notes.map(n => n.beat + n.duration)), 4, null, 'Your private MIDI · pitches and durations, no sheet music');
+  const entry = finish(meta, title, notes, Math.max(parsed.endBeat || 0, ...notes.map(n => n.beat + n.duration)), 4, null, 'Your private MIDI · pitches and durations, no sheet music');
+  entry.review = { format: 'midi', tracks: tracks.length > 1 ? tracks.map(t => ({ track: t, notes: parsed.filter(n => n.track === t).length, hand: chosen[t] || (t === low ? 'left' : 'right') })) : [] };
+  return entry;
 }
 
 function finish(meta, title, notes, end, meter, engraving, caption) {
@@ -257,8 +334,10 @@ function finish(meta, title, notes, end, meter, engraving, caption) {
 }
 
 async function fromFile(file, meta = {}) {
-  if (file.size > 8_000_000) throw new Error('Choose a file smaller than 8 MB.');
-  return /\.midi?$/i.test(file.name) ? fromMIDI(file, meta) : fromMusicXML(file, meta);
+  if (/\.midi?$/i.test(file.name)) { if (file.size > 2_000_000) throw new Error('Choose a MIDI file smaller than 2 MB.'); return fromMIDI(file, meta); }
+  if (!/\.(mxl|musicxml|xml)$/i.test(file.name)) throw new Error('Choose a MusicXML (.mxl, .musicxml) or MIDI (.mid) file.');
+  if (file.size > MAX_XML) throw new Error('Choose a file smaller than 8 MB.');
+  return fromMusicXML(file, meta);
 }
-window.PianoScoreImport = { fromFile, readMusicXML };
+window.PianoScoreImport = { fromFile, fromXML, readMusicXML, prepare, mergeParts };
 })();

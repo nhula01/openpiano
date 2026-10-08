@@ -89,8 +89,9 @@ let current = '';
 function go(route) { if (location.hash.slice(1) === route) apply(route); else location.hash = route; }
 function apply(route, opts = {}) {
   // A sign-in link returns with its tokens in the hash; the account script reads them.
-  if (/^(access_token|refresh_token|error)=/.test(route || '')) route = 'import';
-  if (route === 'library/mine') route = 'import';
+  if (/^(access_token|refresh_token|error)=/.test(route || '')) route = 'mine';
+  // Older links: the import page and the My songs shelf in the library are now one page.
+  if (route === 'import' || route === 'library/mine') route = 'mine';
   const [view = 'home', sub = '', arg = ''] = (route || 'home').split('/');
   const target = views.find(v => v.dataset.view === view) ? view : 'home';
   for (const v of views) v.hidden = v.dataset.view !== target;

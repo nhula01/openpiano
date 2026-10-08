@@ -8,7 +8,7 @@ Anyone can import their own MusicXML or MIDI scores and keep them private.
   license on every score. Printed fingerings only; none are generated.
 - **Practice** — waiting sheet or moving score, both hands, MIDI or microphone input.
 - **Skills** — 35 short units, key and chord lab, first-reading miniatures.
-- **My songs** — import MusicXML or MIDI; private to your browser, or to
+- **My songs** — add MusicXML or MIDI, check it and fix wrong notes, then practice; private to your browser, or to
   your account when signed in.
 - **Free** — donations are voluntary and never unlock features.
 
@@ -24,11 +24,11 @@ Open http://localhost:8000/. Tests: `npm ci && npm run test:piano`.
 - `docs/launch-checklist.md` — what the maintainer must set up before inviting people.
 - `docs/accounts-setup.md` — sign-in and private storage (Supabase).
 - `docs/piano-study-pathway.md` — how the library and study levels are built.
-- `docs/piano-self-service.md` — the score import workflow.
+- `docs/piano-self-service.md` — how My songs reads, checks and stores people's own scores.
 - `site/terms.html`, `site/privacy.html`, `site/copyright.html` — public policies.
 
 ## Licenses
 
 Each score in `site/scores/` keeps its own source license (public domain, CC0, or
-Creative Commons as stated in its README). Third-party code in `site/vendor/` keeps its
-license. A license for OpenPiano's own code has not been chosen yet.
+Creative Commons as stated in its README). The music engraver (Verovio, LGPL-3.0) and the
+sign-in library (supabase-js, MIT) load from jsDelivr only on the My songs page. A license for OpenPiano's own code has not been chosen yet.

@@ -383,10 +383,29 @@ main{padding:36px clamp(20px,4vw,56px) 80px;min-width:0;max-width:1240px;width:1
   .range-keys{--bw:10%}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}.scroll-strip{will-change:auto}}
-.free-promise{padding:1rem;border:1px solid var(--line);border-radius:12px;margin:1rem 0}.free-promise a{margin-left:.6rem}#score-import>label{display:block;margin:1.4rem 0 .5rem}#score-import input[type=file]{display:block;margin-top:.7rem;max-width:100%}.import-sheet-preview{background:white;padding:1rem;max-height:650px;overflow:auto;border:1px solid var(--line);border-radius:12px;margin:1rem 0}.import-sheet-preview svg{width:100%;height:auto;display:block}.import-source-pdf{width:100%;height:600px;border:0}.import-original-preview img{display:block;max-width:100%;max-height:600px;object-fit:contain;margin:1rem 0}.import-review>.check{margin:1.5rem 0}.private-score-shelf{margin-top:3rem;border-top:1px solid var(--line);padding-top:1.5rem}.private-score-shelf .actions{margin:1rem 0}.import-review .trainer-controls{flex-wrap:wrap}.import-review select{max-width:100%}#scan-help li{margin-bottom:.7rem}#community-support{margin:1.5rem 0}.import-render-workspace{pointer-events:none}
-@media(max-width:820px){.tabs{overflow-x:auto;justify-content:flex-start;min-width:0}.tabs a{flex:0 0 62px;white-space:nowrap}.tabs a[data-tab=import],.tabs a[data-tab=support]{min-height:52px;justify-content:center}}
+.free-promise{padding:1rem;border:1px solid var(--line);border-radius:12px;margin:1rem 0}.free-promise a{margin-left:.6rem}#score-import>label{display:block;margin:1.4rem 0 .5rem}#score-import input[type=file]{display:block;margin-top:.7rem;max-width:100%}.import-sheet-preview{background:white;padding:1rem;max-height:650px;overflow:auto;border:1px solid var(--line);border-radius:12px;margin:1rem 0}.import-sheet-preview svg{width:100%;height:auto;display:block}.import-sheet-preview svg+svg{margin-top:8px}.import-source-pdf{width:100%;height:600px;border:0}.import-original-preview img{display:block;max-width:100%;max-height:600px;object-fit:contain;margin:1rem 0}.import-review>.check{margin:1.5rem 0}.import-review .trainer-controls{flex-wrap:wrap}.import-review select{max-width:100%}#scan-help li{margin-bottom:.7rem}#community-support{margin:1.5rem 0}
+@media(max-width:820px){.tabs{overflow-x:auto;justify-content:flex-start;min-width:0}.tabs a{flex:0 0 62px;white-space:nowrap}.tabs a[data-tab=mine],.tabs a[data-tab=support]{min-height:52px;justify-content:center}}
 
 /* ---------- My songs (private library) ---------- */
+[data-view=mine] .lead{max-width:60ch;margin-bottom:22px}
+.mine-grid.solo{grid-template-columns:1fr}
+.mine-empty{grid-column:1/-1;margin:0}
+.add-song-panel{padding:22px;border-radius:var(--r-lg);background:var(--surface);border:1px solid var(--line);margin:0 0 30px}
+.add-song-panel>h2{margin:0 0 8px}
+.add-song-panel .step-label,#score-import>label.step-label{display:block;font:700 18px/1.3 var(--display);margin:22px 0 8px}
+#score-import>label.step-label input{font:16px var(--body)}
+.add-song-panel .fold{background:var(--bg)}
+.import-status{font-weight:700;margin:16px 0 0}
+.import-status.bad{color:var(--felt-deep)}
+.import-facts{color:var(--muted);margin:0 0 10px}
+.import-review .note.warn{padding:10px 14px;border-radius:var(--r-sm);background:var(--bg);border-left:4px solid var(--brass);margin:10px 0}
+.import-review .add-song{margin-top:18px;padding:16px;border-radius:var(--r);background:var(--bg);max-width:620px}
+.import-review .add-song label{margin-bottom:12px}
+.import-review .add-song .check{font-size:14px}
+.import-review .add-song .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+.import-review>.secondary{display:inline-flex;margin:6px 0 4px}
+.import-where{font-size:13px;margin:0 0 12px}
+.add-own-song{align-self:end;justify-self:start;display:inline-flex;align-items:center;min-height:44px;text-decoration:none}
 .account-box{display:flex;flex-direction:column;gap:6px;padding:12px;border-radius:var(--r);border:1px solid var(--line);font-size:14px}
 .account-box:empty{display:none}
 .acct-label{font-size:12px;color:var(--muted)}
@@ -399,7 +418,7 @@ main{padding:36px clamp(20px,4vw,56px) 80px;min-width:0;max-width:1240px;width:1
 .mine-where{color:var(--muted);font-size:14px;margin:0 0 16px}
 .mine-grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(260px,1fr);gap:24px;align-items:start}
 .mine-h{font-size:16px;margin:0 0 10px}
-.mine-list{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.tiles.wrap.mine-list{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
 .mine-art{aspect-ratio:1/1;display:grid;place-items:center;background:var(--ebony);color:var(--brass)}
 .mine-art:hover{background:var(--ebony-2)}
 .mine-glyph{font:800 34px/1 var(--display)}
@@ -413,7 +432,7 @@ button.small{min-height:34px;padding:5px 12px;font-size:13px}
 .mine-status{margin:12px 0 0;font-weight:700;font-size:14px;color:var(--ink)}
 .mine-status:empty{display:none}
 .mine-status.bad{color:var(--felt-deep)}
-@media (max-width:820px){.mine-grid{grid-template-columns:1fr}.my-songs{padding:16px}.account-box{display:none}}
+@media (max-width:820px){.tiles.wrap.mine-list{grid-template-columns:repeat(2,minmax(0,1fr))}.mine-glyph{font-size:26px}.add-song-panel{padding:16px}.mine-grid{grid-template-columns:1fr}.my-songs{padding:16px}.account-box{display:none}}
 
 .rail-legal{display:flex;gap:12px;flex-wrap:wrap;padding:0 12px;font-size:13px}
 .rail-legal a{color:var(--muted);text-decoration:none}
@@ -421,6 +440,8 @@ button.small{min-height:34px;padding:5px 12px;font-size:13px}
 @media (max-width:820px){.rail-legal{display:none}}
 .legal-foot{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);font-size:13px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap}
 .legal-foot a{color:inherit}
+.move-songs{padding:14px 16px;border-radius:var(--r);background:var(--bg)}
+.move-songs p{margin:0 0 10px;font-size:13px}
 .danger-zone{margin-top:14px;padding:14px 16px;border-radius:var(--r);border:1px solid var(--line)}
 .danger-zone p{margin:0 0 10px;font-size:13px;color:var(--muted)}
 .support-card{padding:22px;border-radius:var(--r-lg);background:var(--surface);border:1px solid var(--line);margin:0 0 24px}

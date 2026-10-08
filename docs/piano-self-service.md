@@ -1,31 +1,53 @@
-# Free self-service piano studio
+# My songs: people's own scores
 
-The public site has a Your scores area and a voluntary Support page. There is no subscription, account requirement or payment gate. `piano-support.json` is the owner's configuration for `supportURL` and `scannerURL`; both are null until real destinations are supplied. Nothing impersonates a donation account or a working hosted scanner.
+My songs is one page for bringing your own music: add a file, check it, practice it, and keep
+it privately. There is no subscription and no account requirement. `piano-support.json` holds the
+owner's `supportURL` (donations) and `scannerURL` (optional PDF/photo scanner); both are null until
+real destinations exist.
 
-## Browser workflow
+## Adding a song
 
-1. Import MusicXML (`.musicxml`, `.xml`, `.mxl`) or MIDI (`.mid`, `.midi`). MusicXML preserves notation and source fingerings. MIDI retains its complete pitch/duration timeline, with reviewable hand assignment, but uses the existing note display rather than reconstructing original engraving.
-2. Optionally attach the original PDF/photo for local comparison. Selecting a PDF/photo does not pretend to recognize notes: the app explains scanning and links a free desktop route (Audiveris) and an optional web scanner (Soundslice).
-3. MusicXML is unfolded for repeats, rendered with locally served OpenSheetMusicDisplay, checked against every written note/attack, and offered for review. Both the waiting sheet and continuous horizontal practice consume the same data. Source fingering is retained; no fingering inference is performed.
-4. Correct an individual pitch in the browser, download the corrected MusicXML, or correct rhythm/layout/navigation in a notation editor and re-import. The user checks the source before opening practice.
-5. Save optionally in IndexedDB on the visitor's device. Imported files, attached sheets and scores never enter the repository or public catalog. Source files remain necessary backups. Saved copies can be removed without affecting the originals.
+1. **Choose a file.** MusicXML (`.musicxml`, `.xml`, `.mxl`) keeps the sheet music and printed
+   fingering. MIDI (`.mid`, `.midi`) keeps every note and rhythm and practices with the note display.
+   A PDF or photo is attached for reference only: the page explains how to turn it into MusicXML with
+   Audiveris (free) or a web scanner, and offers the owner's scanner when `scannerURL` is set.
+2. **Check it.** MusicXML goes through `piano-import-engine.js`, which validates the score and writes
+   out repeats, numbered endings and multi-pass sections in performed order, then through
+   `piano-score-import.js`, which engraves it with Verovio (the same engraver as the library) and ties
+   every playable attack to its printed notehead. Two single-staff parts are combined into one
+   right-hand/left-hand part. Scores the engine cannot unfold (D.C./D.S./coda, nested repeats,
+   ornaments to be written out, overfull bars) are kept exactly as printed and the page says that
+   repeats will be played once. The page shows the opening lines, note and measure counts, and
+   whether printed fingering is present. Grace notes keep their small printed notes and sound just
+   before their main note (a short fixed lead-in, as in the library), not with expressive timing.
+   Anything else the checker flags, such as an overfull bar (often a misread tuplet), is shown with
+   its measure number so the person can fix it before practicing.
+3. **Fix it.** A single wrong pitch can be corrected in the browser (sheet and practice update
+   together) and the corrected MusicXML downloaded. For MIDI with several tracks, the person picks
+   which hand plays each track. Rhythm, hands and layout are fixed in a notation editor.
+4. **Save it or practice it.** "Save to My songs and practice" stores the file (the corrected
+   MusicXML when edited), the MIDI hand choices and any attached PDF/photo. "Practice without saving"
+   opens it once. Both require confirming the music may be used for the person's own practice.
 
-The supported MusicXML subset is partwise, 1 piano part with up to 2 staves or 2 single-staff parts, pitches A0–C8, ordinary notes/rests/chords/voices, simple grace notes, numeric durations including tuplets, ties, pickups, ordinary repeated sections and numbered endings. Nested repeats, D.C./D.S./coda/fine, grace-note chords, transposition, microtones, tremolos and ornamental playback must be written out first. They fail explicitly rather than silently omitting music. Limits: 8 MB XML/MXL, 2 MB MIDI, 15 MB original image/PDF, 500 written/1500 unfolded measures, 10,000 playable attacks and 20 saved imports. These are resource limits, not paywalls.
+Signed out, songs live in this browser (IndexedDB). Signed in (see `docs/accounts-setup.md`), they
+live in the person's account, protected by row-level security, and songs already in the browser can
+be moved into the account. Scores saved by the earlier "Your scores" page are moved into My songs
+automatically the first time the page opens. Nothing a person adds is ever committed to this
+repository or published.
+
+Limits (resource limits, not paywalls): 8 MB MusicXML/MXL (also once unpacked), 2 MB MIDI, 15 MB
+attached sheet, 500 written / 1,500 performed measures and 10,000 notes for unfolding, 100 songs.
 
 ## Automatic PDF/photo recognition
 
-`services/score-scanner` prepares an isolated Audiveris HTTP bridge. GitHub Pages cannot execute it. An owner-provided HTTPS host, real engine/runtime installation, optical-recognition tests and public deployment safeguards are required before setting `scannerURL`. It is not deployed by this change. Once configured, the website explains where the sheet will be sent, offers an explicit Scan button, and feeds the returned MusicXML through the same review and validation flow. Neither recognition nor the user's musical mastery is guaranteed by an upload.
+`services/score-scanner` prepares an isolated Audiveris HTTP bridge. GitHub Pages cannot run it. An
+owner-provided HTTPS host, a real engine installation, recognition tests and public safeguards are
+needed before setting `scannerURL`. Once set, the page says where the sheet will be sent, offers an
+explicit Scan button, and feeds the returned MusicXML through the same checks.
 
 ## Tests
 
-Install test dependencies with `npm ci`, then run `npm run test:piano` and `python3 tests/test_score_scanner.py`. Parser tests cover complete repeats, two hands, chords, ties, first/second endings, successive repeat starts, rests, corrections, compressed exports and explicit unsupported cases. Scanner boundary tests use controlled exports and do not claim real OCR accuracy. Browser QA verifies actual rendering, correction, private storage, sheet/scroll playback and support routing. Real MIDI hardware and hosted OCR need their own deployment verification.
-
-Simple grace notes keep their printed small-note notation and receive a fixed 0.04-beat playback duration just before their main note (or from the main note at the very start). This is an explicit playback approximation, not a rule for expressive performance. Positioned rests are excluded from pitched-head validation even if the renderer assigns a display pitch. Overfull regular measures fail with a measure-number message, so misread tuplets cannot silently extend the piece.
-
-## Unified My songs page
-
-Import, review, original-sheet comparison and saved scores share the My songs page.
-The old `#library/mine` link opens the same page. Previously saved browser songs
-remain available; no storage is erased. When accounts are configured and signed in,
-Save reviewed score to my account uploads only the reviewed MusicXML/MIDI. Attached
-original sheets stay in browser storage.
+`npm ci && npm run test:piano` covers the engine (repeats, endings, ties, grace notes, rests,
+corrections, unsupported cases) and the importer (compressed files and their unpacked-size limit,
+repeat unfolding with the as-printed fallback, combining two parts). `python3 tests/test_score_scanner.py`
+covers the scanner boundary. Engraving, saving, accounts and practice are checked in a real browser.
