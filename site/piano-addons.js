@@ -40,10 +40,12 @@ function fromDevice(list){if(!Array.isArray(list))return [];let out=[];for(const
 // ---------- Backend: the live add-on RPCs, or the in-browser demo used by previews ----------
 function backend(){const demo=window.PianoAddonsDemo;if(demo)return demo;const a=window.PianoCommunityAuth;if(!a)return null;return {ready:()=>a.ready(),signedIn:()=>a.signedIn(),rpc:async(n,args)=>{const {data,error}=await a.rpc(n,args);if(error)throw new Error(error.message);return data;}};}
 const profile=()=>window.PianoProfiles?.current?.()||null;
-const canSync=()=>!!backend()?.signedIn?.()&&!!profile();
+// Until the add-on tables are installed on the server, drafts stay on this device.
+const canSync=()=>!state.unavailable&&!!backend()?.signedIn?.()&&!!profile();
+const missing=e=>/PGRST202|schema cache|Could not find the function|function public\.addon_/i.test(String(e?.message||e));
 
 // mine: {draft, published, published_at, votes} from the account (or from this device when signed out).
-const state={piece:null,mine:null,device:[],layers:[],error:null,loading:false,generation:0};
+const state={piece:null,mine:null,device:[],layers:[],error:null,loading:false,generation:0,unavailable:false};
 const library=()=>new Set((window.PianoCurriculum?.pieces||[]).map(p=>p.id));
 const applied=()=>read(APPLIED,{})[state.piece]||null;
 const showMine=()=>read(SHOW_MINE,true)!==false;
@@ -60,7 +62,7 @@ async function load(){const p=P(),id=p?.score?.id;if(!id)return;const gen=++stat
  try{const list=[];let total=1;for(let off=0;off<total&&off<200;off+=20){const d=await be.rpc('addon_list',{p_piece:id,p_offset:off});total=d?.total||0;const got=d?.addons||[];list.push(...got);if(!got.length)break;}
   const mine=canSync()?await be.rpc('addon_mine',{p_piece:id}):null;if(gen!==state.generation)return;
   state.mine=mine||null;state.layers=list.filter(a=>!a.mine);}
- catch(e){if(gen!==state.generation)return;state.error=e.message;}
+ catch(e){if(gen!==state.generation)return;if(missing(e)){state.unavailable=true;state.mine=null;state.layers=[];state.error='Publishing add-ons is not switched on yet. Your draft is kept on this device for now.';}else state.error=e.message;}
  state.loading=false;render();paint();}
 
 // Saving the draft: the whole draft is sent each time, one save after another.
@@ -106,7 +108,7 @@ async function publish(){await saving;const be=backend();if(state.device.length)
 async function discard(){await saving.catch(()=>{});const be=backend();if(canSync()){state.mine=await be.rpc('addon_discard',{p_piece:state.piece});}saveDevice([]);render();paint();toast(view().published?'Changes discarded. Your published add-on is unchanged.':'Draft discarded.');}
 async function unpublish(){await saving;state.mine=await backend().rpc('addon_unpublish',{p_piece:state.piece});render();paint();toast('Your add-on is no longer published. The draft is still yours.');}
 async function moveDevice(){const v=view();await saveDraft(v.draft);saveDevice([]);toast('Your device draft is now in your account.');}
-function needSignIn(){state.error=backend()?.signedIn?.()?'Set up your profile name to publish your add-on.':'Sign in to publish your add-on. Your draft stays on this device until then.';togglePanel(true);}
+function needSignIn(){state.error=state.unavailable?'Publishing add-ons is not switched on yet. Your draft is kept on this device for now.':backend()?.signedIn?.()?'Set up your profile name to publish your add-on.':'Sign in to publish your add-on. Your draft stays on this device until then.';togglePanel(true);}
 const pendingText=v=>v.published?plural(v.pending,'unpublished change'):plural(v.pending,'note');
 
 // The draft bar sits over the sheet while the draft has something to publish.
