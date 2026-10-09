@@ -38,3 +38,13 @@ test('the demo bots and the SQL seed describe the same Für Elise notes',()=>{
   const bots={'OpenPiano Fingering Bot':'fingering-demo','OpenPiano Alternate Fingering Bot':'alt-fingering-demo','OpenPiano Phrasing Bot':'phrasing-demo'};
   const demo=all.map(p=>[bots[p.alias],p.note_beat,p.note_midi,p.hand,p.kind,p.fingers].join('|')).sort();assert.equal(rows.length,39);assert.equal(JSON.stringify(demo),JSON.stringify(rows));});
 });
+test('your add-on is published notes plus a draft; publishing updates changed notes in place and reveals new ones',()=>{
+ const mk=(o)=>post({mine:true,visibility:'private',...o});
+ const pubF=mk({id:'p1',visibility:'public',fingers:'5',note_beat:0,note_midi:76}),pubC=mk({id:'p2',visibility:'public',kind:'comment',body:'light',note_beat:0,note_midi:76}),
+  draftF=mk({id:'d1',fingers:'4',note_beat:0,note_midi:76}),newF=mk({id:'d2',fingers:'2',note_beat:1.25,note_midi:71});
+ const s=A.splitMine([pubF,pubC,draftF,newF]);
+ assert.equal(JSON.stringify(s.shown.map(x=>x.id).sort()),JSON.stringify(['d1','d2','p2']),'a draft change hides the published version it replaces');
+ assert.equal(JSON.stringify(s.plan.map(x=>[x.op,x.draft.id,x.target?.id||''])),JSON.stringify([['update','d1','p1'],['reveal','d2','']]));
+ assert.equal(A.splitMine([pubF,pubC]).plan.length,0,'nothing to publish without a draft');
+ const marks=A.toMarks(s.shown,x=>x.visibility==='public'?'mine':'draft','You');assert.equal(JSON.stringify(marks.map(m=>[m.id,m.source]).sort()),JSON.stringify([['d1','draft'],['d2','draft'],['p2','mine']]));
+});

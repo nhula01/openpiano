@@ -109,9 +109,9 @@ function seekToBeat(beat){
 }
 seekBar.oninput=()=>seekToBeat(events[Number(seekBar.value)]?.beat??0);
 if(scoreView)scoreView.onSeek=seekToBeat;
-// Add-ons: annotate mode sends note clicks to the add-on editor; clicking a mark opens it.
+// Add-ons: a picked note offers a + to add to your draft (annotate mode opens the editor at once); clicking a mark opens it.
 function noteDetail(beat,midi){const event=events.find(e=>Math.abs(e.beat-beat)<.001),member=event?.members?.find(n=>n.midi===midi);return {piece:score?.id,beat,midi,note:E.noteName(midi),hand:member?.hand==='left'?'LH':member?.hand==='right'?'RH':(midi<60?'LH':'RH'),bar:barOf(beat)+1};}
-if(scoreView){scoreView.onAnnotate=({beat,midi},rect)=>window.dispatchEvent(new CustomEvent('piano-note-annotate',{detail:{...noteDetail(beat,midi),rect}}));scoreView.onMark=(id,rect)=>window.dispatchEvent(new CustomEvent('piano-addon-mark',{detail:{id,rect,piece:score?.id}}));}
+if(scoreView){scoreView.onAnnotate=({beat,midi},rect)=>window.dispatchEvent(new CustomEvent('piano-note-annotate',{detail:{...noteDetail(beat,midi),rect}}));scoreView.onMark=(id,rect)=>window.dispatchEvent(new CustomEvent('piano-addon-mark',{detail:{id,rect,piece:score?.id}}));scoreView.onPick=({beat,midi})=>window.dispatchEvent(new CustomEvent('piano-note-pick',{detail:noteDetail(beat,midi)}));}
 if(scoreView)scoreView.onNote=({beat,midi})=>{
  const event=events.find(e=>Math.abs(e.beat-beat)<.001),member=event?.members?.find(n=>n.midi===midi);
  window.dispatchEvent(new CustomEvent('piano-note-selected',{detail:{piece:score?.id,beat,midi,note:E.noteName(midi),hand:member?.hand==='left'?'LH':member?.hand==='right'?'RH':'BH',bar:barOf(beat)+1}}));
