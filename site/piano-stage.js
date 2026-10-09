@@ -90,7 +90,7 @@ function build(){const p=P();if(!p)return;document.body.dataset.shell='stage';co
   const busy=p.state!=='idle';if(busy)mode=p.state;modes.set(mode);go.replaceChildren(icon(busy?'pause':'play'));go.setAttribute('aria-label',busy?'Pause ( Space )':mode==='listen'?'Listen ( Space )':'Start ( Space )');go.title=go.getAttribute('aria-label');go.classList.toggle('is-on',busy);
   hands.set(p.hands,p.handsAvailable?{}:{LH:true,RH:true});tv.textContent=p.tempo;tv.title=p.tempo+' beats per minute';
   loopB.replaceChildren(icon('loop'),el('span',p.loop?p.loop.title:'Loop'));loopB.setAttribute('aria-pressed',String(!!p.loop));
-  clickT.set(p.click);otherT.set(p.accompany,p.hands==='BH'||p.input==='microphone');
+  clickT.set(p.click,!p.clickAvailable);clickT.node.title=p.clickAvailable?'Metronome click ( M )':'No click with the microphone, which would hear it';otherT.set(p.accompany,p.hands==='BH'||p.input==='microphone');
   const inp=INPUTS.find(i=>i[0]===p.input)||INPUTS[0];inputChip.replaceChildren(icon(inp[2]));inputChip.title='Listening with '+inp[1];inSeg.set(p.input);typeSeg.set(p.type);fingerT.set(p.fingering,!p.fingeringAvailable);speedT.set(p.speedTrainer.on);
   pager.hidden=p.type!=='sheet';hint();}
  let streak=0;p.on('note',n=>{if(n.result==='wrong')streak=0;else if(n.result==='correct')streak++;runN.textContent=String(streak);});
