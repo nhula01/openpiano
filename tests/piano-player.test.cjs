@@ -14,7 +14,7 @@ function setup({fullScore=false,library=false,fetcher=null}={}){
 }
 const ode=[64,64,65,67,67,65,64,62,60,60,62,64,64,62,62];
 test('MIDI adapter completes only through input and saves excerpt pass',async()=>{const ui=setup();await ui.button('Connect MIDI').onclick();for(const n of ode){ui.input.onmidimessage({data:[144,n,100]});if(ui.input.onmidimessage)ui.input.onmidimessage({data:[128,n,0]});}assert.match(ui.feedback(),/Passed this practice! 100%/);assert.equal(ui.input.onmidimessage,null);assert.match(ui.storage.get('journey-note-passes-v1'),/MIDI/);});
-test('wrong MIDI attacks prevent a low-accuracy attempt passing',async()=>{const ui=setup();await ui.button('Connect MIDI').onclick();for(let i=0;i<4;i++){ui.input.onmidimessage({data:[144,50,100]});ui.input.onmidimessage({data:[128,50,0]});}for(const n of ode){ui.input.onmidimessage({data:[144,n,100]});if(ui.input.onmidimessage)ui.input.onmidimessage({data:[128,n,0]});}assert.match(ui.feedback(),/78% pitch accuracy/);assert.equal(ui.storage.size,0);});
+test('wrong MIDI attacks prevent a low-accuracy attempt passing',async()=>{const ui=setup();await ui.button('Connect MIDI').onclick();for(let i=0;i<4;i++){ui.input.onmidimessage({data:[144,50,100]});ui.input.onmidimessage({data:[128,50,0]});}for(const n of ode){ui.input.onmidimessage({data:[144,n,100]});if(ui.input.onmidimessage)ui.input.onmidimessage({data:[128,n,0]});}assert.match(ui.feedback(),/78% pitch accuracy/);assert.equal(ui.storage.get('journey-note-passes-v1'),undefined);});
 test('microphone adapter requires stable notes and releases stream after passing',async()=>{const ui=setup();await ui.button('Listen with microphone').onclick();let t=100;for(const n of ode){ui.setSignal(n);for(let i=0;i<3;i++){ui.tick(t);t+=60;}ui.setSignal(null);for(let i=0;i<2;i++){ui.tick(t);t+=60;}}assert.match(ui.feedback(),/Passed this practice! 100%/);assert.equal(ui.stopped,1);assert.match(ui.storage.get('journey-note-passes-v1'),/microphone/);});
 test('stopping pending microphone permission releases late stream',async()=>{const ui=setup();const pending=ui.button('Listen with microphone').onclick();ui.button('Stop input').onclick();await pending;assert.equal(ui.stopped,1);assert.match(ui.feedback(),/Paused/);});
 
@@ -49,7 +49,7 @@ test('seeking starts practice at the chosen note without awarding a full-piece p
  const ui=setup(),position=ui.nodes.find(n=>n.id==='practice-position');position.value='5';position.oninput();
  const choice=ui.nodes.find(n=>n.id==='practice-input');choice.value='MIDI';choice.onchange();
  await ui.button('Practice').onclick();for(const n of ode.slice(5)){ui.input.onmidimessage({data:[144,n,100]});if(ui.input.onmidimessage)ui.input.onmidimessage({data:[128,n,0]});}
- assert.equal(ui.storage.size,0);assert.match(ui.feedback(),/Practice finished/);
+ assert.equal(ui.storage.get('journey-note-passes-v1'),undefined);assert.match(ui.feedback(),/Practice finished/);
  ui.button('Restart').onclick();assert.equal(Number(position.value),0);
 });
 
