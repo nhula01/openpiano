@@ -21,6 +21,9 @@ import copy, gzip, hashlib, json, pathlib, re, sys, zipfile
 import xml.etree.ElementTree as ET
 import verovio
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from engraving_extent import ink, widen
+
 SVG = 'http://www.w3.org/2000/svg'; ns = '{%s}' % SVG
 ET.register_namespace('', SVG); ET.register_namespace('xlink', 'http://www.w3.org/1999/xlink')
 OPTIONS = {"pageHeight": 2970, "pageWidth": 2100, "pageMarginLeft": 100, "pageMarginRight": 100, "adjustPageHeight": False,
@@ -422,8 +425,8 @@ def build_one(work, cand, out):
                     head_ys.append(y)
             # Notes on many ledger lines can reach past the halfway line to the next system; widen the
             # band so the moving score never cuts them off (other systems are removed from the crop).
+            space = (staves[0][2] - staves[0][1]) / 4
             if head_ys:
-                space = (staves[0][2] - staves[0][1]) / 4
                 y0 = min(y0, min(head_ys) - 3 * space); y1 = max(y1, max(head_ys) + 3 * space)
             crop = copy.deepcopy(inner)
             for parent in crop.iter():
@@ -436,6 +439,13 @@ def build_one(work, cand, out):
             css = ET.Element(ns + 'style'); css.text = 'g.score-note, g.score-note * { fill: currentColor; }'; crop.insert(0, css)
             for a in ('width', 'height', 'x', 'y'):
                 crop.attrib.pop(a, None)
+            # Stems, beams, slurs, octave lines, pedal marks and tempo or expression text also reach past
+            # the halfway line; grow the band to hold them (up to 14 staff spaces from the staves, or 6 from
+            # notes written higher or lower still).
+            drawn = ink(crop)
+            lo, hi = min([upper - 14 * space] + [min(head_ys) - 6 * space] * bool(head_ys)), max([bottom + 14 * space] + [max(head_ys) + 6 * space] * bool(head_ys))
+            y0, y1 = widen(y0, y1, drawn and (drawn[0] - my, drawn[1] - my), lo, hi, .3 * space)
+            crop.set('viewBox', f'{left + mx} {y0 + my} {right - left} {y1 - y0}')
             if positions:
                 u = 0.01
                 systems.append({'svg': compact(ET.tostring(crop, encoding='unicode')), 'page': len(pages), 'y': (y0 + my) * u, 'height': (y1 - y0) * u,

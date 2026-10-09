@@ -6,7 +6,7 @@ function svg(tag,attrs){const e=document.createElementNS(NS,tag);for(const[k,v]o
 class ScoreView{
  constructor(host,root){this.host=host;
  // A strip sized for its window is laid out again when the window changes height (Stage views, resizing).
- if(typeof ResizeObserver!=='undefined')new ResizeObserver(()=>{const h=host.clientHeight;if(h&&this.lastUpdate&&this.strip&&host.contains(this.strip)&&h!==this.stripRoom&&this.stripData?.systems?.some(s=>s.ink))requestAnimationFrame(()=>{if(this.lastUpdate&&host.clientHeight!==this.stripRoom)this.update(this.lastUpdate);});}).observe(host);
+ if(typeof ResizeObserver!=='undefined')new ResizeObserver(()=>{if(this.lastUpdate&&this.strip&&host.contains(this.strip))requestAnimationFrame(()=>{if(this.lastUpdate)this.update(this.lastUpdate);});}).observe(host);
  host.addEventListener('click',e=>{// The playhead lies over the current note; a click on it still reaches the note or mark beneath.
  // (Dragging the playhead captures the pointer, so such a click arrives at the score itself.)
  const under=sel=>{const hit=e.target.closest?.(sel);if(hit)return hit;if(!e.target.closest?.('.fixed-playhead,.normal-playhead')&&e.target!==host)return null;for(const n of host.querySelectorAll(sel)){const r=n.getBoundingClientRect();if(e.clientX>=r.left-3&&e.clientX<=r.right+3&&e.clientY>=r.top-3&&e.clientY<=r.bottom+3)return n;}return null;};
@@ -59,15 +59,12 @@ class ScoreView{
  ease(current,target,dt,tau,far){return current==null||dt>.25||Math.abs(target-current)>far?target:current+(target-current)*(1-Math.exp(-dt/tau));}
  // One continuous line: every system laid side by side once, so nothing is redrawn at a line change.
  scrollStrip(at,where,dt){const data=this.data;
-  const inked=data.systems.filter(s=>s.ink),room=inked.length?this.host.clientHeight:0;
-  if(!this.strip||!this.host.contains(this.strip)||this.stripData!==data||this.stripScale!==this.scale||(room&&room!==this.stripRoom)){this.labelsStamp=null;this.host.replaceChildren();this.host.className='live-score scrolling-score';this.strip=el('div',undefined,'scroll-strip');
-   // Imported scores record how far each line reaches above and below its staves (notes on ledger lines,
-   // beams, fingering): the strip makes that much room, and shrinks the music only if the window is too short.
-   let top=90,height=300;
-   if(inked.length){const up=Math.max(...inked.map(s=>s.staffTop-s.ink[0])),down=Math.max(...inked.map(s=>s.ink[1]-s.staffTop)),space=Math.max(300,(this.host.clientHeight||320)-20)-16;
-    this.scale=Math.min(this.baseScale||this.scale,space/Math.max(1,up+down));top=8+up*this.scale;height=Math.ceil(top+down*this.scale+8);this.strip.style.height=height+'px';}
-   for(const sys of data.systems){const panel=el('div',undefined,'scroll-system');panel.innerHTML=sys.svg;panel.style.width=(sys.width*this.scale)+'px';if(inked.length)panel.style.height=height+'px';const drawing=panel.querySelector('svg');if(drawing){drawing.style.height=(sys.height*this.scale)+'px';drawing.style.position='absolute';drawing.style.top=(top-sys.staffTop*this.scale)+'px';drawing.setAttribute('preserveAspectRatio','xMinYMin meet');}this.strip.append(panel);}
-   this.host.append(this.strip,el('div',undefined,'fixed-playhead'));this.stripData=data;this.stripScale=this.scale;this.stripRoom=this.host.clientHeight;this.stripBegin=0;this.smoothX=null;}
+  const H=Math.max(160,(this.host.clientHeight||320)-20);
+  if(!this.strip||!this.host.contains(this.strip)||this.stripData!==data||this.stripScale!==this.scale||Math.abs((this.stripHeight||0)-H)>8){this.labelsStamp=null;this.host.replaceChildren();this.host.className='live-score scrolling-score';this.strip=el('div',undefined,'scroll-strip');
+   // Size the line to the music it holds: every notehead, with room for stems and beams, fits the strip.
+   const lay=ScoreView.stripLayout(data,H,this.unitScale||1);this.scale=lay.scale;this.strip.style.height=H+'px';
+   data.systems.forEach((sys,i)=>{const panel=el('div',undefined,'scroll-system');panel.innerHTML=sys.svg;panel.style.width=(sys.width*this.scale)+'px';panel.style.height=H+'px';const drawing=panel.querySelector('svg');if(drawing){drawing.style.height=(sys.height*this.scale)+'px';drawing.style.position='absolute';drawing.style.top=(lay.staffTop[i]-sys.staffTop*this.scale)+'px';drawing.setAttribute('preserveAspectRatio','xMinYMin meet');}this.strip.append(panel);});
+   this.host.append(this.strip,el('div',undefined,'fixed-playhead'));this.stripData=data;this.stripScale=this.scale;this.stripHeight=H;this.stripBegin=0;this.smoothX=null;}
   this.system='strip';const width=this.host.clientWidth||800;
   this.smoothX=this.ease(this.smoothX,this.barX(at)*this.scale,dt,.12,width*.6);
   this.strip.style.transform=`translateX(${Math.min(180,width*.25)-this.smoothX}px)`;return data.systems[where.system].page;}
@@ -127,5 +124,26 @@ class ScoreView{
  const target=(demo||timed)?events.filter(e=>e.beat<=at&&e.beat+e.duration>at):[current];for(const[n,key]of this.keys){const member=target.flatMap(e=>e.members.filter(m=>e.notes.includes(m.midi))).find(m=>m.midi===n);const pressed=matcher.held.has(n);key.setAttribute('fill',member?(member.hand==='left'?'#c6889f':'#759dc8'):pressed?'#78ac83':[1,3,6,8,10].includes(n%12)?'#303e38':'#fff');}return {page:activePage,pages:data.pages.length};
  }
 }
+// Vertical layout of the continuous line. Every line's staves sit at one height (the eye does not jump at a
+// line change), and every line's content fits the strip: imported scores record how far each line reaches
+// above and below its staves (ink); library scores are measured from their noteheads, with room for stems,
+// beams and slurs beyond the outermost ones. One scale serves the whole score so bars keep their spacing.
+// zoom scales the fitted size; zoomed in, the line is taller than H (the view then scrolls up and down) and
+// `height` says how tall. It is never less than H.
+ScoreView.stripLayout=function(data,H,unitScale=1,zoom=1){
+ const S=data.systems,heads=(data.pages||[]).map(p=>p.notes||[]);
+ // Staff space in score units: Verovio staff lines, else LilyPond's unit spacing.
+ const m=/class="staff"><path d="M[-\d.]+ ([-\d.]+) L[^"]*"[^>]*\/?>(?:<\/path>)?<path d="M[-\d.]+ ([-\d.]+) L/.exec(S[0]?.svg||'');
+ const sp=m?Math.abs(Number(m[2])-Number(m[1]))/unitScale:1;
+ const need=S.map(s=>{const gap=s.staffGap||sp*4;let above,below;
+  if(s.ink){above=(s.staffTop-s.ink[0])/sp;below=(s.ink[1]-s.staffTop-gap)/sp;}
+  else{const top=s.y+s.staffTop,bottom=top+gap,ys=(heads[s.page]||[]).filter(n=>n.beat>=s.start-.001&&n.beat<s.end-.001&&n.y>=s.y-sp&&n.y<=s.y+s.height+sp).map(n=>n.y);
+   above=Math.max(3,ys.length?(top-Math.min(...ys))/sp+3.5:0);below=Math.max(3,ys.length?(Math.max(...ys)-bottom)/sp+3.5:0);}
+  // There is nothing to show beyond the stored crop.
+  return {above:Math.max(0,Math.min(above,s.staffTop/sp)),below:Math.max(0,Math.min(below,(s.height-s.staffTop-gap)/sp)),gap:gap/sp};});
+ const A=Math.max(...need.map(n=>n.above)),B=Math.max(...need.map(n=>n.gap+n.below));
+ const px=Math.min(9*sp,H/(A+B))*zoom,height=Math.max(H,Math.ceil((A+B)*px)),top=A*px+(height-(A+B)*px)/2;
+ return {scale:px/sp,staffTop:S.map(()=>top),space:sp,height};
+};
 window.PianoScoreView=ScoreView;
 })();

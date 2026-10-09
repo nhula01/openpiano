@@ -9,16 +9,18 @@ place, most visibly near the end of a page:
   re-cut from the stored pages with engraving_staves.py.
 * Verovio pieces (build-musicxml-library.py, build-collection.py) cut each system halfway to the
   next one, which sliced off notes written on many ledger lines. Their crops are widened to hold
-  every notehead of the system.
+  every notehead of the system and everything else drawn for it (stems, beams, slurs, octave
+  lines, pedal marks, tempo and expression text), up to 14 staff spaces from the staves (6 from notes written higher or lower still).
 
 Changed files get a new ?v= hash wherever site/*.js links them, so browsers fetch the fix.
 
     python3 scripts/repair-engraving-systems.py [site] [id ...]
 """
-import gzip, hashlib, json, pathlib, re, sys, xml.etree.ElementTree as ET
+import gzip, hashlib, json, math, pathlib, re, sys, xml.etree.ElementTree as ET
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from engraving_staves import NS, head_position, note_key, split_page
+from engraving_extent import ink, verovio_space, widen
 
 ET.register_namespace('', NS[1:-1])
 ET.register_namespace('xlink', 'http://www.w3.org/1999/xlink')
@@ -59,17 +61,23 @@ def widen_verovio(id, data):
         ys = []
         for midi, beat in re.findall(r'class="score-note"[^>]*?data-midi="(\d+)"[^>]*?data-beat="([^"]+)"', s['svg']):
             ys += where.get((s['page'], round(float(beat), 5), int(midi)), [])
-        lines = sorted({float(m) for m in re.findall(r'<path d="M[-\d.]+ ([-\d.]+) L', s['svg'])})
-        space = (lines[4] - lines[0]) / 4 / 100 if len(lines) >= 5 else 1.8
+        space = verovio_space(s['svg']) / 100
+        y0, y1 = s['y'], s['y'] + s['height']
         if ys:
-            y0, y1 = min(s['y'], min(ys) - 3 * space), max(s['y'] + s['height'], max(ys) + 3 * space)
-            if y0 < s['y'] - 1e-6 or y1 > s['y'] + s['height'] + 1e-6:
-                y0, y1 = round(y0, 2), round(y1, 2)
-                vb = re.search(r'viewBox="([^"]+)"', s['svg'])
-                x, _, w, _ = vb[1].split()
-                s['svg'] = s['svg'][:vb.start()] + f'viewBox="{x} {y0 * 100:.1f} {w} {(y1 - y0) * 100:.1f}"' + s['svg'][vb.end():]
-                s['staffTop'] += s['y'] - y0
-                s['y'], s['height'] = y0, round(y1 - y0, 2)
+            y0, y1 = min(y0, min(ys) - 3 * space), max(y1, max(ys) + 3 * space)
+        # Then everything else drawn for the system: stems, beams, slurs, octave lines, pedal marks,
+        # tempo and expression text (the page title and footer are not part of a system).
+        drawn = ink(ET.fromstring(s['svg']))
+        top, bottom = s['y'] + s['staffTop'], s['y'] + s['staffTop'] + s['staffGap']
+        lo, hi = min([top - 14 * space] + [min(ys) - 6 * space] * bool(ys)), max([bottom + 14 * space] + [max(ys) + 6 * space] * bool(ys))
+        y0, y1 = widen(y0, y1, drawn and (drawn[0] / 100, drawn[1] / 100), lo, hi, .3 * space)
+        if y0 < s['y'] - 1e-6 or y1 > s['y'] + s['height'] + 1e-6:
+            y0, y1 = math.floor(min(y0, s['y']) * 100 + 1e-6) / 100, math.ceil(max(y1, s['y'] + s['height']) * 100 - 1e-6) / 100
+            vb = re.search(r'viewBox="([^"]+)"', s['svg'])
+            x, _, w, _ = vb[1].split()
+            s['svg'] = s['svg'][:vb.start()] + f'viewBox="{x} {y0 * 100:.1f} {w} {(y1 - y0) * 100:.1f}"' + s['svg'][vb.end():]
+            s['staffTop'] += s['y'] - y0
+            s['y'], s['height'] = y0, round(y1 - y0, 2)
         systems.append(s)
     return systems
 

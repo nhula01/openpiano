@@ -8,6 +8,8 @@ the wrong part of the page.
 """
 import copy, re, xml.etree.ElementTree as ET
 
+from engraving_extent import defs_of, extent, widen
+
 NS = '{http://www.w3.org/2000/svg}'
 
 
@@ -158,24 +160,43 @@ def note_key(g):
     return (g.get('data-beat'), g.get('data-midi'), inner.get('transform') if inner is not None else None)
 
 
-def crop(tree, left, right, y0, y1, notes=None):
-    """A copy of the page showing only the band y0..y1 (elements are kept or dropped whole).
+def crop(tree, left, right, y0, y1, notes=None, extents=None):
+    """A copy of the page showing the system drawn in the band y0..y1, and that band grown to hold it.
+
+    Returns (svg, y0, y1). Elements are kept or dropped whole, by where their drawing is centred: a
+    bar line or a slur hangs from a point that can lie in the neighbouring band, so its anchor alone
+    would put it in the wrong system. The band then grows (by at most 6 staff spaces) so that stems,
+    beams, slurs and marks reaching past the cut are not sliced off.
 
     notes: keys (note_key) of this system's noteheads; they are always kept and every other
-    system's noteheads dropped, so a note on ledger lines near the cut never shows up twice."""
-    cropped = copy.deepcopy(tree)
+    system's noteheads dropped, so a note on ledger lines near the cut never shows up twice.
+    extents: page_extents(tree), when several systems are cut from the same page."""
+    extents = extents if extents is not None else page_extents(tree)
+    cropped = copy.copy(tree)
     for child in list(cropped):
+        cropped.remove(child)
+    drawn = []
+    for child, ext in zip(tree, extents):
         if notes is not None and child.get('class') == 'score-note':
-            if note_key(child) not in notes:
-                cropped.remove(child)
-            continue
-        transforms = [e.get('transform', '') for e in child.iter() if 'translate' in e.get('transform', '')]
-        if transforms:
-            cy = float(re.findall(r'[-\d.]+', transforms[0])[1])
-            if not y0 - 1 <= cy <= y1 + 1:
-                cropped.remove(child)
+            keep = note_key(child) in notes
+        elif ext is not None:
+            keep = y0 <= (ext[0] + ext[1]) / 2 <= y1
+        else:
+            transforms = [e.get('transform', '') for e in child.iter() if 'translate' in e.get('transform', '')]
+            keep = not transforms or y0 - 1 <= float(re.findall(r'[-\d.]+', transforms[0])[1]) <= y1 + 1
+        if keep:
+            cropped.append(copy.deepcopy(child))
+            if ext is not None:
+                drawn.append(ext)
+    y0, y1 = widen(y0, y1, drawn and (min(a for a, _ in drawn), max(b for _, b in drawn)), y0 - 6, y1 + 6, .3)
     cropped.set('viewBox', f'{left} {y0} {right - left} {y1 - y0}')
-    return ET.tostring(cropped, encoding='unicode')
+    return ET.tostring(cropped, encoding='unicode'), y0, y1
+
+
+def page_extents(tree):
+    """(top, bottom) of each top-level element of a page, or None for one that draws nothing."""
+    defs = defs_of(tree)
+    return [extent(child, defs) for child in tree]
 
 
 def split_page(tree, heads, page):
@@ -189,7 +210,7 @@ def split_page(tree, heads, page):
     assert found, f'page {page + 1}: no staves found'
     groups = systems_of(tree, found)
     owner, bounds = layout(groups, [h[:3] for h in heads])
-    systems = []
+    systems, extents = [], page_extents(tree)
     for i, (upper, lower) in enumerate(groups):
         bucket = [h for h, o in zip(heads, owner) if o == i]
         if not bucket:
@@ -201,7 +222,8 @@ def split_page(tree, heads, page):
         for beat, x, *_ in bucket:
             positions[beat] = min(positions.get(beat, 999), x - left)
         notes = {h[3] for h in bucket} if all(len(h) > 3 for h in bucket) else None
-        systems.append({'svg': crop(tree, left, right, y0, y1, notes), 'page': page, 'y': y0, 'height': y1 - y0,
+        svg, y0, y1 = crop(tree, left, right, y0, y1, notes, extents)
+        systems.append({'svg': svg, 'page': page, 'y': y0, 'height': y1 - y0,
                         'staffTop': upper[0] - y0, 'staffGap': lower[-1] - upper[0], 'start': min(positions),
                         'positions': sorted([[b, x] for b, x in positions.items()]), 'width': right - left})
     return systems

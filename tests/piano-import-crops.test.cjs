@@ -78,17 +78,25 @@ test('the moving strip makes room for what each imported line draws above and be
   dom.window.close();
 });
 
-test('library scores without ink keep the classic strip', () => {
+test('library scores without ink are fitted from their noteheads, staves at one height', () => {
+  // Library crops store no ink; the strip measures each line from its noteheads instead (Schubert's
+  // Sonata in A, D. 664 lost its lower staff and ledger-line notes in the old fixed 300 px layout).
   const dom = new JSDOM('<div id="score"></div>', { runScripts: 'outside-only' });
   dom.window.eval(fs.readFileSync('site/piano-score-view.js', 'utf8'));
   const host = dom.window.document.querySelector('#score'), view = Object.create(dom.window.PianoScoreView.prototype);
-  Object.defineProperty(host, 'clientHeight', { value: 800 });
+  Object.defineProperty(host, 'clientHeight', { value: 320 });
   const svg = '<svg viewBox="0 0 10000 5000"><g class="score-note" data-beat="0" data-midi="60"></g></svg>';
-  Object.assign(view, { host, mode: 'scroll', available: true, score: { title: 'Library', beatsPerMeasure: 4 }, keys: new Map(), scale: 7, baseScale: 7,
-    data: { pages: [{ start: 0, notes: [] }], systems: [{ svg, page: 0, start: 0, end: 4, y: 0, height: 50, staffTop: 10, staffGap: 25, width: 100, positions: [[0, 5]] }] } });
+  const systems = [{ svg, page: 0, start: 0, end: 4, y: 0, height: 50, staffTop: 10, staffGap: 25, width: 100, positions: [[0, 5]] },
+    { svg, page: 0, start: 4, end: 8, y: 50, height: 60, staffTop: 8, staffGap: 30, width: 100, positions: [[4, 5]] }];
+  // A note eight spaces below the second line's bass staff.
+  const notes = [{ beat: 0, midi: 60, x: 5, y: 20 }, { beat: 4, midi: 29, x: 5, y: 50 + 8 + 30 + 8 }];
+  Object.assign(view, { host, mode: 'scroll', available: true, score: { title: 'Library', beatsPerMeasure: 4 }, keys: new Map(), scale: 7, baseScale: 7, data: { pages: [{ start: 0, notes }], systems } });
   view.update({ events: [{ beat: 0, duration: 1, notes: [60], members: [] }], matcher: { index: 0, held: new Set() }, fingers: false, hintsRight: [], hintsLeft: [] });
-  assert.equal(view.scale, 7);
-  assert.equal(host.querySelector('.scroll-system').style.height, '');
-  assert.equal(host.querySelector('.scroll-system svg').style.top, `${90 - 10 * 7}px`);
+  const panels = [...host.querySelectorAll('.scroll-system')], k = view.scale, H = parseFloat(panels[0].style.height);
+  assert.ok(H <= 300, 'the strip stays inside a 320 px window');
+  const staffTop = panels.map((p, i) => parseFloat(p.querySelector('svg').style.top) + systems[i].staffTop * k);
+  assert.ok(Math.abs(staffTop[0] - staffTop[1]) < 1e-6, 'staves at one height');
+  const low = staffTop[1] + (notes[1].y - 50 - 8) * k;
+  assert.ok(low + k / 2 <= H, `the low note fits (${low} > ${H})`);
   dom.window.close();
 });

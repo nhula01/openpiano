@@ -1,5 +1,5 @@
 import pathlib,json,re,xml.etree.ElementTree as ET,copy,subprocess,shutil,sys,hashlib
-sys.path.insert(0,str(pathlib.Path(__file__).resolve().parent));from engraving_staves import staff_lines,staves,systems_of,layout,crop,note_key
+sys.path.insert(0,str(pathlib.Path(__file__).resolve().parent));from engraving_staves import staff_lines,staves,systems_of,layout,crop,note_key,page_extents
 root=pathlib.Path(sys.argv[1] if len(sys.argv)>1 else '/tmp/journey-library');choices=json.loads(pathlib.Path(sys.argv[2] if len(sys.argv)>2 else 'scripts/piano-library-sources.json').read_text());ns='{http://www.w3.org/2000/svg}';ET.register_namespace('',ns[1:-1]);ET.register_namespace('xlink','http://www.w3.org/1999/xlink')
 titles={'minuet':('Minuet in G major, BWV Anh. 114','Christian Petzold'),'melody':('Melody, Op. 68 No. 1','Robert Schumann'),'wild-rider':('The Wild Rider, Op. 68 No. 8','Robert Schumann'),'happy-farmer':('The Happy Farmer, Op. 68 No. 10','Robert Schumann'),'innocence':('Innocence, Op. 100 No. 1','Friedrich Burgmüller'),'arabesque':('Arabesque, Op. 100 No. 2','Friedrich Burgmüller'),'ballade':('Ballade, Op. 100 No. 15','Friedrich Burgmüller'),'clementi':('Sonatina in C, Op. 36 No. 1 · all three movements','Muzio Clementi'),'prelude':('Prelude in C major, BWV 846','Johann Sebastian Bach'),'fur':('Für Elise · complete','Ludwig van Beethoven'),'gymnopedie':('Gymnopédie No. 1','Erik Satie'),'chopin-prelude':('Prelude in E minor, Op. 28 No. 4','Frédéric Chopin'),'invention1':('Invention No. 1 in C, BWV 772','Johann Sebastian Bach'),'mozart545':('Sonata in C, K. 545 · first movement','Wolfgang Amadeus Mozart'),'clair':('Clair de lune','Claude Debussy'),'nocturne':('Nocturne in E-flat, Op. 9 No. 2','Frédéric Chopin'),'traumerei':('Träumerei, Op. 15 No. 7','Robert Schumann'),'pathetique':('Pathétique Sonata · second movement','Ludwig van Beethoven'),'revolutionary':('Revolutionary Étude, Op. 10 No. 12','Frédéric Chopin'),'czerny':('Eight-measure study, Op. 821 No. 1','Carl Czerny'),'fugue':('Fugue in C major, BWV 846','Johann Sebastian Bach'),'etude9':('Étude in F minor, Op. 10 No. 9','Frédéric Chopin')}
 titles.update({'ode':('Ode to Joy · theme arrangement','Ludwig van Beethoven'),'twinkle':('Twinkle, Twinkle · learning arrangement','Traditional'),'frere':('Frère Jacques · learning arrangement','Traditional')})
@@ -31,7 +31,7 @@ for id,path in choices.items():
   edges=staff_lines(tree);staffs=staves(edges);assert staffs,f'{id} {file.name}: no staves found'
   groups=systems_of(tree,staffs)  # grand-staff pairs, or one staff where the left hand is hidden
   # Which system each notehead belongs to, and where each system's crop is cut.
-  owner,bounds=layout(groups,[(n['beat'],n['x'],n['y']) for g,n in heads]);buckets=[[] for _ in groups]
+  owner,bounds=layout(groups,[(n['beat'],n['x'],n['y']) for g,n in heads]);extents=page_extents(tree);buckets=[[] for _ in groups]
   for (g,n),o in zip(heads,owner):buckets[o].append((g,n))
   page=len(pages)
   for i,bucket in enumerate(buckets):
@@ -57,7 +57,7 @@ for id,path in choices.items():
    y0,y1=bounds[i]
    up,low=groups[i];left=min(edges[up[0]][0],edges[low[0]][0]);right=max(edges[up[0]][1],edges[low[0]][1]);positions={}
    for g,n in bucket:positions[n['beat']]=min(positions.get(n['beat'],999),n['x']-left)
-   systems.append({'svg':crop(tree,left,right,y0,y1,{note_key(g) for g,n in bucket}),'page':page,'y':y0,'height':y1-y0,'staffTop':up[0]-y0,'staffGap':low[-1]-up[0],'start':min(positions),'positions':sorted([[b,x] for b,x in positions.items()]),'width':right-left})
+   svg,y0,y1=crop(tree,left,right,y0,y1,{note_key(g) for g,n in bucket},extents);systems.append({'svg':svg,'page':page,'y':y0,'height':y1-y0,'staffTop':up[0]-y0,'staffGap':low[-1]-up[0],'start':min(positions),'positions':sorted([[b,x] for b,x in positions.items()]),'width':right-left})
   pn=[n for g,n in heads];pages.append({'svg':ET.tostring(tree,encoding='unicode'),'start':min(n['beat'] for n in pn),'end':max(n['beat'] for n in pn),'notes':pn})
  end=offsets[-1]+lengths[-1]
  for i,s in enumerate(systems):s['end']=systems[i+1]['start'] if i+1<len(systems) else end

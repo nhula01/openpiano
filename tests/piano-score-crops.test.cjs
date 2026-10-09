@@ -2,12 +2,15 @@
 // sheet's auto-scroll. A wrong cut shows the wrong slice of the page or cuts notes off, which is
 // easy to miss because it often happens only near the end of a page (Für Elise, page 4).
 const test = require('node:test'), assert = require('node:assert/strict'), fs = require('node:fs'), zlib = require('node:zlib'), path = require('node:path');
-const { JSDOM } = require('jsdom');
+const { JSDOM } = require('jsdom'), vm = require('node:vm');
+// The moving score's layout (ScoreView.stripLayout), loaded without a page.
+const strip = { window: {}, document: { createElement: () => ({}) } };
+vm.runInNewContext(fs.readFileSync('site/piano-score-view.js', 'utf8'), strip);
 
 const viewBox = svg => svg.match(/viewBox="([-\d.]+) ([-\d.]+) ([-\d.]+) ([-\d.]+)"/).slice(1).map(Number);
 
 // One pass over the library (scores are large, so each is checked and then dropped).
-const problems = { span: [], heads: [], lily: [] }; let checked = 0;
+const problems = { span: [], heads: [], lily: [], strip: [] }; let checked = 0;
 for (const id of fs.readdirSync('site/scores').sort()) {
   const f = ['practice.json', 'practice.json.gz'].map(n => path.join('site/scores', id, n)).find(fs.existsSync);
   if (!f) continue;
@@ -31,6 +34,20 @@ for (const id of fs.readdirSync('site/scores').sort()) {
     miss++; example ||= `page ${pi + 1} beat ${n.beat}`;
   }));
   if (miss) problems.heads.push(`${id}: ${miss} noteheads outside their system (${example})`);
+  // The moving score shows every line in one panel height; staves and noteheads must fit in it
+  // (Schubert's Sonata in A, D. 664 lost its lower staff and ledger-line notes in a fixed 300 px).
+  for (const H of [220, 300, 520]) {
+    const L = strip.window.PianoScoreView.stripLayout(e, H, k), half = L.space * L.scale / 2;
+    let cut = 0, where = '';
+    S.forEach((s, i) => { if (L.staffTop[i] < 0 || L.staffTop[i] + s.staffGap * L.scale > H + .5) { cut++; where ||= `staves of system ${i}`; } });
+    e.pages.forEach((p, pi) => p.notes.forEach(n => {
+      const i = S.findIndex(s => s.page === pi && n.beat >= s.start - .001 && n.beat < s.end - .001 && n.y >= s.y - .01 && n.y <= s.y + s.height + .01);
+      if (i < 0) return;
+      const y = L.staffTop[i] + (n.y - S[i].y - S[i].staffTop) * L.scale;
+      if (y - half < -.5 || y + half > H + .5) { cut++; where ||= `system ${i} beat ${n.beat}`; }
+    }));
+    if (cut) problems.strip.push(`${id} at ${H} px: ${cut} cut (${where})`);
+  }
   if (!e.pages[0].svg.includes('Verovio')) S.forEach((s, i) => {
     const [, y, , h] = viewBox(s.svg);
     for (const m of s.svg.matchAll(/class="score-note"[^>]*>\s*<g transform="translate\(([-\d.]+), ?([-\d.]+)\)/g)) {
@@ -47,6 +64,8 @@ test('every staff system has its own stretch of time and holds its staves inside
 test('every notehead lies inside the system that plays it, so the playhead and the moving score show it', () => assert.deepEqual(problems.heads, []));
 
 test('LilyPond crops keep each notehead of the system and no notehead of a neighbouring system', () => assert.deepEqual(problems.lily, []));
+
+test('the moving score keeps every staff and notehead of every line in view at 220, 300 and 520 px', () => assert.deepEqual(problems.strip, []));
 
 test('the sheet playhead and auto-scroll follow systems on Verovio pages drawn in a nested viewBox', () => {
   // Verovio pages: outer <svg> has a pixel size but no viewBox; the drawing sits in an inner
