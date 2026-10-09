@@ -2,8 +2,9 @@
 
 Built-in library pieces have public discussion in their lesson page and beneath
 the practice score. Read without an account; sign in to contribute, reply, vote or
-report. Each contribution uses a chosen display name, never the account email or
-Google profile. Display names and claimed qualifications are not verified.
+report. Each contribution uses the name saved in the author’s music profile, never the account email or
+Google profile. The server derives the name from the signed-in account; clients cannot
+choose a different author name for each comment. Display names and claimed qualifications are not verified.
 
 Contributors can publish original comments or fingering plans describing the bars,
 edition, hand, note pitches and fingers. A public-publication checkbox is required.
@@ -52,3 +53,27 @@ needed as participation grows. Rate limits reduce spam but do not establish one
 account per human or prevent coordinated voting. Votes are preference, not proof
 of pedagogical quality. Public uploads of PDFs, recordings and scores are not
 part of this feature; fingering contributions are original text only.
+
+## Music profiles and piece posts
+
+Run `scripts/supabase-profiles.sql` after the community migrations. Profiles have a
+name, self-described experience, music skills and bio. Profiles start private; users
+choose whether to publish their details. A private profile can still comment: its
+chosen name is published with that comment, but its skills/bio are not exposed.
+Published profiles use a separate random public ID rather than an auth user ID.
+`profile_mine`/`profile_save` only access auth.uid()’s row; `profile_public` returns
+only explicitly published fields. No raw table access is granted to visitors.
+
+Legacy comments keep their original aliases when no public profile is available.
+Publishing a profile links current public details on the author's comments; making
+it private removes that link/details while retaining already-published comment names.
+No real users' profiles or past comments are populated or rewritten by this migration.
+
+Each piece is a single post card, with its learning guide collapsed and the comment
+composer/list beneath it. Comments have initials, author links, skills when public,
+reply bubbles and helpful votes. This is confined to piece pages and the existing
+practice discussion area; the library/home/practice navigation retains its design.
+
+`supabase-profiles-verify.sql` verifies ownership, optional publication, canonical
+comment names and opt-out, with all synthetic rows rolled back. Run the updated
+community verification after the profile migration as well.

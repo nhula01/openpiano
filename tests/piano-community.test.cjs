@@ -1,10 +1,11 @@
 const {test}=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs');const {JSDOM,VirtualConsole}=require('jsdom');
 const tick=()=>new Promise(r=>setTimeout(r,25));
 const post={id:'post-a',piece:'entertainer',alias:'A learner',body:'Relax through the shift.',kind:'fingering',bars:'5–8',hand:'RH',fingers:'C4(1), D4(2)',created_at:'2026-10-08T00:00:00Z',votes:3,voted:false,mine:false,replies:[]};
-async function setup({signed=true,posts=[post],rpcOverride}={}){
+async function setup({signed=true,posts=[post],rpcOverride,profile={name:'My alias',id:'00000000-0000-4000-8000-000000000001'}}={}){
  const dom=new JSDOM('<div class="lib-piece"><section id="piece-course"></section></div><section id="note-trainer"><select id="trainer-song"><option value="entertainer">Entertainer</option><option value="private-id">Private</option></select><div class="stage"></div></section>',{url:'https://example.test/#library/piece',runScripts:'outside-only',virtualConsole:new VirtualConsole()});const w=dom.window,calls=[];
  w.PianoCurriculum={pieces:[{id:'entertainer'}]};w.localStorage.setItem('my-journey-piano-pathway-v2',JSON.stringify({selected:'entertainer'}));
  w.PianoCommunityAuth={ready:()=>true,signedIn:()=>signed,rpc:async(name,args)=>{calls.push({name,args:structuredClone(args)});if(rpcOverride)return rpcOverride(name,args);return {data:name==='community_list'?{posts:structuredClone(posts),total:posts.length}:'new-id',error:null};}};
+ w.PianoProfiles={current:()=>profile,identity:(p,fallback)=>{const n=w.document.createElement('div');n.textContent=p?.name||fallback;return n;}};
  w.eval(fs.readFileSync('site/piano-community.js','utf8'));await tick();return {dom,w,calls};
 }
 test('discussion renders untrusted text, gates anonymous contributions and never requests private score discussions',async()=>{
@@ -15,7 +16,7 @@ test('discussion renders untrusted text, gates anonymous contributions and never
 });
 test('helpful votes, public consent, author edits and reusable fingering preserve attribution',async()=>{
  const ui=await setup();const d=ui.w.document;d.querySelector('.community-actions button').click();await tick();assert.deepEqual(ui.calls.find(c=>c.name==='community_vote').args,{p_post:'post-a',p_on:true});
- const f=d.querySelector('.community-form'),inputs=f.querySelectorAll('input'),body=[...f.querySelectorAll('textarea')].at(-1);inputs[0].value='My alias';body.value='My advice';
+ const f=d.querySelector('.community-form'),inputs=f.querySelectorAll('input'),body=[...f.querySelectorAll('textarea')].at(-1);body.value='My advice';
  f.dispatchEvent(new ui.w.Event('submit',{cancelable:true}));await tick();assert.equal(ui.calls.filter(c=>c.name==='community_write').length,0);
  f.querySelector('input[type=checkbox]').checked=true;f.dispatchEvent(new ui.w.Event('submit',{cancelable:true}));await tick();const write=ui.calls.find(c=>c.name==='community_write');assert.equal(write.args.p_publish,true);assert.equal(write.args.p_alias,'My alias');
  [...d.querySelectorAll('.community-actions button')].find(b=>b.textContent==='Use in practice').click();const saved=JSON.parse(ui.w.localStorage.getItem('openpiano-community-plans-v1')).entertainer;assert.equal(saved.alias,post.alias);assert.equal(saved.fingers,post.fingers);assert.equal(d.querySelector('.community-practice-plan').hidden,false);
@@ -31,7 +32,7 @@ test('only authors see editing and withdrawal and self-voting is disabled',async
 test('adapt starts a separate version with attribution, without rewriting the original plan',async()=>{
  const ui=await setup();const d=ui.w.document;d.querySelectorAll('.community-actions button').forEach(b=>{if(b.textContent==='Adapt')b.click();});
  const f=d.querySelector('.community-form');assert.equal(f.querySelector('select').value,'fingering');assert.ok([...f.querySelectorAll('textarea')].at(-1).value.includes('Adapted from A learner'));
- f.querySelector('input').value='Another learner';f.querySelector('input[type=checkbox]').checked=true;
+ f.querySelector('input[type=checkbox]').checked=true;
  f.dispatchEvent(new ui.w.Event('submit',{cancelable:true}));await tick();const write=ui.calls.find(c=>c.name==='community_write');assert.equal(write.args.p_id,null);assert.equal(write.args.p_kind,'fingering');assert.ok(write.args.p_body.includes('post-a'));ui.dom.window.close();
 });
 
@@ -43,5 +44,14 @@ test('a shared piece link opens the correct discussion even when the hidden cour
  await tick();await tick();assert.equal(JSON.parse(w.localStorage.getItem('my-journey-piano-pathway-v2')).selected,'entertainer');
  assert.equal(w.document.querySelector('#piece-course h2').textContent,'The Entertainer');assert.equal(w.document.querySelector('#piece-community').hidden,false);
  assert.equal(w.document.querySelector('#community-permalink').hash,'#library/piece/entertainer');
- assert.equal(w.document.querySelectorAll('#piece-library [data-piece-progress="entertainer"]').length,0);dom.window.close();
+ assert.equal(w.document.querySelectorAll('#piece-library [data-piece-progress="entertainer"]').length,0);
+ assert.equal(w.document.querySelector('.piece-learning-guide').open,false);assert.equal(w.document.querySelectorAll('.piece-learning-guide .course-step').length,5);
+ assert.ok(w.document.querySelector('.repertoire-post').contains(w.document.querySelector('#piece-community')));dom.window.close();
+});
+
+test('comments use the saved profile and an old composer cannot post after an account switch',async()=>{
+ const ui=await setup();const f=ui.w.document.querySelector('.community-form');assert.equal([...f.querySelectorAll('input')].filter(n=>n.type==='text').length,1);
+ [...f.querySelectorAll('textarea')].at(-1).value='My original comment';f.querySelector('input[type=checkbox]').checked=true;
+ ui.w.PianoProfiles.current=()=>({id:'another-profile',name:'Other learner'});f.dispatchEvent(new ui.w.Event('submit',{cancelable:true}));await tick();
+ assert.equal(ui.calls.filter(c=>c.name==='community_write').length,0);assert.ok(ui.w.document.querySelector('.community-status').textContent.includes('account changed'));ui.dom.window.close();
 });

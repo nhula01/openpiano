@@ -4,6 +4,9 @@ insert into auth.users(id,email) values
  ('00000000-0000-4000-8000-0000000000a3','community-a@example.invalid'),
  ('00000000-0000-4000-8000-0000000000b4','community-b@example.invalid');
 insert into public.community_pieces(id) values('__community_test__');
+insert into public.community_profiles(owner,display_name) values
+ ('00000000-0000-4000-8000-0000000000a3','Learner A'),
+ ('00000000-0000-4000-8000-0000000000b4','Learner B');
 set local role authenticated;
 select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-0000000000a3","role":"authenticated"}',true);
 do $$ declare id uuid; blocked boolean:=false; begin

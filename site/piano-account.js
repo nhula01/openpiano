@@ -151,7 +151,7 @@ function renderAccount() {
   window.dispatchEvent(new Event('piano-community-auth'));
   accountBox.replaceChildren();
   if (user) {
-    accountBox.append(el('span', 'Signed in', 'acct-label'), el('strong', user.email, 'acct-email'));
+    const profile=el('a','My profile','acct-label');profile.href='#profile';accountBox.append(profile,el('strong', user.email, 'acct-email'));
     const out = el('button', 'Sign out', 'secondary'); out.type = 'button'; out.onclick = async () => { await sb.auth.signOut(); };
     accountBox.append(out);
   } else {
@@ -201,7 +201,7 @@ function render() {
   if (CLOUD) {
     const side = el('div', undefined, 'mine-side');
     if (!user) side.append(signInForm());
-    else { if (inBrowser.length) side.append(moveBox()); side.append(dangerZone()); }
+    else { const profile=el('a','Edit my music profile','secondary');profile.href='#profile';side.append(profile); if (inBrowser.length) side.append(moveBox()); side.append(dangerZone()); }
     grid.append(side);
   } else grid.classList.add('solo');
   body.append(grid);
