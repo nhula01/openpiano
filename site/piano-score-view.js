@@ -9,18 +9,37 @@ class ScoreView{
  selectAddon(anchor){this.addonAnchor=anchor||null;}
  // Add-on marks: fingering numbers and comment bubbles drawn beside engraved notes. They are sized from the
  // notehead, so they fit any engraving, and live inside the score drawing, so they move with every view.
+ // Right hand above the notes, left hand below, a little clear of the noteheads. In a chord the numbers stack
+ // beyond the outer note, read top to bottom like the notes; a comment sits at the notehead's upper or lower right.
  setAddonMarks(marks){this.addonMarks=marks||[];this.marksKey=JSON.stringify(this.addonMarks.map(m=>[m.id,m.beat,m.midi,m.kind,m.fingers,m.source,!!m.body]));this.drawnMarksKey=null;this.drawMarks();}
  drawMarks(){const host=this.host;if(!host)return;const existing=host.querySelector('.addon-mark');if(existing&&this.drawnMarksKey===this.marksKey)return;
   for(const old of host.querySelectorAll('.addon-mark'))old.remove();this.drawnMarksKey=this.marksKey;if(!this.addonMarks?.length)return;
-  const notes=[...host.querySelectorAll('.score-note')],find=(beat,midi)=>notes.find(n=>Number(n.dataset.midi)===midi&&Math.abs(Number(n.dataset.beat)-beat)<.002);
-  const byNote=new Map();for(const m of this.addonMarks){const k=m.beat.toFixed(3)+':'+m.midi;(byNote.get(k)||byNote.set(k,[]).get(k)).push(m);}
-  for(const group of byNote.values()){const note=find(group[0].beat,group[0].midi);if(!note||typeof note.getBBox!=='function')continue;let bb;try{bb=note.getBBox();}catch{continue;}if(!bb||!bb.height)continue;
-   const head=Math.min(bb.height,bb.width||bb.height)||bb.height,size=head*1.55,cx=bb.x+bb.width/2,below=group[0].hand==='LH';let offset=0;
-   for(const m of group.sort((a,b)=>(a.kind==='fingering'?0:1)-(b.kind==='fingering'?0:1))){
-    const g=svg('g',{class:`addon-mark addon-${m.kind} addon-${m.source}`,'data-id':m.id,transform:note.getAttribute('transform')||''});const t=svg('title',{});t.textContent=(m.author?m.author+': ':'')+(m.kind==='fingering'?'fingering '+m.fingers+(m.body?' · '+m.body:''):m.body);g.append(t);
-    if(m.kind==='fingering'&&m.fingers){const y=below?bb.y+bb.height+size*1.05+offset:bb.y-size*.35-offset;const text=svg('text',{x:cx,y,'text-anchor':'middle','font-size':size,'font-weight':700,class:'addon-digit','paint-order':'stroke','stroke-width':size*.22,'stroke-linejoin':'round'});text.textContent=m.fingers;g.append(text);offset+=size*1.05;}
-    else{const w=size*1.5,h=size*1.15,x=bb.x+bb.width+head*.15,y=bb.y-h-head*.4-(below?0:offset);const bubble=svg('path',{class:'addon-bubble',d:`M${x} ${y+h*.25}q0 ${-h*.25} ${h*.25} ${-h*.25}h${w-h*.5}q${h*.25} 0 ${h*.25} ${h*.25}v${h*.5}q0 ${h*.25} ${-h*.25} ${h*.25}h${-(w-h*.5)*.55}l${-h*.35} ${h*.38}v${-h*.38}h${-h*.1}q${-h*.25} 0 ${-h*.25} ${-h*.25}z`});const dots=svg('text',{x:x+w/2,y:y+h*.72,'text-anchor':'middle','font-size':size*.8,'font-weight':700,class:'addon-bubble-text'});dots.textContent='…';g.append(bubble,dots);}
-    note.parentNode.insertBefore(g,note.nextSibling);}}}
+  const box=n=>{if(typeof n.getBBox!=='function')return null;try{const b=n.getBBox();return b&&b.height?b:null;}catch{return null;}};
+  const notes=[...host.querySelectorAll('.score-note')].map(n=>({n,beat:Number(n.dataset.beat),midi:Number(n.dataset.midi),parent:n.parentNode}));
+  const placed=[];
+  for(const m of this.addonMarks){const hit=notes.find(x=>x.midi===m.midi&&Math.abs(x.beat-m.beat)<.002);if(!hit)continue;const bb=hit.bb||(hit.bb=box(hit.n));if(!bb)continue;
+   const above=m.hand==='LH'?false:m.hand==='RH'?true:m.midi>=60;placed.push({m,note:hit,bb,above});}
+  if(!placed.length)return;
+  // The chord a note belongs to: noteheads at the same beat in the same drawing, close together on one staff.
+  const chordOf=p=>{if(p.chord)return p.chord;const head=p.bb.height,same=notes.filter(x=>x.parent===p.note.parent&&Math.abs(x.beat-p.note.beat)<.002).map(x=>({...x,bb:x.bb||(x.bb=box(x.n))})).filter(x=>x.bb).sort((a,b)=>a.bb.y-b.bb.y);
+   let group=[],chord=null;for(const x of same){if(group.length&&x.bb.y-(group.at(-1).bb.y+group.at(-1).bb.height)>head*5){if(group.some(g=>g.n===p.note.n))chord=group;group=[];}group.push(x);}if(!chord)chord=group;
+   const c={top:Math.min(...chord.map(x=>x.bb.y)),bottom:Math.max(...chord.map(x=>x.bb.y+x.bb.height)),key:p.note.beat.toFixed(3)+':'+chord[0].midi};for(const q of placed)if(chord.some(x=>x.n===q.note.n))q.chord=c;return c;};
+  const columns=new Map();
+  for(const p of placed){const c=chordOf(p),k=c.key+(p.above?'^':'v');(columns.get(k)||columns.set(k,{chord:c,above:p.above,items:[]}).get(k)).items.push(p);}
+  for(const col of columns.values()){const head=Math.min(...col.items.map(p=>Math.min(p.bb.height,p.bb.width||p.bb.height))),size=head*.95,gap=head*.3,step=size*.95;
+   // Fingering: highest note at the top of the column; the column starts just clear of the chord.
+   const fingers=col.items.filter(p=>p.m.kind==='fingering'&&p.m.fingers).sort((a,b)=>b.m.midi-a.m.midi);
+   fingers.forEach((p,i)=>{const n=fingers.length,y=col.above?col.chord.top-gap-(n-1-i)*step:col.chord.bottom+gap+size*.72+i*step;
+    const g=this.markGroup(p,p.note.n);const cx=p.bb.x+p.bb.width/2,w=Math.max(size*.75,size*.6*p.m.fingers.length);
+    g.append(svg('rect',{x:cx-w/2,y:y-size*.8,width:w,height:size,fill:'transparent',class:'addon-hit'}));
+    const text=svg('text',{x:cx,y,'text-anchor':'middle','font-size':size,'font-weight':700,class:'addon-digit','paint-order':'stroke','stroke-width':size*.18,'stroke-linejoin':'round'});text.textContent=p.m.fingers;g.append(text);p.note.n.parentNode.insertBefore(g,p.note.n.nextSibling);});
+   // Comments: a small bubble at the notehead's upper right (right hand) or lower right (left hand).
+   for(const p of col.items.filter(p=>!(p.m.kind==='fingering'&&p.m.fingers))){const bh=size*.95,bw=bh*1.35,x=p.bb.x+p.bb.width+head*.15,y=col.above?p.bb.y-bh-head*.15:p.bb.y+p.bb.height+head*.15+bh*.38;
+    const g=this.markGroup(p,p.note.n);const tail=col.above?`l${-bh*.32} ${bh*.36}v${-bh*.36}`:`v${-bh*.36}`;
+    const d=col.above?`M${x} ${y+bh*.22}q0 ${-bh*.22} ${bh*.22} ${-bh*.22}h${bw-bh*.44}q${bh*.22} 0 ${bh*.22} ${bh*.22}v${bh*.56}q0 ${bh*.22} ${-bh*.22} ${bh*.22}h${-(bw-bh*.44)*.6}${tail}h${-bh*.1}q${-bh*.22} 0 ${-bh*.22} ${-bh*.22}z`
+     :`M${x} ${y+bh*.22}q0 ${-bh*.22} ${bh*.22} ${-bh*.22}h${bh*.12}l${-bh*.34} ${-bh*.38}l${bh*.62} ${bh*.38}h${bw-bh*.84}q${bh*.22} 0 ${bh*.22} ${bh*.22}v${bh*.56}q0 ${bh*.22} ${-bh*.22} ${bh*.22}h${-(bw-bh*.44)}q${-bh*.22} 0 ${-bh*.22} ${-bh*.22}z`;
+    g.append(svg('path',{class:'addon-bubble',d}));const dots=svg('text',{x:x+bw/2,y:y+bh*.68,'text-anchor':'middle','font-size':bh*.75,'font-weight':700,class:'addon-bubble-text'});dots.textContent='…';g.append(dots);p.note.n.parentNode.insertBefore(g,p.note.n.nextSibling);}}}
+ markGroup({m},note){const g=svg('g',{class:`addon-mark addon-${m.kind} addon-${m.source}`,'data-id':m.id,transform:note.getAttribute('transform')||''});const t=svg('title',{});t.textContent=(m.author?m.author+': ':'')+(m.kind==='fingering'?'fingering '+m.fingers+(m.body?' · '+m.body:''):m.body);g.append(t);return g;}
  showOriginal(page){this.originalPage=page;if(this.score?.imported){if(!this.score.originalAsset)return;this.originalImage.hidden=this.score.originalAsset.type==='application/pdf';if(!this.originalPDF){this.originalPDF=el('iframe');this.originalPDF.className='import-source-pdf';this.originalPDF.title='Your original sheet PDF';this.originalPDF.setAttribute('sandbox','');this.details.append(this.originalPDF);}this.originalPDF.hidden=this.score.originalAsset.type!=='application/pdf';if(this.originalPDF.hidden)this.originalImage.src=this.score.originalAsset.url;else this.originalPDF.src=this.score.originalAsset.url;this.originalImage.alt='Your attached original sheet';return;}this.originalImage.hidden=false;if(this.originalPDF)this.originalPDF.hidden=true;const folder=this.score?.folder||'scores/entertainer';this.originalImage.src=`${folder}/${this.fingered?'fingered':'original'}/page-${page}.jpg`;this.originalImage.alt=`${this.score?.title||'The Entertainer'} source score, page ${page}`;}
  setScore(score){this.score=score;this.data=score.engraving||(score.id==='entertainer'?window.PianoEngraving:null);this.available=!!this.data;{const first=this.data?.systems?.[0],box=first?.svg?.match(/viewBox="[-\d.]+ [-\d.]+ [-\d.]+ ([-\d.]+)"/),ratio=box&&first.height?Number(box[1])/first.height:1;this.unitScale=Math.pow(10,Math.round(Math.log10(ratio||1)));}this.details.hidden=!this.available||(score.imported&&!score.originalAsset)||(!score.imported&&score.originalPages===0);this.keyboard.hidden=!this.available;this.page=-1;this.system=-1;this.anchors=null;this.followSystem=null;this.originalPage=1;this.originalNav.replaceChildren();if(this.available&&this.details.hidden)this.scale=Math.min(9,195/Math.max(...this.data.systems.map(s=>s.staffGap||20)));if(this.available&&!this.details.hidden){this.scale=Math.min(9,195/Math.max(...this.data.systems.map(s=>s.staffGap||20)));for(let i=1;i<=(score.originalPages||4);i++){const button=el('button','Page '+i,'secondary');button.onclick=()=>this.showOriginal(i);this.originalNav.append(button);}this.showOriginal(1);}}
  setMode(mode){if(this.mode!==mode){this.mode=mode;this.followSystem=null;this.page=-1;this.system=-1;this.host.replaceChildren();}}
