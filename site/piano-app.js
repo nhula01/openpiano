@@ -206,6 +206,10 @@ function openLevel(id) {
 }
 
 // ---------- Library ----------
+function discussPiece(id) {
+  openLesson(id);
+  setTimeout(() => document.getElementById('piece-community')?.scrollIntoView({behavior:'smooth',block:'start'}), 80);
+}
 function pieceCard(p) {
   const card = el('article', undefined, 'tile');
   const art = el('button', undefined, 'tile-art'); art.type = 'button'; art.setAttribute('aria-label', `Open lesson: ${p.full}`); art.append(portrait(p.composer, 'cover'), el('span', 'Level ' + p.level, 'pill on-art'));
@@ -216,6 +220,7 @@ function pieceCard(p) {
   const row = el('div', undefined, 'tile-actions');
   if (!p.reference) { const play = el('button', 'Play', 'play'); play.setAttribute('aria-label', `Practice ${p.full}`); play.onclick = () => practicePiece(p.id); row.append(play); }
   else row.append(el('span', 'Use your own score', 'tile-note'));
+  const discuss = el('button', 'Discuss', 'secondary small'); discuss.onclick = () => discussPiece(p.id); row.append(discuss);
   body.append(row); card.append(art, body);
   return card;
 }
@@ -300,6 +305,7 @@ function renderComposer(s) {
     const acts = el('span', undefined, 'song-actions');
     if (!p.reference) { const play = el('button', 'Play', 'play'); play.setAttribute('aria-label', `Practice ${p.full}`); play.onclick = () => practicePiece(p.id); acts.append(play); }
     else acts.append(el('span', 'Reference', 'tile-note'));
+    const discuss = el('button', 'Discuss', 'secondary small'); discuss.onclick = () => discussPiece(p.id); acts.append(discuss);
     li.append(n, info, lv, acts); ol.append(li);
   });
   page.append(back, hero, ol);

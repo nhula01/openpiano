@@ -10,7 +10,7 @@ const el = (tag, text, cls) => { const n = document.createElement(tag); if (text
 const cfg = window.PianoCloudConfig || {};
 const CLOUD = !!(cfg.supabaseUrl && cfg.supabaseAnonKey);
 const SUPABASE_JS = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.js';
-const PROGRESS_KEYS = ['my-journey-piano-pathway-v2', 'journey-piano-skills-v1', 'journey-note-passes-v1'];
+const PROGRESS_KEYS = ['my-journey-piano-pathway-v2', 'journey-piano-skills-v1', 'journey-note-passes-v1', 'openpiano-community-plans-v1'];
 const MAX_SONGS = 100;
 
 // ---------- Device storage (IndexedDB) ----------
@@ -63,7 +63,8 @@ async function migrateOldScores() {
 }
 
 // ---------- Cloud storage (Supabase) ----------
-let sb = null, user = null;
+let sb = null, user = null, communityReady = false;
+window.PianoCommunityAuth = { ready: () => communityReady, signedIn: () => !!user, rpc: (name, args) => sb.rpc(name, args) };
 const extOf = name => ((name || '').match(/\.[a-z0-9]{1,8}$/i) || [''])[0].toLowerCase();
 const cloud = {
   async list() {
@@ -104,6 +105,7 @@ function loadScript(src) { return new Promise((res, rej) => { const s = document
 const readLocal = () => Object.fromEntries(PROGRESS_KEYS.map(k => { try { return [k, JSON.parse(localStorage.getItem(k)) || {}]; } catch { return [k, {}]; } }));
 function merge(a, b) {
   if (Array.isArray(a) || Array.isArray(b)) return [...new Set([...(a || []), ...(b || [])])];
+  if (a?.date && b?.date && ('fingers' in a || 'removed' in a) && ('fingers' in b || 'removed' in b)) return a.date > b.date ? a : b;
   if (a?.date && b?.date && typeof a.accuracy === 'number' && typeof b.accuracy === 'number') return a.date > b.date ? a : b;
   if (a && typeof a === 'object' && b && typeof b === 'object') { const out = { ...a }; for (const k of Object.keys(b)) out[k] = k in a ? merge(a[k], b[k]) : b[k]; return out; }
   if (typeof a === 'boolean' || typeof b === 'boolean') return a === true || b === true;
@@ -146,6 +148,7 @@ function say(msg, bad) { if (!statusLine) return; statusLine.textContent = msg; 
 const where = () => user ? `Private to ${user.email}. Synced to your account.` : (CLOUD ? 'Saved in this browser only. Sign in to keep them in your account on any device.' : 'Saved in this browser only. Keep your original files as a backup.');
 
 function renderAccount() {
+  window.dispatchEvent(new Event('piano-community-auth'));
   accountBox.replaceChildren();
   if (user) {
     accountBox.append(el('span', 'Signed in', 'acct-label'), el('strong', user.email, 'acct-email'));
@@ -298,7 +301,7 @@ async function init() {
     try {
       await loadScript(SUPABASE_JS);
       sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey, { auth: { persistSession: true, detectSessionInUrl: true, flowType: 'implicit' } });
-      const { data } = await sb.auth.getSession(); const initial=data.session?.user||null;const scoped=scopeProgress(initial);user=initial;if(scoped&&!user){location.reload();return;}
+      const { data } = await sb.auth.getSession(); const initial=data.session?.user||null;const scoped=scopeProgress(initial);user=initial;communityReady=true;if(scoped&&!user){location.reload();return;}
       sb.auth.onAuthStateChange((event, session) => {
         const next = session?.user || null; if ((next && next.id) === (user && user.id)) return;
         setTimeout(async()=>{clearTimeout(pushTimer);const changed=scopeProgress(next);user=next;renderAccount();await refresh();window.dispatchEvent(new Event('piano-songs-where'));if(user){try{await pullProgress();}catch(e){say('Progress sync failed: '+e.message,true);}}if(changed)location.reload();},0);

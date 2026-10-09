@@ -1,0 +1,54 @@
+# Repertoire community
+
+Built-in library pieces have public discussion in their lesson page and beneath
+the practice score. Read without an account; sign in to contribute, reply, vote or
+report. Each contribution uses a chosen display name, never the account email or
+Google profile. Display names and claimed qualifications are not verified.
+
+Contributors can publish original comments or fingering plans describing the bars,
+edition, hand, note pitches and fingers. A public-publication checkbox is required.
+Plans do not replace printed source fingering or claim teacher verification.
+Most helpful sorts by unique upvotes, then newest. Authors cannot vote for themselves.
+Newest is also available. Threads support 50 replies; the feed paginates 20 roots.
+
+Use in practice saves an attributed snapshot beside the score, privately synced
+with progress. Adapt pre-fills a new plan with attribution so a learner can explain
+their changes and publish a separate version. Removing a saved plan writes a dated
+tombstone so an older cloud copy cannot restore it. Authors may edit or withdraw
+their contributions; Undo restores a withdrawal. A moderator's hide cannot be
+undone by an author. Withdrawn/hidden content stays in the database for moderation.
+
+## Deployment
+
+Run `scripts/supabase-community.sql`, then `scripts/supabase-community-catalog.sql`
+in the project SQL Editor. The catalog contains only built-in repertoire IDs, never
+private uploaded songs. Repeat when new public pieces are added. New installations
+need both the existing private-account migration and this migration.
+
+Every table has RLS enabled and no direct anon/authenticated table privileges.
+Narrow security-definer RPCs use an empty search_path, auth.uid() ownership checks,
+explicit execute grants and bounded output. The public feed excludes owner IDs,
+emails, reporter identities and individual voter identities. Writes cannot choose
+an owner, target private scores, overwrite other authors or attach cross-piece or
+nested replies. Posts are limited to 10/hour and 30/day, reports to 20/day; these
+limits use an account-level transaction lock. Reports do not automatically hide
+content (to avoid coordinated flagging attacks).
+
+`scripts/supabase-community-verify.sql` checks these controls with synthetic users
+and contributions inside a transaction and rolls everything back. Never create
+demonstration posts in the live public feed or copy real private music into it.
+
+## Moderation (project owner)
+
+Reports are private and are reviewed manually in Supabase Table Editor:
+`community_reports`. Find the referenced ID in `community_posts`, review the
+content and set `moderated_at` to the current timestamp to hide it. Clear that
+timestamp to restore a mistaken hide. Do not expose these tables to visitors or
+change the private `songs` bucket. There are no automated moderation emails.
+
+The maintainer can review ownership as administrator, but no owner ID/email is
+returned by the public feed. Report handling is manual; regular moderation is
+needed as participation grows. Rate limits reduce spam but do not establish one
+account per human or prevent coordinated voting. Votes are preference, not proof
+of pedagogical quality. Public uploads of PDFs, recordings and scores are not
+part of this feature; fingering contributions are original text only.
