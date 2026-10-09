@@ -60,3 +60,7 @@ Keep the Google client secret only in Supabase's Google provider settings. After
 provider is enabled and tested, add `googleEnabled: true` to the public cloud config.
 Until a public provider is configured, the email form explicitly says team-only testing.
 Guide: https://supabase.com/docs/guides/auth/social-login/auth-google
+
+Google OAuth is configured in project `openpiano-511104`, with an External audience
+in production and only OpenID, email and profile scopes. The Supabase provider and
+its Google redirect/client/callback were verified before enabling the public button.

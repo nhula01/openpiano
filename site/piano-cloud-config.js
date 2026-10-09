@@ -3,5 +3,6 @@
 window.PianoCloudConfig = {
   supabaseUrl: 'https://uhebiyxvwrlnjxzqytjn.supabase.co',
   supabaseAnonKey: 'sb_publishable_Tl3MAs7cW9Y2tXPvii0s6w_LWLwXJuM',
-  publicEmailReady: false
+  publicEmailReady: false,
+  googleEnabled: true
 };
