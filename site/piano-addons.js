@@ -156,7 +156,7 @@ function showPlus(d){if(!plus||!library().has(d.piece))return;const st=P()?.stat
 function hidePlus(){if(!plus)return;plus.hidden=true;plus.detail=null;cancelAnimationFrame(follow.raf);}
 function follow(){cancelAnimationFrame(follow.raf);if(!plus||plus.hidden||!plus.detail)return;if(!plus.node?.isConnected)plus.node=noteEl(plus.detail);const r=plus.node?.getBoundingClientRect(),box=document.querySelector('.sg-sheet')?.getBoundingClientRect();
  const visible=r&&(r.width||r.height)&&(!box||(r.bottom>box.top&&r.top<box.bottom&&r.right>box.left&&r.left<box.right));plus.style.visibility=visible?'visible':'hidden';
- if(visible){plus.style.left=Math.round(r.right+4)+'px';plus.style.top=Math.round(r.top-plus.offsetHeight-2)+'px';}follow.raf=requestAnimationFrame(follow);}
+ if(visible){plus.style.left=Math.round(r.right+1)+'px';plus.style.top=Math.round(r.top-plus.offsetHeight+3)+'px';}follow.raf=requestAnimationFrame(follow);}
 
 // ---------- Editor: add or change your fingering and comment at one note ----------
 function place(box,rect){document.body.append(box);const w=box.offsetWidth,h=box.offsetHeight,vw=innerWidth,vh=innerHeight;let x=rect.left+rect.width/2-w/2,y=rect.top-h-12;if(y<8)y=rect.bottom+12;box.style.left=Math.max(8,Math.min(vw-w-8,x))+'px';box.style.top=Math.max(8,Math.min(vh-h-8,y))+'px';}
