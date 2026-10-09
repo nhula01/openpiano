@@ -52,3 +52,12 @@ test('seeking starts practice at the chosen note without awarding a full-piece p
  assert.equal(ui.storage.size,0);assert.match(ui.feedback(),/Practice finished/);
  ui.button('Restart').onclick();assert.equal(Number(position.value),0);
 });
+
+test('visible hand selector uses one left-hand line for microphone and complete hands for MIDI',()=>{
+ const ui=setup({fullScore:true}),hands=ui.nodes.find(n=>n.id==='practice-hands'),input=ui.nodes.find(n=>n.id==='practice-input');
+ const voice=ui.nodes.find(n=>n.tag==='select'&&n.options.some(o=>o.value==='rightHand'));
+ hands.value='LH';hands.onchange();assert.equal(voice.value,'leftBass');
+ input.value='MIDI';input.onchange();assert.equal(voice.value,'leftHand');
+ hands.value='RH';hands.onchange();assert.equal(voice.value,'rightHand');
+ hands.value='BH';hands.onchange();assert.equal(voice.value,'all');assert.equal(input.value,'MIDI');
+});

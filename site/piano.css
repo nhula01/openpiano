@@ -482,3 +482,6 @@ button.small{min-height:34px;padding:5px 12px;font-size:13px}
 .live-score{position:relative}.score-note{cursor:pointer}
 .normal-playhead{position:absolute;width:3px;height:110px;background:var(--brass);pointer-events:none;box-shadow:0 0 16px #e3a63b66}
 @media(max-width:600px){.practice-actions{flex-wrap:wrap}.practice-actions button{flex:1 1 40%}.practice-position{flex-basis:100%}}
+
+.practice-bar .mode-row{grid-template-columns:minmax(130px,1fr) minmax(180px,1.4fr) minmax(85px,.6fr) minmax(85px,.5fr)}
+@media(max-width:700px){.practice-bar .mode-row{grid-template-columns:1fr 1fr}.practice-bar .mode-row label:nth-child(3){grid-column:auto}}
