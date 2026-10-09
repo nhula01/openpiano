@@ -374,9 +374,9 @@ body[data-view=reels]{background:#0f0e12}
 /* Phones: with Community and Reels the bottom bar has eight tabs, so let it scroll sideways
    instead of squeezing the labels into each other. */
 @media (max-width:820px){
-  body .tabs{overflow-x:auto;justify-content:flex-start;scrollbar-width:none;min-width:0}
-  body .tabs::-webkit-scrollbar{display:none}
-  body[data-shell] .tabs a,body .tabs a{flex:0 0 66px!important;min-width:66px;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  html.community-on body .tabs{overflow-x:auto;justify-content:flex-start;scrollbar-width:none;min-width:0}
+  html.community-on body .tabs::-webkit-scrollbar{display:none}
+  html.community-on body[data-shell] .tabs a,html.community-on body .tabs a{flex:0 0 66px!important;min-width:66px;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .sp-badge{top:0;right:6px}
 }
 @media (max-width:1000px){

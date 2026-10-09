@@ -1,10 +1,11 @@
 const { test } = require('node:test'); const assert = require('node:assert/strict'); const fs = require('node:fs'); const { JSDOM, VirtualConsole } = require('jsdom');
 const wait = (ms = 30) => new Promise(r => setTimeout(r, ms));
 const HTML = '<nav class="tabs"><a data-tab="feed" href="#feed">Community</a></nav><div id="social-feed"></div><div id="social-post"></div><div id="profile-social"></div><div class="lib-piece"><div class="piece-layout"></div></div>';
-async function setup({ hash = '#feed', signed = true, me = null, handlers = {} } = {}) {
+async function setup({ hash = '#feed', signed = true, me = null, handlers = {}, community = true } = {}) {
   const dom = new JSDOM(HTML, { url: 'https://example.test/' + hash, runScripts: 'outside-only', virtualConsole: new VirtualConsole() });
   const w = dom.window, calls = [];
   w.matchMedia = () => ({ matches: false });
+  w.PianoCloudConfig = { community };
   w.IntersectionObserver = class { observe() {} unobserve() {} };
   w.HTMLDialogElement.prototype.showModal = function () { this.open = true; };
   w.HTMLDialogElement.prototype.close = function () { this.open = false; };
@@ -108,5 +109,19 @@ test('a text post sends the chosen piece and visibility', async () => {
   const args = calls.find(x => x.name === 'social_post_save').args;
   assert.equal(args.p_kind, 'post'); assert.equal(args.p_body, 'Hello'); assert.equal(args.p_visibility, 'friends');
   assert.equal(d.querySelector('.sp-list .sp-card .sp-body').textContent, 'Hello');
+  dom.window.close();
+});
+
+test('community switched off: no requests, tabs stay hidden and old links go home', async () => {
+  const dom = new JSDOM('<nav class="tabs"><a data-tab="feed" data-community hidden href="#feed">Community</a></nav><div id="social-feed"></div>', { url: 'https://example.test/#reels/abc', runScripts: 'outside-only', virtualConsole: new VirtualConsole() });
+  const w = dom.window; let calls = 0;
+  w.PianoCloudConfig = { community: false };
+  w.PianoCommunityAuth = { ready: () => true, signedIn: () => true, rpc: async () => { calls++; return { data: null, error: null }; } };
+  w.eval(fs.readFileSync('site/piano-social.js', 'utf8'));
+  w.document.dispatchEvent(new w.Event('DOMContentLoaded')); await wait();
+  assert.equal(w.location.hash, '#home');
+  assert.equal(w.PianoSocial, undefined);
+  assert.equal(w.document.querySelector('[data-tab=feed]').hidden, true);
+  assert.equal(calls, 0);
   dom.window.close();
 });

@@ -15,7 +15,7 @@ stored in the service-worker cache.
 - **Skills** — 35 short units, key and chord lab, first-reading miniatures.
 - **My songs** — add MusicXML, MIDI or a PDF from notation software (read into sheet music in the browser), check it
   and fix wrong notes, then practice; private to your browser, or to your account when signed in.
-- **Community** — follow other pianists (people who follow each other are friends), post progress,
+- **Community** (built, hidden for now; see `docs/social.md`) — follow other pianists (people who follow each other are friends), post progress,
   practice results, photos and YouTube-linked performances, scroll performances in Reels, and show
   what you are working on. Extra protections for members aged 13–17. See `docs/social.md`.
 - **Free** — donations are voluntary and never unlock features.

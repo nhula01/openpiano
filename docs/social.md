@@ -1,5 +1,11 @@
 # Community (posts, Reels, friends)
 
+> **Hidden for now.** `community: false` in `site/piano-cloud-config.js` hides the Community and
+> Reels tabs, the community section of profiles, the piece-page strip, the Share buttons and the
+> Support page's "What your support unlocks next", and sends old `#feed`, `#reels` and `#post`
+> links home. Nothing is requested from the database while it is off. Set it to `true` (and run
+> `scripts/supabase-social.sql` if not done yet) to show everything again.
+
 The Community tab is a small social space for people learning piano. Members follow each other,
 post progress, photos and links to their own performances on YouTube, keep a "working on" list,
 like and comment. It connects to the existing library discussions: a Following feed also shows the

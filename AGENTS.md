@@ -29,7 +29,7 @@ sharing of uploaded scores. Accounts require age 13+. Keep the Terms, Privacy an
 Copyright pages accurate when data handling changes.
 
 ## Community
-The community (`docs/social.md`) is the only place people share with others: posts,
+Currently hidden (`community: false` in `site/piano-cloud-config.js`). The community (`docs/social.md`) is the only place people share with others: posts,
 photos (re-encoded in the browser, private bucket, signed links) and YouTube links to
 their own performances. Direct video uploads stay off (`social_config.video_uploads`)
 until support pays for storage. Keep the 13–17 protections (approved followers,

@@ -12,6 +12,14 @@
 // Everything goes through the RPCs in scripts/supabase-social.sql; text is always set with
 // textContent, never as HTML.
 (() => {
+  // Switched off in piano-cloud-config.js: keep the tabs hidden and send old links home.
+  if (window.PianoCloudConfig?.community !== true) {
+    const away = () => { if (/^#(feed|reels|post)(\/|$)/.test(location.hash)) location.replace('#home'); };
+    away(); window.addEventListener('hashchange', away);
+    return;
+  }
+  document.documentElement.classList.add('community-on');
+  document.addEventListener('DOMContentLoaded', () => { for (const n of document.querySelectorAll('[data-community]')) n.hidden = false; });
   const $ = (s, r = document) => r.querySelector(s);
   const el = (tag, text, cls) => { const n = document.createElement(tag); if (text != null) n.textContent = text; if (cls) n.className = cls; return n; };
   const auth = () => window.PianoCommunityAuth;
