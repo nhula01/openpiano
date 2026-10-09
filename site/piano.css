@@ -555,4 +555,8 @@ button.small{min-height:34px;padding:5px 12px;font-size:13px}
 .install-help p{margin:0;color:var(--muted)}
 @media(display-mode:standalone){body{padding-top:env(safe-area-inset-top)}}
 @media(max-width:560px){.install-card{grid-template-columns:44px minmax(0,1fr)}.install-card img{width:44px;height:44px;border-radius:11px}.install-card button{grid-column:1/-1;width:100%}}
+.ios-midi-support{max-width:760px;margin:28px 0 24px;padding:22px 24px;border:1px solid var(--line);border-left:5px solid var(--brass);border-radius:var(--r);background:var(--surface)}
+.ios-midi-support .eyebrow,.ios-midi-support .eyebrow::first-letter{text-transform:none}
+.ios-midi-support h2{margin-bottom:8px}
+.ios-midi-support p:last-child{max-width:66ch;margin:0;color:var(--muted)}
 .repertoire-post .piece-art{flex-direction:column}.repertoire-post .piece-art>span:last-child{max-width:100%;overflow-wrap:anywhere}

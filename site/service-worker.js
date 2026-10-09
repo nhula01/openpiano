@@ -1,7 +1,7 @@
 'use strict';
 
 const CACHE_PREFIX = 'openpiano-';
-const CACHE_NAME = `${CACHE_PREFIX}shell-v1`;
+const CACHE_NAME = `${CACHE_PREFIX}shell-v2`;
 
 // Public application files only. Supabase requests and private user data use a
 // different origin and are never handled by this service worker.

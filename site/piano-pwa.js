@@ -19,7 +19,7 @@
   function showInstructions() {
     if (instructions) {
       instructions.textContent = ios
-        ? 'In Safari, tap Share, then choose Add to Home Screen.'
+        ? 'In Safari, tap Share, then choose Add to Home Screen. Microphone practice works in the web app, but iPhone and iPad browsers do not provide MIDI access. Community support helps us build a native App Store version with MIDI.'
         : 'In Safari, choose File, then Add to Dock. You can also use the install icon in Chrome or Edge.';
     }
     if (dialog?.showModal) dialog.showModal();
