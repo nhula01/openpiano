@@ -97,6 +97,7 @@ function startGuided(){
 }
 async function begin(timed=false){
  if(active||run){stopButton.onclick();return;}
+ if(transportBeat!==null){const i=events.findIndex(e=>e.beat>=transportBeat-.001);if(i>=0&&i!==matcher.index)seekToBeat(transportBeat);}
  if(inputChoice.value==='microphone'){
   if(events.some(e=>e.notes.length>1)){const cursor=transportBeat??events[Math.min(matcher.index,events.length-1)].beat;voice.value=voice.value.startsWith('left')?'leftBass':'melody';load(score);seekToBeat(cursor);}
   inputHint.textContent='Listening to the '+(voice.value==='leftBass'?'left-hand line':'melody')+'. Use MIDI to check both-hand chords.';
