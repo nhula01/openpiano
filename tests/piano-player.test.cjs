@@ -25,22 +25,30 @@ test('a slower earlier score download cannot replace the latest selection',async
 
 
 test('Start practice defaults to microphone and selects a playable melody from chords',async()=>{
- const ui=setup({fullScore:true});await ui.button('Start practice').onclick();
+ const ui=setup({fullScore:true});await ui.button('Practice').onclick();
  assert.match(ui.feedback(),/Listening/);
  const voice=ui.nodes.find(n=>n.tag==='select'&&n.options.some(o=>o.value==='rightHand'));
- assert.equal(voice.value,'melody');assert.ok(ui.nodes.some(n=>n.id==='practice-start'&&n.textContent==='Pause'));
+ assert.equal(voice.value,'melody');assert.ok(ui.nodes.some(n=>n.id==='practice-start'&&n.textContent==='Pause practice'));
  ui.button('Stop input').onclick();assert.equal(ui.stopped,1);
 });
 
 test('guided MIDI Start pauses on a wrong note, resumes on correct input, and Pause keeps progress',async()=>{
- const ui=setup(),choice=ui.nodes.find(n=>n.id==='practice-input');choice.value='MIDI';choice.onchange();
- await ui.button('Start practice').onclick();ui.setTime(4);ui.tick(4000);
+ const ui=setup(),choice=ui.nodes.find(n=>n.id==='practice-input');ui.nodes.find(n=>n.id==='practice-type').value='guide';choice.value='MIDI';choice.onchange();
+ await ui.button('Practice').onclick();ui.setTime(4);ui.tick(4000);
  const progress=ui.nodes.find(n=>n.tag==='progress');
  ui.input.onmidimessage({data:[144,50,100]});ui.input.onmidimessage({data:[128,50,0]});
  ui.setTime(30);ui.tick(30000);assert.equal(Number(progress.value),0);
  ui.input.onmidimessage({data:[144,64,100]});assert.equal(Number(progress.value),1);
- ui.input.onmidimessage({data:[128,64,0]});ui.button('Pause').onclick();assert.equal(Number(progress.value),1);
- await ui.button('Continue').onclick();ui.setTime(1);ui.tick(1000);
+ ui.input.onmidimessage({data:[128,64,0]});ui.button('Pause practice').onclick();assert.equal(Number(progress.value),1);
+ await ui.button('Practice').onclick();ui.setTime(1);ui.tick(1000);
  ui.input.onmidimessage({data:[144,64,100]});assert.equal(Number(progress.value),2);
- assert.equal(ui.storage.size,0);ui.button('Pause').onclick();
+ assert.equal(ui.storage.size,0);ui.button('Pause practice').onclick();
+});
+
+test('seeking starts practice at the chosen note without awarding a full-piece pass',async()=>{
+ const ui=setup(),position=ui.nodes.find(n=>n.id==='practice-position');position.value='5';position.oninput();
+ const choice=ui.nodes.find(n=>n.id==='practice-input');choice.value='MIDI';choice.onchange();
+ await ui.button('Practice').onclick();for(const n of ode.slice(5)){ui.input.onmidimessage({data:[144,n,100]});if(ui.input.onmidimessage)ui.input.onmidimessage({data:[128,n,0]});}
+ assert.equal(ui.storage.size,0);assert.match(ui.feedback(),/Practice finished/);
+ ui.button('Restart').onclick();assert.equal(Number(position.value),0);
 });

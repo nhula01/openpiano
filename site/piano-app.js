@@ -339,11 +339,11 @@ function arrangePractice() {
   const titles = el('div'); const h1 = el('h1', 'Practice', 'practice-title'); h1.id = 'practice-title';
   titles.append(h1); if (caption) { caption.classList.add('practice-caption'); titles.append(caption); }
   head.append(titles);
-  const bar = el('div', undefined, 'practice-bar'); if (controls[0]) bar.append(controls[0]); if (controls[2]) { controls[2].classList.add('mode-row'); bar.append(controls[2]); }
+  const bar = el('div', undefined, 'practice-bar'); if (controls[2]) { controls[2].classList.add('mode-row'); bar.append(controls[2]); }
   const stage = el('div', undefined, 'stage');
   const stageTop = el('div', undefined, 'stage-top'); if (feedback) stageTop.append(feedback); if (pager) stageTop.append(pager);
   stage.append(stageTop, score); if (keyboard) stage.append(keyboard);
-  const deck = el('div', undefined, 'stage-deck'); if (inputs) deck.append(inputs); const inputHint = $('.practice-input-hint', root); if (inputHint) deck.append(inputHint); if (device) deck.append(device); stage.insertBefore(deck, score);
+  const deck = el('div', undefined, 'stage-deck'); if (inputs) deck.append(inputs); const position = $('.practice-position', root); if (position) deck.append(position); const inputHint = $('.practice-input-hint', root); if (inputHint) deck.append(inputHint); if (device) deck.append(device); stage.insertBefore(deck, score);
   const meter = el('div', undefined, 'stage-meter'); if (progress) meter.append(progress); if (counts) meter.append(counts); stage.append(meter);
   const more = el('details', undefined, 'fold practice-more'); more.append(el('summary', 'Practice settings, sources and help'));
   const rest = [...root.children].filter(k => ![eyebrow, h2].includes(k));
@@ -358,7 +358,7 @@ function arrangePractice() {
   if (caption) new MutationObserver(syncPracticeTitle).observe(caption, { childList: true, characterData: true, subtree: true });
 }
 function syncPracticeTitle() {
-  const sel = $('.practice-bar select'), h = $('#practice-title'); if (!sel || !h) return;
+  const sel = $('#trainer-song'), h = $('#practice-title'); if (!sel || !h) return;
   const text = sel.options[sel.selectedIndex]?.textContent || 'Practice';
   h.textContent = text.replace(/ · (full piece|my song)$/, '');
 }

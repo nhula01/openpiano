@@ -475,3 +475,10 @@ button.small{min-height:34px;padding:5px 12px;font-size:13px}
 .practice-bar .trainer-controls:not(.mode-row){grid-template-columns:minmax(0,1fr) auto}
 .practice-more #practice-part-control{max-width:420px;margin-top:14px}
 @media(max-width:600px){.practice-bar .trainer-controls:not(.mode-row){grid-template-columns:1fr}.practice-bar .add-own-song{justify-self:start}}
+
+.practice-position{flex:1 1 220px;color:#c9c3d0!important;margin:0!important}
+.practice-position input{padding:0;accent-color:var(--brass);cursor:ew-resize}
+.fixed-playhead{pointer-events:auto;cursor:ew-resize;touch-action:none;width:10px;border-left:3px solid var(--brass);background:transparent}
+.live-score{position:relative}.score-note{cursor:pointer}
+.normal-playhead{position:absolute;width:3px;height:110px;background:var(--brass);pointer-events:none;box-shadow:0 0 16px #e3a63b66}
+@media(max-width:600px){.practice-actions{flex-wrap:wrap}.practice-actions button{flex:1 1 40%}.practice-position{flex-basis:100%}}
