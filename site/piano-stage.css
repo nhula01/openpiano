@@ -177,3 +177,10 @@ body[data-shell=stage][data-view=practice] .practice-more .original-sheet{backgr
 body[data-shell=stage][data-view=practice] .community-practice-plan{margin:0;border:0;border-top:1px solid var(--sg-line);border-radius:0;background:var(--sg-panel);color:var(--sg-text);font-family:var(--sg-font);padding:18px 20px}
 body[data-shell=stage][data-view=practice] .community-practice-plan .muted{color:var(--sg-muted)}
 body[data-shell=stage][data-view=practice] .community{margin:24px auto;color:var(--ink)}
+
+/* Full sheet: all pages in one column, narrow enough to show about three lines ahead. */
+.sg-sheet .stacked-sheet{padding:0 0 60vh;scroll-behavior:auto}
+.stacked-sheet .sheet-page{position:relative;max-width:min(100%,var(--page-max,1000px));margin:0 auto 14px;background:#f6f3ea}
+.stacked-sheet .sheet-page+.sheet-page{border-top:1px dashed #cfc8b6}
+.stacked-sheet .sheet-page>svg{display:block;width:100%;min-width:0;height:auto!important;color:#24212b}
+.sg-sheet .stacked-sheet .normal-playhead{transition:none}

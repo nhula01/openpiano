@@ -57,7 +57,7 @@ function build(){const p=P();if(!p)return;document.body.dataset.shell='stage';co
  const live=el('div',undefined,'sg-live');const accBox=el('div',undefined,'sg-stat');const acc=el('strong','—');accBox.append(acc,el('span','accuracy'));const runBox=el('div',undefined,'sg-stat');const runN=el('strong','0');runBox.append(runN,el('span','in a row'));const doneBox=el('div',undefined,'sg-stat');const doneN=el('strong','0');doneBox.append(doneN,el('span','notes'));live.append(accBox,runBox,doneBox);
  hud.append(who,views.node,live);
 
- const screen=el('div',undefined,'sg-screen');const sheet=el('div',undefined,'sg-sheet');if(parts.score)sheet.append(parts.score);const pager=el('div',undefined,'sg-pager');const pv=button('Previous page',{icon:'prev',cls:'sg-icon',iconOnly:true});pv.onclick=()=>p.pages.prev();const nx=button('Next page',{icon:'next',cls:'sg-icon',iconOnly:true});nx.onclick=()=>p.pages.next();const pt=el('span');pager.append(pv,pt,nx);sheet.append(pager);
+ const screen=el('div',undefined,'sg-screen');const sheet=el('div',undefined,'sg-sheet');if(parts.score){parts.score.dataset.stacked='1';sheet.append(parts.score);}const pager=el('div',undefined,'sg-pager');const pv=button('Previous page',{icon:'prev',cls:'sg-icon',iconOnly:true});pv.onclick=()=>p.pages.prev();const nx=button('Next page',{icon:'next',cls:'sg-icon',iconOnly:true});nx.onclick=()=>p.pages.next();const pt=el('span');pager.append(pv,pt,nx);sheet.append(pager);
  const fall=el('canvas',undefined,'sg-fall');fall.setAttribute('role','img');fall.setAttribute('aria-label','Falling notes: each bar drops onto the key to play. Right hand blue, left hand pink.');
  screen.append(sheet,fall);
  const keys=el('div',undefined,'sg-keys');if(parts.keyboard){parts.keyboard.setAttribute('preserveAspectRatio','none');keys.append(parts.keyboard);}
@@ -104,7 +104,7 @@ function build(){const p=P();if(!p)return;document.body.dataset.shell='stage';co
   loopB.replaceChildren(icon('loop'),el('span',p.loop?p.loop.title:'Loop'));loopB.setAttribute('aria-pressed',String(!!p.loop));
   clickT.set(p.click,!p.clickAvailable);clickT.node.title=p.clickAvailable?'Metronome click ( M )':'No click with the microphone, which would hear it';otherT.set(p.accompany,p.hands==='BH'||p.input==='microphone');
   const inp=INPUTS.find(i=>i[0]===p.input)||INPUTS[0];inputChip.replaceChildren(icon(inp[2]));inputChip.title='Listening with '+inp[1];inSeg.set(p.input);typeSeg.set(p.type);fingerT.set(p.fingering,!p.fingeringAvailable);speedT.set(p.speedTrainer.on);
-  pager.hidden=p.type!=='sheet';hint();}
+  pager.hidden=true;hint();}
  let streak=0;p.on('note',n=>{if(n.result==='wrong')streak=0;else if(n.result==='correct')streak++;runN.textContent=String(streak);});
  function liveSync(){const s=p.stats;acc.textContent=s.accuracy==null?'—':s.accuracy+'%';doneN.textContent=`${s.done}/${s.total}`;pt.textContent=p.pages.status.replace(/^Practice page (\d+) of (\d+).*/,'$1 / $2');pv.disabled=!p.pages.hasPrev;nx.disabled=!p.pages.hasNext;}
  let lastResult=null;p.on('result',r=>{lastResult=r;if(r.loop&&p.state!=='idle'){clearTimeout(toastTimer);toast.textContent=`Loop · ${r.accuracy}%${r.wrong?` · ${r.wrong} wrong`:''}${r.missed?` · ${r.missed} missed`:''}`;toast.classList.add('show');toastTimer=setTimeout(()=>toast.classList.remove('show'),2200);}});
