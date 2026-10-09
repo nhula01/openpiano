@@ -447,3 +447,10 @@ button.small{min-height:34px;padding:5px 12px;font-size:13px}
 .support-card{padding:22px;border-radius:var(--r-lg);background:var(--surface);border:1px solid var(--line);margin:0 0 24px}
 .support-card h2{margin:0 0 8px}
 .support-card .actions{margin:14px 0}
+
+/* ---------- Large library ---------- */
+.shelf-head{position:relative}
+.shelf-more{margin-left:auto;font-weight:700;font-size:14px;color:var(--felt);text-decoration:none;white-space:nowrap;align-self:center}
+.shelf-more:hover{text-decoration:underline}
+.shelf .back{display:inline-block;margin-bottom:10px}
+.composer.collection .portrait .monogram{font-size:34px}

@@ -10,6 +10,9 @@ repository; the maintainer's personal journal lives in a separate project.
   NonCommercial clause (donations are accepted). Re-check a MuseScore transcription's
   license on its page. Keep the source file, attribution and license with the score.
 - Every attack must match an engraved notehead (build checks). Verify the ending.
+- The music must be public domain worldwide: composer (and arranger) died in 1955 or
+  earlier and the work was published in 1930 or earlier, or it is traditional. See
+  `docs/collection.md`.
 - Copyrighted songs (e.g. current pop songs) are never added to the public library;
   people may import their own files privately.
 

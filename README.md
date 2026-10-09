@@ -4,7 +4,8 @@ A free piano studio in the browser: complete public-domain repertoire by compose
 skills by level, sight-reading, and practice with a MIDI keyboard or a microphone.
 Anyone can import their own MusicXML or MIDI scores and keep them private.
 
-- **Library** — 50+ complete works (Bach to Rachmaninoff) with source, transcriber and
+- **Library** — about 525 complete pieces: piano classics from Bach to Rachmaninoff, symphony and
+  opera themes for piano, carols, hymns, folk and children’s songs, ragtime — each with source, transcriber and
   license on every score. Printed fingerings only; none are generated.
 - **Practice** — waiting sheet or moving score, both hands, MIDI or microphone input.
 - **Skills** — 35 short units, key and chord lab, first-reading miniatures.
@@ -24,6 +25,7 @@ Open http://localhost:8000/. Tests: `npm ci && npm run test:piano`.
 - `docs/launch-checklist.md` — what the maintainer must set up before inviting people.
 - `docs/accounts-setup.md` — sign-in and private storage (Supabase).
 - `docs/piano-study-pathway.md` — how the library and study levels are built.
+- `docs/collection.md` — how the large public-domain collection was chosen and built.
 - `docs/piano-self-service.md` — how My songs reads, checks and stores people's own scores.
 - `site/terms.html`, `site/privacy.html`, `site/copyright.html` — public policies.
 

@@ -28,13 +28,53 @@ const COMPOSERS = {
   'Claude Debussy': { years: '1862–1918', era: 'Impressionist', img: W + 'c/c3/Claude_Debussy_by_Atelier_Nadar.jpg/500px-Claude_Debussy_by_Atelier_Nadar.jpg' },
   'Erik Satie': { years: '1866–1925', era: 'Modern', img: W + '5/58/Ericsatie.jpg/500px-Ericsatie.jpg' },
   'Scott Joplin': { years: 'c. 1868–1917', era: 'Ragtime', img: W + '6/68/Scott_Joplin_in_1912.jpg/500px-Scott_Joplin_in_1912.jpg' },
-  'Folk songs': { years: 'Traditional', era: 'First tunes', folk: true }
+  'Folk songs': { years: 'Traditional', era: 'Tunes from around the world', folk: true, collection: true, glyph: '♪' },
+  // Collections of songs by many writers, shown as one tile in the library.
+  'Christmas carols': { years: 'Carols and Christmas songs', era: 'Seasonal', collection: true, glyph: '❄' },
+  'Hymns & spirituals': { years: 'Hymn tunes and spirituals', era: 'Sacred', collection: true, glyph: '✦' },
+  'Children’s songs': { years: 'Nursery rhymes and play songs', era: 'First tunes', collection: true, glyph: '★' },
+  'Early American songs': { years: 'Popular songs before 1931', era: 'Americana', collection: true, glyph: '♫' },
+  'Antonio Vivaldi': { years: '1678–1741', era: 'Baroque' }, 'George Frideric Handel': { years: '1685–1759', era: 'Baroque' },
+  'Johann Pachelbel': { years: '1653–1706', era: 'Baroque' }, 'Domenico Scarlatti': { years: '1685–1757', era: 'Baroque' },
+  'Jean-Philippe Rameau': { years: '1683–1764', era: 'Baroque' }, 'Georg Philipp Telemann': { years: '1681–1767', era: 'Baroque' },
+  'Joseph Haydn': { years: '1732–1809', era: 'Classical' }, 'Leopold Mozart': { years: '1719–1787', era: 'Classical' },
+  'Bernhard Flies': { years: 'c. 1770–after 1800', era: 'Classical' }, 'Anton Diabelli': { years: '1781–1858', era: 'Classical' },
+  'Friedrich Kuhlau': { years: '1786–1832', era: 'Classical' }, 'Henry Lemoine': { years: '1786–1854', era: 'Studies' },
+  'Jean-Baptiste Duvernoy': { years: 'c. 1802–1880', era: 'Studies' }, 'Cornelius Gurlitt': { years: '1820–1901', era: 'Romantic' },
+  'Carl Reinecke': { years: '1824–1910', era: 'Romantic' }, 'Jean Louis Streabbog': { years: '1835–1886', era: 'Romantic' },
+  'John Field': { years: '1782–1837', era: 'Romantic' }, 'Felix Mendelssohn': { years: '1809–1847', era: 'Romantic' },
+  'Vincenzo Bellini': { years: '1801–1835', era: 'Opera' }, 'Gioachino Rossini': { years: '1792–1868', era: 'Opera' },
+  'Giuseppe Verdi': { years: '1813–1901', era: 'Opera' }, 'Richard Wagner': { years: '1813–1883', era: 'Opera' },
+  'Georges Bizet': { years: '1838–1875', era: 'Opera' }, 'Jacques Offenbach': { years: '1819–1880', era: 'Opera' },
+  'Giacomo Puccini': { years: '1858–1924', era: 'Opera' }, 'Pietro Mascagni': { years: '1863–1945', era: 'Opera' },
+  'Franz Lehár': { years: '1870–1948', era: 'Operetta' }, 'Johann Strauss II': { years: '1825–1899', era: 'Waltz' },
+  'Pyotr Ilyich Tchaikovsky': { years: '1840–1893', era: 'Romantic' }, 'Antonín Dvořák': { years: '1841–1904', era: 'Romantic' },
+  'Camille Saint-Saëns': { years: '1835–1921', era: 'Romantic' }, 'Anton Rubinstein': { years: '1829–1894', era: 'Romantic' },
+  'Mikhail Glinka': { years: '1804–1857', era: 'Romantic' }, 'Modest Mussorgsky': { years: '1839–1881', era: 'Romantic' },
+  'Nikolai Rimsky-Korsakov': { years: '1844–1908', era: 'Romantic' }, 'Alexander Borodin': { years: '1833–1887', era: 'Romantic' },
+  'Bedřich Smetana': { years: '1824–1884', era: 'Romantic' }, 'Edward MacDowell': { years: '1860–1908', era: 'Romantic' },
+  'Louis Moreau Gottschalk': { years: '1829–1869', era: 'Romantic' }, 'Gustav Mahler': { years: '1860–1911', era: 'Late Romantic' },
+  'Edward Elgar': { years: '1857–1934', era: 'Late Romantic' }, 'Alexander Scriabin': { years: '1872–1915', era: 'Late Romantic' },
+  'Anatoly Lyadov': { years: '1855–1914', era: 'Late Romantic' }, 'Isaac Albéniz': { years: '1860–1909', era: 'Spanish' },
+  'Francisco Tárrega': { years: '1852–1909', era: 'Spanish' }, 'Maurice Ravel': { years: '1875–1937', era: 'Impressionist' },
+  'Gustav Holst': { years: '1874–1934', era: 'Modern' }, 'Sergei Prokofiev': { years: '1891–1953', era: 'Modern' },
+  'George Gershwin': { years: '1898–1937', era: 'Jazz age' }, 'Ernesto Nazareth': { years: '1863–1934', era: 'Brazilian tango' }
 };
+// Genre shelves in the library (by the shelf each collection piece was filed under).
+const GENRES = [['Christmas', 'Christmas carols', 'Carols and Christmas songs'], ['Opera & ballet', 'Opera & ballet favourites', 'Famous stage melodies arranged for piano'],
+  ['Hymns & spirituals', 'Hymns & spirituals', 'Hymn tunes and spirituals'], ['Ragtime & early jazz', 'Ragtime & early jazz', 'Syncopated piano music'],
+  ['Folk songs of the world', 'Folk songs of the world', 'Traditional tunes'], ['Children’s songs', 'Children’s songs', 'First tunes to play'],
+  ['Americana & early popular', 'Early American songs', 'Popular songs before 1931'], ['Baroque', 'Baroque', 'Bach, Handel, Vivaldi and their time'],
+  ['Impressionist & modern', 'Impressionist & modern', 'Debussy, Ravel, Satie and after']];
+const SHELF_CAP = 24;
 // Well-known concert pieces, shown first in the library.
-const FAMOUS = ['campanella', 'fur', 'moonlight', 'liebestraum', 'fantaisie-impromptu', 'ballade1', 'tristesse', 'heroic', 'clair', 'alla-turca', 'nocturne', 'minute-waltz', 'entertainer', 'rach-prelude', 'maple-leaf', 'gymnopedie', 'mountain-king', 'raindrop', 'revolutionary', 'arabesque1', 'gnossienne1', 'traumerei', 'impromptu-gflat', 'winter-wind', 'waltz-csharp', 'nocturne-csharp', 'nocturne-op9-1', 'nocturne-op48', 'etude-op10-4', 'consolation3', 'brahms-waltz', 'prelude', 'pathetique'];
+const FAMOUS = ['campanella', 'fur', 'moonlight', 'pachelbel-canon-in-d', 'liebestraum', 'tchaikovsky-swan-lake-scene-act-ii-theme', 'fantaisie-impromptu', 'clair', 'bach-air-on-the-g-string-air-from-suite-no-3-bwv-1068', 'alla-turca', 'nocturne', 'strauss-the-blue-danube', 'beethoven-symphony-no-5-first-movement', 'ballade1', 'tchaikovsky-dance-of-the-sugar-plum-fairy', 'brahms-hungarian-dance-no-5', 'bach-toccata-and-fugue-in-d-minor-bwv-565', 'minute-waltz', 'entertainer', 'vivaldi-spring-from-the-four-seasons-first-movement', 'rimsky-korsakov-flight-of-the-bumblebee', 'liszt-hungarian-rhapsody-no-2', 'beethoven-moonlight-sonata-third-movement', 'bizet-habanera-carmen', 'wagner-ride-of-the-valkyries', 'debussy-reverie', 'rach-prelude', 'maple-leaf', 'gymnopedie', 'mountain-king', 'puccini-o-mio-babbino-caro', 'mendelssohn-wedding-march-from-a-midsummer-nights-dream', 'elgar-pomp-and-circumstance-march-no-1', 'offenbach-can-can-galop-infernal', 'bach-jesu-joy-of-mans-desiring-bwv-147', 'raindrop', 'revolutionary', 'arabesque1', 'tristesse', 'heroic', 'chopin-etude-in-g-flat-op-10-no-5-black-keys', 'ravel-pavane-for-a-dead-princess', 'traumerei', 'winter-wind', 'prelude', 'pathetique'];
 const slug = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const initials = name => name.split(/\s+/).filter(w => /^[A-ZÀ-Ý]/.test(w)).map(w => w[0]).slice(0, 2).join('');
-const lastName = name => name === 'Folk songs' ? 'Folk songs' : name.split(' ').slice(-1)[0];
+const isCollection = name => !!COMPOSERS[name]?.collection;
+const lastName = name => isCollection(name) ? name : name.replace(/ (I|II|Jr\.|Sr\.)$/, '').split(' ').slice(-1)[0];
+// The line under a title: the composer, or for a collection the song's own writer.
+const creditLine = p => isCollection(p.composer) ? (p.credit && p.credit !== p.composer ? p.credit : 'Traditional') : lastName(p.composer);
 
 let pieces = [], levels = [], byComposer = new Map();
 function buildData() {
@@ -43,9 +83,10 @@ function buildData() {
   pieces = C.pieces.map(p => {
     const full = R[p.id]?.title || p.title || p.id;
     const [title, ...rest] = full.split(' · ');
-    let composer = R[p.id]?.composer || p.composer || (p.id === 'entertainer' ? 'Scott Joplin' : '');
+    const credit = R[p.id]?.composer || p.composer || (p.id === 'entertainer' ? 'Scott Joplin' : '');
+    let composer = R[p.id]?.collection || credit;
     if (!composer || composer === 'Traditional') composer = 'Folk songs';
-    return { ...p, full, title, note: rest.join(' · '), composer, reference: !!p.reference };
+    return { ...p, full, title, note: rest.join(' · '), composer, credit: credit || 'Traditional', shelf: R[p.id]?.shelf || '', reference: !!p.reference };
   });
   byComposer = new Map();
   for (const p of pieces) { if (!byComposer.has(p.composer)) byComposer.set(p.composer, []); byComposer.get(p.composer).push(p); }
@@ -55,7 +96,7 @@ const levelName = id => { const l = levels.find(l => l.id === id); const [name, 
 
 function portrait(name, cls) {
   const c = COMPOSERS[name] || {}, box = el('span', undefined, 'portrait ' + (cls || ''));
-  const fallback = () => { box.replaceChildren(el('span', c.folk ? '♪' : initials(name), 'monogram')); box.classList.add(c.folk ? 'folk' : 'mono'); };
+  const fallback = () => { box.replaceChildren(el('span', c.glyph || initials(name), 'monogram')); box.classList.add(c.collection ? 'folk' : 'mono'); };
   if (c.img) { const img = el('img'); img.alt = ''; img.loading = 'lazy'; img.decoding = 'async'; img.referrerPolicy = 'no-referrer'; img.src = c.img; img.onerror = fallback; box.append(img); }
   else fallback();
   return box;
@@ -170,7 +211,7 @@ function pieceCard(p) {
   const art = el('button', undefined, 'tile-art'); art.type = 'button'; art.setAttribute('aria-label', `Open lesson: ${p.full}`); art.append(portrait(p.composer, 'cover'), el('span', 'Level ' + p.level, 'pill on-art'));
   art.onclick = () => openLesson(p.id);
   const body = el('div', undefined, 'tile-body');
-  body.append(el('h3', p.title), el('p', p.composer === 'Folk songs' ? 'Traditional' : lastName(p.composer), 'tile-sub'));
+  body.append(el('h3', p.title), el('p', creditLine(p), 'tile-sub'));
   if (p.note) body.append(el('p', p.note, 'tile-note-line'));
   const row = el('div', undefined, 'tile-actions');
   if (!p.reference) { const play = el('button', 'Play', 'play'); play.setAttribute('aria-label', `Practice ${p.full}`); play.onclick = () => practicePiece(p.id); row.append(play); }
@@ -178,15 +219,25 @@ function pieceCard(p) {
   body.append(row); card.append(art, body);
   return card;
 }
-function renderBrowse() {
+function shelfSection(id, titleNode, sub, list, more) {
+  const sec = el('section', undefined, 'shelf'); sec.id = id;
+  const head = el('div', undefined, 'shelf-head'); head.append(titleNode, el('p', sub, 'shelf-sub'));
+  if (more && list.length > SHELF_CAP) { const a = el('a', `See all ${list.length}`, 'shelf-more'); a.href = more; head.append(a); }
+  const grid = el('div', undefined, 'tiles'); (more ? list.slice(0, SHELF_CAP) : list).forEach(p => grid.append(pieceCard(p)));
+  sec.append(head, grid); return sec;
+}
+function renderBrowse(filter = {}) {
   const term = ($('#lib-search')?.value || '').trim().toLowerCase();
   const row = $('#composer-row'), shelves = $('#level-shelves');
   row.replaceChildren(); shelves.replaceChildren();
-  const names = [...byComposer.keys()].sort((a, b) => (a === 'Folk songs') - (b === 'Folk songs') || (byComposer.get(b).length - byComposer.get(a).length) || lastName(a).localeCompare(lastName(b)));
-  const match = p => !term || [p.full, p.composer, p.skill, p.pattern].join(' ').toLowerCase().includes(term);
+  const order = ['Folk songs', 'Christmas carols', 'Hymns & spirituals', 'Children’s songs', 'Early American songs'];
+  const names = [...byComposer.keys()].sort((a, b) => (isCollection(a) - isCollection(b)) || (byComposer.get(b).length - byComposer.get(a).length) || lastName(a).localeCompare(lastName(b)));
+  names.sort((a, b) => (isCollection(b) - isCollection(a)) || (isCollection(a) ? order.indexOf(a) - order.indexOf(b) : 0));
+  const match = p => !term || [p.full, p.composer, p.credit, p.skill, p.pattern, p.shelf].join(' ').toLowerCase().includes(term);
+  const composerRow = row.closest('section'); if (composerRow) composerRow.hidden = !!(filter.level || filter.shelf);
   for (const name of names) {
     const list = byComposer.get(name); if (term && !list.some(match) && !name.toLowerCase().includes(term)) continue;
-    const a = el('a', undefined, 'composer'); a.href = '#library/composer/' + slug(name);
+    const a = el('a', undefined, 'composer' + (isCollection(name) ? ' collection' : '')); a.href = '#library/composer/' + slug(name);
     a.append(portrait(name, 'round'), el('strong', lastName(name)), el('span', `${list.length} ${list.length === 1 ? 'piece' : 'pieces'}`));
     row.append(a);
   }
@@ -194,21 +245,37 @@ function renderBrowse() {
   if (term) {
     const found = pieces.filter(match), sec = el('section', undefined, 'shelf');
     sec.append(el('h2', found.length ? `${found.length} ${found.length === 1 ? 'piece' : 'pieces'} found` : 'No pieces match. Try a composer, title or skill.', 'shelf-title'));
-    const grid = el('div', undefined, 'tiles wrap'); found.forEach(p => grid.append(pieceCard(p))); sec.append(grid); shelves.append(sec); return;
+    const grid = el('div', undefined, 'tiles wrap'); found.slice(0, 120).forEach(p => grid.append(pieceCard(p))); sec.append(grid);
+    if (found.length > 120) sec.append(el('p', `Showing the first 120. Add a word to narrow the search.`, 'muted'));
+    shelves.append(sec); return;
+  }
+  // One level or one genre, every piece.
+  if (filter.level || filter.shelf) {
+    const g = GENRES.find(g => slug(g[0]) === filter.shelf);
+    const list = filter.level ? pieces.filter(p => p.level === filter.level) : pieces.filter(p => g && p.shelf === g[0]);
+    const back = el('a', 'Library', 'back'); back.href = '#library';
+    const name = filter.level ? levelName(filter.level) : { name: g?.[1] || 'Pieces', sub: g?.[2] || '' };
+    const h = el('h2', undefined, 'shelf-title'); if (filter.level) h.append(el('span', String(filter.level), 'lvl-num')); h.append(document.createTextNode(name.name));
+    const sec = el('section', undefined, 'shelf'); const head = el('div', undefined, 'shelf-head'); head.append(h, el('p', `${name.sub ? name.sub + ' · ' : ''}${list.length} pieces`, 'shelf-sub'));
+    const grid = el('div', undefined, 'tiles wrap'); list.sort((a, b) => a.level - b.level || a.title.localeCompare(b.title)).forEach(p => grid.append(pieceCard(p)));
+    sec.append(back, head, grid); shelves.append(sec); return;
   }
   const famous = FAMOUS.map(id => pieces.find(p => p.id === id)).filter(Boolean);
-  if (famous.length) {
-    const sec = el('section', undefined, 'shelf'); sec.id = 'shelf-famous';
-    const head = el('div', undefined, 'shelf-head'); head.append(el('h2', 'Famous pieces', 'shelf-title'), el('p', 'Complete scores of the classics', 'shelf-sub'));
-    const grid = el('div', undefined, 'tiles'); famous.forEach(p => grid.append(pieceCard(p)));
-    sec.append(head, grid); shelves.append(sec);
+  if (famous.length) shelves.append(shelfSection('shelf-famous', el('h2', 'Famous pieces', 'shelf-title'), 'Complete scores of the classics', famous));
+  for (const [shelf, title, sub] of GENRES.slice(0, 4)) {
+    const list = pieces.filter(p => p.shelf === shelf); if (list.length < 4) continue;
+    shelves.append(shelfSection('shelf-' + slug(shelf), el('h2', title, 'shelf-title'), sub, list.sort((a, b) => a.level - b.level), '#library/shelf/' + slug(shelf)));
   }
   for (const l of levels) {
     const list = pieces.filter(p => p.level === l.id); if (!list.length) continue;
-    const name = levelName(l.id), sec = el('section', undefined, 'shelf'); sec.id = 'shelf-' + l.id;
-    const head = el('div', undefined, 'shelf-head'); const h = el('h2', undefined, 'shelf-title'); h.append(el('span', String(l.id), 'lvl-num'), document.createTextNode(name.name)); head.append(h, el('p', name.sub, 'shelf-sub'));
-    const grid = el('div', undefined, 'tiles'); list.forEach(p => grid.append(pieceCard(p)));
-    sec.append(head, grid); shelves.append(sec);
+    const name = levelName(l.id); const h = el('h2', undefined, 'shelf-title'); h.append(el('span', String(l.id), 'lvl-num'), document.createTextNode(name.name));
+    // Hand-written core pieces first, then the collection.
+    list.sort((a, b) => (!!a.collection - !!b.collection));
+    shelves.append(shelfSection('shelf-' + l.id, h, name.sub, list, '#library/level/' + l.id));
+  }
+  for (const [shelf, title, sub] of GENRES.slice(4)) {
+    const list = pieces.filter(p => p.shelf === shelf); if (list.length < 4) continue;
+    shelves.append(shelfSection('shelf-' + slug(shelf), el('h2', title, 'shelf-title'), sub, list.sort((a, b) => a.level - b.level), '#library/shelf/' + slug(shelf)));
   }
 }
 function renderComposer(s) {
@@ -224,7 +291,7 @@ function renderComposer(s) {
   const ol = el('ol', undefined, 'song-list');
   list.forEach((p, i) => {
     const li = el('li'); const n = el('span', String(i + 1), 'idx');
-    const info = el('button', undefined, 'song-main'); info.type = 'button'; info.append(el('strong', p.title), el('span', [p.note, p.skill].filter(Boolean).join(' · '))); info.onclick = () => openLesson(p.id);
+    const info = el('button', undefined, 'song-main'); info.type = 'button'; info.append(el('strong', p.title), el('span', [isCollection(name) ? creditLine(p) : '', p.note, p.skill].filter(Boolean).join(' · '))); info.onclick = () => openLesson(p.id);
     const lv = el('span', 'Level ' + p.level, 'pill quiet');
     const acts = el('span', undefined, 'song-actions');
     if (!p.reference) { const play = el('button', 'Play', 'play'); play.setAttribute('aria-label', `Practice ${p.full}`); play.onclick = () => practicePiece(p.id); acts.append(play); }
@@ -237,7 +304,7 @@ function showLibrary(sub, arg) {
   const parts = { browse: $('.lib-browse'), composer: $('.lib-composer'), piece: $('.lib-piece') };
   const which = sub === 'composer' ? 'composer' : sub === 'piece' ? 'piece' : 'browse';
   for (const [k, n] of Object.entries(parts)) n.hidden = k !== which;
-  if (which === 'browse') renderBrowse();
+  if (which === 'browse') renderBrowse(sub === 'level' ? { level: Number(arg) } : sub === 'shelf' ? { shelf: arg } : {});
   if (which === 'composer') renderComposer(arg);
   if (which === 'piece') renderPieceArt();
 }
