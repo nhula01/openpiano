@@ -7,7 +7,7 @@ Anyone can import their own MusicXML or MIDI scores and keep them private.
 - **Library** — about 525 complete pieces: piano classics from Bach to Rachmaninoff, symphony and
   opera themes for piano, carols, hymns, folk and children’s songs, ragtime — each with source, transcriber and
   license on every score. Printed fingerings only; none are generated.
-- **Practice** — waiting sheet or moving score, both hands, MIDI or microphone input.
+- **Practice** — Follow me pauses the moving score until the correct note; sheet and timed modes are also available. One Start button uses the microphone by default, with MIDI for both hands.
 - **Skills** — 35 short units, key and chord lab, first-reading miniatures.
 - **My songs** — add MusicXML or MIDI, check it and fix wrong notes, then practice; private to your browser, or to
   your account when signed in.

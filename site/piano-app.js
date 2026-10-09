@@ -343,13 +343,14 @@ function arrangePractice() {
   const stage = el('div', undefined, 'stage');
   const stageTop = el('div', undefined, 'stage-top'); if (feedback) stageTop.append(feedback); if (pager) stageTop.append(pager);
   stage.append(stageTop, score); if (keyboard) stage.append(keyboard);
-  const deck = el('div', undefined, 'stage-deck'); if (inputs) deck.append(inputs); if (device) deck.append(device); stage.append(deck);
+  const deck = el('div', undefined, 'stage-deck'); if (inputs) deck.append(inputs); const inputHint = $('.practice-input-hint', root); if (inputHint) deck.append(inputHint); if (device) deck.append(device); stage.insertBefore(deck, score);
   const meter = el('div', undefined, 'stage-meter'); if (progress) meter.append(progress); if (counts) meter.append(counts); stage.append(meter);
   const more = el('details', undefined, 'fold practice-more'); more.append(el('summary', 'Practice settings, sources and help'));
   const rest = [...root.children].filter(k => ![eyebrow, h2].includes(k));
   if (intro) intro.classList.add('practice-intro');
   for (const k of rest) more.append(k);
   if (eyebrow) eyebrow.hidden = true; if (h2) h2.hidden = true;
+  const partControl = $('#practice-part-control', root); if (partControl) more.insertBefore(partControl, more.children[1] || null);
   root.append(head, bar, stage, more);
   if (sheet) sheet.open = false;
   syncPracticeTitle();

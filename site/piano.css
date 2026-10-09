@@ -454,3 +454,24 @@ button.small{min-height:34px;padding:5px 12px;font-size:13px}
 .shelf-more:hover{text-decoration:underline}
 .shelf .back{display:inline-block;margin-bottom:10px}
 .composer.collection .portrait .monogram{font-size:34px}
+
+/* Clear, compact live practice controls. */
+.practice-actions{gap:10px;align-items:center}
+.practice-actions button{font-size:15px;padding:11px 19px;min-height:44px;border-radius:12px}
+.practice-actions .secondary{background:transparent;border:1px solid var(--line);color:var(--ink)}
+.practice-input-hint{font-size:13px;color:var(--muted);margin:10px 0 0;max-width:65ch}
+.stage-deck{padding:16px 20px}
+.practice-bar .trainer-controls{gap:12px}
+@media(max-width:600px){.practice-actions{display:flex;flex-wrap:nowrap}.practice-actions button{padding:10px 13px}.practice-actions #practice-start{flex:1}.mode-row label{min-width:0;flex:1 1 140px}}
+
+.practice-bar .mode-row{grid-template-columns:minmax(0,1fr) minmax(0,1.5fr) minmax(90px,.55fr)}
+.stage .practice-actions .secondary{color:#fff;border-color:#68616f;background:transparent}
+.stage .practice-actions .secondary:hover{background:#38333e;border-color:#fff}
+.stage .practice-input-hint{color:#c9c3d0;flex-basis:100%;margin:0 0 8px}
+.stage-deck{align-items:center;padding:4px 0 12px}
+.practice-actions{margin:0}
+@media(max-width:600px){.practice-bar .mode-row{grid-template-columns:1fr 1fr}.practice-bar .mode-row label:nth-child(3){grid-column:1/-1}}
+
+.practice-bar .trainer-controls:not(.mode-row){grid-template-columns:minmax(0,1fr) auto}
+.practice-more #practice-part-control{max-width:420px;margin-top:14px}
+@media(max-width:600px){.practice-bar .trainer-controls:not(.mode-row){grid-template-columns:1fr}.practice-bar .add-own-song{justify-self:start}}

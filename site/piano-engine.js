@@ -42,5 +42,10 @@ class TimedMatcher {
  input(midi,on,seconds){if(!on){this.held.delete(midi);return 'release';}if(this.held.has(midi))return 'held';this.held.add(midi);this.advance(seconds);let best=-1,distance=Infinity;this.events.forEach((e,i)=>{const d=Math.abs(seconds-this.due(i));if(this.states[i]==='pending'&&e.notes.includes(midi)&&!this.hits[i].has(midi)&&d<=this.window&&d<distance){best=i;distance=d;}});if(best<0){this.errors++;return 'wrong';}this.hits[best].add(midi);if(this.events[best].notes.every(n=>this.hits[best].has(n)))this.states[best]='hit';return this.states[best]==='hit'?'correct':'partial';}
  result(){const hit=this.states.filter(s=>s==='hit').length,missed=this.states.filter(s=>s==='missed').length,total=this.events.length;return {hit,missed,total,errors:this.errors,accuracy:Math.floor(100*hit/(total+this.errors)),complete:hit+missed===total};}
 }
-const api={noteName,pitch,parseMidi,groups,editorialFingering,Matcher,TimedMatcher};if(typeof module!=='undefined')module.exports=api;else root.PianoEngine=api;
+// A guided clock can reach the next unplayed onset, but can never pass it.
+class GuidedClock {
+ constructor(events,bpm,first,now=0){this.events=events;this.bpm=bpm;this.beat=first;this.last=now;}
+ advance(now,index){const elapsed=Math.max(0,now-this.last);this.last=now;const target=this.events[index]?.beat??this.beat;this.beat=Math.min(target,this.beat+elapsed*this.bpm/60);return this.beat;}
+}
+const api={noteName,pitch,parseMidi,groups,editorialFingering,Matcher,TimedMatcher,GuidedClock};if(typeof module!=='undefined')module.exports=api;else root.PianoEngine=api;
 })(typeof window!=='undefined'?window:globalThis);
