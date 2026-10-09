@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="OpenPiano is a free piano studio: learn complete pieces by composer, build skills level by level, import your own scores and practice with a MIDI keyboard or microphone."><meta name="theme-color" content="#a3263b"><title>OpenPiano · Free piano practice</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&display=swap"><link rel="stylesheet" href="verovio-text.css?v=3a9d66f0e6ed"><link rel="stylesheet" href="piano.css?v=935ca397303d"><script src="piano-engine.js?v=9c8b4253ef13" defer></script><script src="piano-repertoire.js?v=ea5988da9d7c" defer></script><script src="piano-library.js?v=b40ec30ada0e" defer></script><script src="piano-additions.js?v=8ea172da2e06" defer></script><script src="piano-famous.js?v=d57a8c5bdd4e" defer></script><script src="piano-pdmx.js?v=4a0d367693f2" defer></script><script src="piano-collection.js?v=2e53a18a84b7" defer></script><script src="piano-studies.js?v=7b93e663cb60" defer></script><script src="piano-skills.js?v=f2d1d384a919" defer></script><script src="piano-curriculum.js?v=1b81a61ace7d" defer></script><script src="piano-engraving.js?v=53e059302927" defer></script><script src="piano-score-view.js?v=e85a3e25b79d" defer></script><script src="piano-grand.js?v=dd6222613d99" defer></script><script src="piano-fingering.js?v=7dc2cd7eb76c" defer></script><script src="piano-import-engine.js?v=134eb07f167a" defer></script><script src="piano-player.js?v=3e999a4149e6" defer></script><script src="piano-course.js?v=ece2a4bc7ca5" defer></script><script src="piano-skill-studio.js?v=72e864b29b6f" defer></script><script src="piano-import.js?v=c635c28ba36f" defer></script><script src="piano-support.js?v=3dc57cf11f2f" defer></script><script src="piano-app.js?v=778f4b1f3f36" defer></script><script src="piano-cloud-config.js?v=34eee3dcc232" defer></script><script src="piano-score-import.js?v=5aa712741487" defer></script><script src="piano-account.js?v=d0ae66ee6cbe" defer></script></head>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="OpenPiano is a free piano studio: learn complete pieces by composer, build skills level by level, import your own scores and practice with a MIDI keyboard or microphone."><meta name="theme-color" content="#a3263b"><title>OpenPiano · Free piano practice</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&display=swap"><link rel="stylesheet" href="verovio-text.css?v=3a9d66f0e6ed"><link rel="stylesheet" href="piano.css?v=1ae3f692a2fc"><script src="piano-engine.js?v=9c8b4253ef13" defer></script><script src="piano-repertoire.js?v=ea5988da9d7c" defer></script><script src="piano-library.js?v=b40ec30ada0e" defer></script><script src="piano-additions.js?v=8ea172da2e06" defer></script><script src="piano-famous.js?v=d57a8c5bdd4e" defer></script><script src="piano-pdmx.js?v=4a0d367693f2" defer></script><script src="piano-collection.js?v=2e53a18a84b7" defer></script><script src="piano-studies.js?v=7b93e663cb60" defer></script><script src="piano-skills.js?v=f2d1d384a919" defer></script><script src="piano-curriculum.js?v=1b81a61ace7d" defer></script><script src="piano-engraving.js?v=53e059302927" defer></script><script src="piano-score-view.js?v=e85a3e25b79d" defer></script><script src="piano-grand.js?v=dd6222613d99" defer></script><script src="piano-fingering.js?v=7dc2cd7eb76c" defer></script><script src="piano-import-engine.js?v=134eb07f167a" defer></script><script src="piano-player.js?v=3e999a4149e6" defer></script><script src="piano-course.js?v=ece2a4bc7ca5" defer></script><script src="piano-skill-studio.js?v=72e864b29b6f" defer></script><script src="piano-import.js?v=c635c28ba36f" defer></script><script src="piano-support.js?v=3dc57cf11f2f" defer></script><script src="piano-app.js?v=debed2328a43" defer></script><script src="piano-cloud-config.js?v=34eee3dcc232" defer></script><script src="piano-score-import.js?v=5aa712741487" defer></script><script src="piano-account.js?v=d0ae66ee6cbe" defer></script></head>
 <body data-page="piano"><a class="skip" href="#main">Skip to content</a>
 <div class="app">
 <aside class="rail" aria-label="Piano studio">
@@ -65,12 +65,29 @@
  <!-- LIBRARY -->
  <section class="view" data-view="library" aria-labelledby="library-title" hidden>
   <div class="lib-browse" data-sub="browse">
-   <header class="view-head"><h1 id="library-title">Library</h1>
-    <div class="lib-tools"><label class="search"><span class="sr">Find a piece, composer or skill</span><input id="lib-search" type="search" placeholder="Find a piece or composer" autocomplete="off"></label></div>
-   </header>
-   <section aria-labelledby="composers-title"><h2 id="composers-title" class="shelf-title">Composers</h2><div id="composer-row" class="composer-row"></div></section>
-   <div id="level-shelves"></div>
-   <p class="credit">Portraits from Wikimedia Commons, public domain.</p>
+   <section class="lib-card">
+    <header class="lib-head">
+     <div><p class="lib-eyebrow">Piano studio</p><h1 id="library-title">Your music library</h1><p class="lib-lead">Discover, learn, and master your repertoire.</p></div>
+     <svg class="lib-mark" viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="18" r="3"/><path d="M11 18V3c.6 2.6 2.6 4 6 4.6"/></svg>
+    </header>
+    <section id="lib-continue" class="lib-continue" aria-labelledby="continue-title"></section>
+    <section class="lib-explore" aria-labelledby="explore-title">
+     <h2 id="explore-title">Explore pieces</h2>
+     <div class="lib-seg" role="tablist" aria-label="Explore pieces">
+      <button type="button" role="tab" id="tab-recommended" data-lib-tab="recommended" aria-controls="lib-recommended">Recommended</button>
+      <button type="button" role="tab" id="tab-all" data-lib-tab="all" aria-controls="lib-all">All pieces</button>
+      <button type="button" role="tab" id="tab-repertoire" data-lib-tab="repertoire" aria-controls="lib-repertoire">My repertoire</button>
+     </div>
+     <div id="lib-recommended" class="lib-panel" role="tabpanel" aria-labelledby="tab-recommended"><p id="rec-note" class="lib-note"></p><ul id="rec-list" class="piece-rows"></ul></div>
+     <div id="lib-all" class="lib-panel" role="tabpanel" aria-labelledby="tab-all" hidden>
+      <label class="search lib-search"><span class="sr">Find a piece, composer or skill</span><input id="lib-search" type="search" placeholder="Find a piece, composer or skill" autocomplete="off"></label>
+      <section aria-labelledby="composers-title"><h3 id="composers-title" class="shelf-title">Composers</h3><div id="composer-row" class="composer-row"></div></section>
+      <div id="level-shelves"></div>
+      <p class="credit">Portraits from Wikimedia Commons, public domain.</p>
+     </div>
+     <div id="lib-repertoire" class="lib-panel" role="tabpanel" aria-labelledby="tab-repertoire" hidden><ul id="rep-list" class="piece-rows"></ul><p class="lib-note">Songs you added yourself are in <a href="#mine">My songs</a>.</p></div>
+    </section>
+   </section>
   </div>
   <div class="lib-composer" data-sub="composer" hidden><div id="composer-page"></div></div>
   <div class="lib-piece" data-sub="piece" hidden>

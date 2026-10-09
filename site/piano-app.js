@@ -152,7 +152,7 @@ const origScroll = Element.prototype.scrollIntoView;
 Element.prototype.scrollIntoView = function (...args) {
   const id = this.id;
   if (id === 'piece-course') { history.replaceState(null, '', '#library/piece'); apply('library/piece', { noScroll: true }); window.scrollTo(0, 0); return; }
-  if (id === 'piece-library') { const lv = $('#piece-filter')?.value; history.replaceState(null, '', '#library'); apply('library', { noScroll: true }); const shelf = lv && document.getElementById('shelf-' + lv); if (shelf) return origScroll.call(shelf, { block: 'start' }); window.scrollTo(0, 0); return; }
+  if (id === 'piece-library') { const lv = $('#piece-filter')?.value; history.replaceState(null, '', '#library/all'); apply('library/all', { noScroll: true }); const shelf = lv && document.getElementById('shelf-' + lv); if (shelf) return origScroll.call(shelf, { block: 'start' }); window.scrollTo(0, 0); return; }
   const view = this.closest?.('.view');
   if (view && view.hidden) { history.replaceState(null, '', '#' + view.dataset.view); apply(view.dataset.view, { noScroll: true }); }
   return origScroll.apply(this, args);
@@ -233,10 +233,12 @@ function renderBrowse(filter = {}) {
   const order = ['Folk songs', 'Christmas carols', 'Hymns & spirituals', 'Children’s songs', 'Early American songs'];
   const names = [...byComposer.keys()].sort((a, b) => (isCollection(a) - isCollection(b)) || (byComposer.get(b).length - byComposer.get(a).length) || lastName(a).localeCompare(lastName(b)));
   names.sort((a, b) => (isCollection(b) - isCollection(a)) || (isCollection(a) ? order.indexOf(a) - order.indexOf(b) : 0));
-  const match = p => !term || [p.full, p.composer, p.credit, p.skill, p.pattern, p.shelf].join(' ').toLowerCase().includes(term);
+  // Every word must appear somewhere: "chopin noct" finds Chopin's nocturnes.
+  const words = term.split(/\s+/).filter(Boolean), fold = t => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const match = p => { const hay = fold([p.full, p.composer, p.credit, p.skill, p.pattern, p.shelf].join(' ')); return words.every(w => hay.includes(fold(w))); };
   const composerRow = row.closest('section'); if (composerRow) composerRow.hidden = !!(filter.level || filter.shelf);
   for (const name of names) {
-    const list = byComposer.get(name); if (term && !list.some(match) && !name.toLowerCase().includes(term)) continue;
+    const list = byComposer.get(name); if (term && !list.some(match) && !fold(name).includes(fold(term))) continue;
     const a = el('a', undefined, 'composer' + (isCollection(name) ? ' collection' : '')); a.href = '#library/composer/' + slug(name);
     a.append(portrait(name, 'round'), el('strong', lastName(name)), el('span', `${list.length} ${list.length === 1 ? 'piece' : 'pieces'}`));
     row.append(a);
@@ -253,7 +255,7 @@ function renderBrowse(filter = {}) {
   if (filter.level || filter.shelf) {
     const g = GENRES.find(g => slug(g[0]) === filter.shelf);
     const list = filter.level ? pieces.filter(p => p.level === filter.level) : pieces.filter(p => g && p.shelf === g[0]);
-    const back = el('a', 'Library', 'back'); back.href = '#library';
+    const back = el('a', 'All pieces', 'back'); back.href = '#library/all';
     const name = filter.level ? levelName(filter.level) : { name: g?.[1] || 'Pieces', sub: g?.[2] || '' };
     const h = el('h2', undefined, 'shelf-title'); if (filter.level) h.append(el('span', String(filter.level), 'lvl-num')); h.append(document.createTextNode(name.name));
     const sec = el('section', undefined, 'shelf'); const head = el('div', undefined, 'shelf-head'); head.append(h, el('p', `${name.sub ? name.sub + ' · ' : ''}${list.length} pieces`, 'shelf-sub'));
@@ -300,11 +302,190 @@ function renderComposer(s) {
   });
   page.append(back, hero, ol);
 }
+// ---------- Library home: continue learning, recommendations, your repertoire ----------
+const LIB_TABS = ['recommended', 'all', 'repertoire'], TAB_KEY = 'openpiano-library-tab', PASS_KEY = 'journey-note-passes-v1';
+const savedTab = () => { try { const t = localStorage.getItem(TAB_KEY); return LIB_TABS.includes(t) ? t : 'recommended'; } catch { return 'recommended'; } };
+function setTab(tab) {
+  for (const b of document.querySelectorAll('[data-lib-tab]')) { const on = b.dataset.libTab === tab; b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; }
+  for (const t of LIB_TABS) { const panel = $('#lib-' + t); if (panel) panel.hidden = t !== tab; }
+  try { localStorage.setItem(TAB_KEY, tab); } catch {}
+}
+function wireTabs() {
+  const tabs = [...document.querySelectorAll('[data-lib-tab]')];
+  for (const b of tabs) {
+    b.onclick = () => go('library/' + b.dataset.libTab);
+    b.onkeydown = e => {
+      const i = tabs.indexOf(b), j = e.key === 'ArrowRight' ? (i + 1) % tabs.length : e.key === 'ArrowLeft' ? (i + tabs.length - 1) % tabs.length : e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : -1;
+      if (j < 0) return; e.preventDefault(); tabs[j].focus(); tabs[j].click();
+    };
+  }
+}
+
+// What the player has recorded: note-matching passes per piece, part and practice block.
+const handOf = v => v === 'all' ? 'BH' : (/^left/.test(v) || v === 'bass') ? 'LH' : (/^right/.test(v) || v === 'melody') ? 'RH' : '';
+function practiceLog() {
+  const out = {};
+  for (const [key, v] of Object.entries(read(PASS_KEY))) {
+    const parts = key.split(':'); if (parts.at(-1) === 'timed') parts.pop();
+    if (parts.length < 3) continue;
+    const section = parts.pop(), hand = handOf(parts.pop()), id = parts.join(':');
+    const e = out[id] || (out[id] = { last: 0, sections: {} });
+    e.last = Math.max(e.last, Date.parse(v?.date) || 0);
+    if (hand) (e.sections[section] || (e.sections[section] = {}))[hand] = true;
+  }
+  // Lesson self-checks also mean a piece is under way.
+  const checks = read(PATH_KEY).checks || {};
+  for (const [k, on] of Object.entries(checks)) { const id = k.slice(0, k.lastIndexOf(':')); if (on === true && !out[id]) out[id] = { last: 0, sections: {} }; }
+  return out;
+}
+// The piece the Continue card shows: the one practiced last, else the one picked in a lesson, else the first piece.
+function continuePiece(log) {
+  const sel = read(PATH_KEY).selected;
+  return startedPieces(log)[0] || pieces.find(p => p.id === sel) || pieces.find(p => p.id === 'ode') || pieces[0];
+}
+function startedPieces(log = practiceLog()) {
+  return pieces.filter(p => log[p.id]).sort((a, b) => log[b.id].last - log[a.id].last);
+}
+// Practice blocks of a score (eight bars each), read from its data file once.
+const scoreInfoCache = new Map();
+function scoreInfo(id) {
+  const r = (window.PianoRepertoire || {})[id];
+  if (!r) return Promise.resolve(null);
+  if (r.sections) return Promise.resolve(r);
+  if (!scoreInfoCache.has(id)) scoreInfoCache.set(id, (async () => {
+    try {
+      const res = await fetch(r.dataURL); if (!res.ok) return null;
+      const d = r.dataURL.split('?')[0].endsWith('.gz') ? JSON.parse(await new Response(res.body.pipeThrough(new DecompressionStream('gzip'))).text()) : await res.json();
+      return { sections: d.sections || [], beatsPerMeasure: d.beatsPerMeasure || 4 };
+    } catch { return null; }
+  })());
+  return scoreInfoCache.get(id);
+}
+const HAND_TEXT = { RH: 'Right hand', LH: 'Left hand', BH: 'Hands together' };
+// Each block is learned right hand, then left hand, then hands together.
+function studyPlan(info, entry) {
+  const done = entry?.sections || {}, full = done.full || {}, meter = info?.beatsPerMeasure || 4;
+  const blocks = (info?.sections || []).filter(s => /^block-/.test(s.id));
+  const worth = d => full.BH || d.BH ? 1 : d.RH && d.LH ? .75 : d.RH || d.LH ? .35 : 0;
+  if (!blocks.length) return { progress: worth(full), next: full.BH ? null : { bars: 'Full piece', hand: !full.RH ? 'RH' : !full.LH ? 'LH' : 'BH' } };
+  let total = 0, next = null;
+  for (const b of blocks) {
+    const d = done[b.id] || {}, w = worth(d); total += w;
+    if (!next && w < 1) next = { block: b.id, bars: `Bars ${Math.floor(b.start / meter) + 1}–${Math.max(Math.floor(b.start / meter) + 1, Math.ceil(b.end / meter))}`, hand: !d.RH ? 'RH' : !d.LH ? 'LH' : 'BH' };
+  }
+  if (!next && !full.BH) next = { bars: 'Full piece', hand: 'BH' };
+  return { progress: full.BH ? 1 : total / blocks.length, next };
+}
+// Open the piece in Practice on the block and hand that come next.
+function continuePractice(p, next) {
+  practicePiece(p.id);
+  if (!next) return;
+  let tries = 0;
+  const timer = setInterval(() => {
+    const section = $('#trainer-section'), hands = $('#practice-hands');
+    const ready = section && (!next.block || [...section.options].some(o => o.value === next.block)) && $('#trainer-song')?.value === p.id;
+    if (!ready) { if (++tries > 40) clearInterval(timer); return; }
+    clearInterval(timer);
+    if (next.block && section.value !== next.block) { section.value = next.block; section.dispatchEvent(new Event('change', { bubbles: true })); }
+    if (hands && hands.value !== next.hand && [...hands.options].some(o => o.value === next.hand)) { hands.value = next.hand; hands.dispatchEvent(new Event('change', { bubbles: true })); }
+  }, 150);
+}
+
+const svgIcon = (d, cls) => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('aria-hidden', 'true'); if (cls) s.setAttribute('class', cls); s.innerHTML = d; return s; };
+const ICON_BOOK = '<path d="M3 5.5c3-1.3 6-1.3 9 .8 3-2.1 6-2.1 9-.8v13c-3-1.3-6-1.3-9 .8-3-2.1-6-2.1-9-.8z"/><path d="M12 6.3v13"/>';
+const ICON_NOTES = '<path d="M9 17.5V6l11-2v11.5"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="15.5" r="2.5"/>';
+const ICON_CHEVRON = '<path d="m9 5 7 7-7 7"/>';
+const ICON_ARROW = '<path d="M5 12h14M13 6l6 6-6 6"/>';
+const composerLine = p => isCollection(p.composer) ? creditLine(p) : p.composer;
+const ago = ms => { if (!ms) return ''; const d = Math.round((Date.now() - ms) / 864e5); return d <= 0 ? 'Practiced today' : d === 1 ? 'Practiced yesterday' : d < 30 ? `Practiced ${d} days ago` : 'Practiced ' + new Date(ms).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); };
+
+let continueStamp = 0;
+function renderContinue() {
+  const box = $('#lib-continue'); if (!box || !pieces.length) return;
+  const log = practiceLog(), chosen = continuePiece(log);
+  if (!chosen) { box.hidden = true; return; }
+  box.hidden = false;
+  const inProgress = !!log[chosen.id], stamp = ++continueStamp;
+  const head = el('div', undefined, 'lib-continue-head');
+  head.append(el('h2', inProgress ? 'Continue learning' : 'Start learning', undefined), el('span', inProgress ? 'In progress' : 'Start here', 'lib-status'));
+  head.firstChild.id = 'continue-title';
+  const row = el('div', undefined, 'lib-continue-row');
+  const icon = el('span', undefined, 'lib-icon'); icon.append(svgIcon(ICON_BOOK));
+  const body = el('div', undefined, 'lib-continue-body');
+  const focus = el('p', chosen.reference ? 'Open the lesson to begin' : 'Next focus: …', 'lib-focus');
+  const bar = el('div', undefined, 'lib-progress'); bar.setAttribute('role', 'progressbar'); bar.setAttribute('aria-label', `${chosen.title} progress`); bar.setAttribute('aria-valuemin', '0'); bar.setAttribute('aria-valuemax', '100');
+  const fill = el('span'); bar.append(fill);
+  const setProgress = v => { const pct = Math.round(v * 100); fill.style.width = pct + '%'; bar.setAttribute('aria-valuenow', String(pct)); bar.setAttribute('aria-valuetext', pct + '% of practice blocks passed'); };
+  setProgress(0);
+  body.append(el('h3', chosen.title), focus, bar);
+  row.append(icon, body);
+  const btn = el('button', undefined, 'lib-cta'); btn.type = 'button';
+  btn.append(document.createTextNode(chosen.reference ? 'Open lesson' : inProgress ? 'Continue practicing' : 'Start practicing'), svgIcon(ICON_ARROW));
+  let plan = null;
+  btn.onclick = () => chosen.reference ? openLesson(chosen.id) : continuePractice(chosen, plan?.next);
+  box.replaceChildren(head, row, btn);
+  if (chosen.reference) return;
+  scoreInfo(chosen.id).then(info => {
+    if (stamp !== continueStamp) return;
+    plan = studyPlan(info, log[chosen.id]); setProgress(plan.progress);
+    focus.textContent = plan.next ? `Next focus: ${plan.next.bars} · ${HAND_TEXT[plan.next.hand]}` : 'Every block passed · play it through for polish';
+  });
+}
+
+function pieceRow(p, extra) {
+  const li = el('li'), b = el('button', undefined, 'piece-row'); b.type = 'button';
+  b.setAttribute('aria-label', `${p.full} by ${composerLine(p)}, level ${p.level}. Open lesson.`);
+  const icon = el('span', undefined, 'piece-row-icon'); icon.append(svgIcon(ICON_NOTES));
+  const body = el('span', undefined, 'piece-row-body');
+  body.append(el('strong', p.title), el('span', composerLine(p), 'piece-row-sub'));
+  const chips = el('span', undefined, 'chips'); chips.append(el('span', levelName(p.level).name, 'chip'));
+  if (p.skill) chips.append(el('span', p.skill, 'chip'));
+  body.append(chips);
+  if (extra) body.append(el('span', extra, 'piece-row-extra'));
+  b.append(icon, body, svgIcon(ICON_CHEVRON, 'piece-row-go'));
+  b.onclick = () => openLesson(p.id);
+  li.append(b); return li;
+}
+function renderRecommended() {
+  const list = $('#rec-list'), note = $('#rec-note'); if (!list) return;
+  const log = practiceLog(), current = continuePiece(log);
+  const level = current?.level || 1, rank = id => { const i = FAMOUS.indexOf(id); return i < 0 ? 999 : i; };
+  const fresh = p => !p.reference && !log[p.id] && p.id !== current?.id;
+  const order = (a, b) => (rank(a.id) - rank(b.id)) || (!!a.collection - !!b.collection) || a.title.localeCompare(b.title);
+  const here = pieces.filter(p => fresh(p) && p.level === level).sort(order);
+  const up = pieces.filter(p => fresh(p) && p.level === level + 1).sort(order);
+  const picks = [...here.slice(0, 5), ...up.slice(0, 3)];
+  for (const p of [...here.slice(5), ...up.slice(3)]) { if (picks.length >= 8) break; picks.push(p); }
+  const lv = levelName(level);
+  note.textContent = `Picked for level ${level} · ${lv.name}${up.length ? ', with a step up' : ''}.`;
+  list.replaceChildren(...picks.map(p => pieceRow(p)));
+}
+function renderRepertoire() {
+  const list = $('#rep-list'); if (!list) return;
+  const log = practiceLog(), started = startedPieces(log);
+  if (!started.length) {
+    const li = el('li', undefined, 'lib-empty');
+    li.append(el('strong', 'Nothing here yet'), el('span', 'Pieces you practice or check off in a lesson appear here, most recent first.'));
+    list.replaceChildren(li); return;
+  }
+  list.replaceChildren(...started.map(p => {
+    const blocks = Object.entries(log[p.id].sections).filter(([k, d]) => /^block-/.test(k) && d.BH).length;
+    const extra = [ago(log[p.id].last), log[p.id].sections.full?.BH ? 'Full piece passed' : blocks ? `${blocks} ${blocks === 1 ? 'block' : 'blocks'} passed hands together` : ''].filter(Boolean).join(' · ');
+    return pieceRow(p, extra || 'Lesson started');
+  }));
+}
 function showLibrary(sub, arg) {
   const parts = { browse: $('.lib-browse'), composer: $('.lib-composer'), piece: $('.lib-piece') };
   const which = sub === 'composer' ? 'composer' : sub === 'piece' ? 'piece' : 'browse';
   for (const [k, n] of Object.entries(parts)) n.hidden = k !== which;
-  if (which === 'browse') renderBrowse(sub === 'level' ? { level: Number(arg) } : sub === 'shelf' ? { shelf: arg } : {});
+  if (which === 'browse') {
+    const tab = ['level', 'shelf', 'all'].includes(sub) ? 'all' : LIB_TABS.includes(sub) ? sub : savedTab();
+    setTab(tab); renderContinue();
+    if ((sub === 'level' || sub === 'shelf') && $('#lib-search')) $('#lib-search').value = '';
+    if (tab === 'all') renderBrowse(sub === 'level' ? { level: Number(arg) } : sub === 'shelf' ? { shelf: arg } : {});
+    if (tab === 'recommended') renderRecommended();
+    if (tab === 'repertoire') renderRepertoire();
+  }
   if (which === 'composer') renderComposer(arg);
   if (which === 'piece') renderPieceArt();
 }
@@ -378,9 +559,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const path = $('#level-path'), slot = $('#level-slot'); if (path && slot) slot.append(path);
   arrangePractice();
   wireMetronome(); wireToast();
-  $('#lib-search')?.addEventListener('input', renderBrowse);
+  $('#lib-search')?.addEventListener('input', () => renderBrowse());
+  wireTabs();
+  const refreshLibrary = () => { if (document.body.dataset.view === 'library' && !$('.lib-browse').hidden) showLibrary(current.split('/')[1] || '', decodeURIComponent(current.split('/')[2] || '')); };
+  window.addEventListener('piano-progress-changed', refreshLibrary);
   document.addEventListener('change', e => { if (e.target.matches('input[type=checkbox]') && document.body.dataset.view === 'home') renderRange(); });
-  window.addEventListener('storage', () => { if (document.body.dataset.view === 'home') renderHome(); });
+  window.addEventListener('storage', () => { if (document.body.dataset.view === 'home') renderHome(); refreshLibrary(); });
   apply(location.hash.slice(1) || 'home', { noScroll: true });
 });
 })();
