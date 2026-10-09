@@ -78,20 +78,19 @@ function paint(){const p=P();if(!p?.setMarks)return;let marks=[];const v=view();
  const layer=state.layers.find(l=>l.id===applied());if(layer)marks=marks.concat(toMarks(layer.notes,'layer',layer.author));p.setMarks(marks);syncButtons();drawPill();}
 
 // ---------- Stage controls: the Add-ons button, the draft bar over the sheet and the + on a picked note ----------
-let addonsButton,panel,editor,viewer,pill,plus;
+let addonsButton,badge,panel,editor,viewer,plus;
 function mount(){const deck=document.querySelector('.sg-deck');if(!deck||addonsButton)return!!addonsButton;const gear=deck.querySelector('.sg-more');
- addonsButton=el('button',undefined,'sg-tog addon-open');addonsButton.type='button';addonsButton.append(icon(LAYERS),el('span','Add-ons'));addonsButton.title='Add-ons: your draft and the most helpful community add-ons for this piece';addonsButton.setAttribute('aria-expanded','false');
+ addonsButton=el('button',undefined,'sg-tog addon-open');addonsButton.type='button';badge=el('span','','addon-badge');badge.hidden=true;badge.setAttribute('aria-hidden','true');addonsButton.append(icon(LAYERS),el('span','Add-ons'),badge);addonsButton.title='Add-ons: your draft and the most helpful community add-ons for this piece';addonsButton.setAttribute('aria-expanded','false');
  addonsButton.onclick=e=>{e.stopPropagation();togglePanel();};
  deck.insertBefore(addonsButton,gear);
  panel=el('div',undefined,'addon-panel');panel.hidden=true;panel.setAttribute('role','dialog');panel.setAttribute('aria-label','Add-ons');document.body.append(panel);
- pill=el('div',undefined,'addon-pill');pill.hidden=true;pill.setAttribute('role','status');document.querySelector('.sg-sheet')?.append(pill);
  plus=el('button','+','addon-plus');plus.type='button';plus.hidden=true;plus.onclick=e=>{e.stopPropagation();const d=plus.detail;hidePlus();if(d)openEditor({...d,rect:noteRect(d)||plus.getBoundingClientRect()});};document.body.append(plus);
  // The path is taken when the click starts, so a panel that redraws itself on click still counts as inside.
  document.addEventListener('click',e=>{const path=e.composedPath(),onNote=!!e.target.closest?.('.score-note')||performance.now()-pickedAt<80;if(!panel.hidden&&!path.includes(panel)&&!path.includes(addonsButton))togglePanel(false);if(editor&&!path.includes(editor)&&!onNote)closeEditor();if(viewer&&!path.includes(viewer)&&!e.target.closest?.('.addon-mark'))closeViewer();if(!onNote&&!path.includes(plus))hidePlus();});
  document.addEventListener('keydown',e=>{if(e.key==='Escape'){togglePanel(false);closeEditor();closeViewer();hidePlus();}});
  return true;}
 function syncButtons(){if(!addonsButton)return;const lib=library().has(state.piece);addonsButton.disabled=!lib;
- const layer=state.layers.find(l=>l.id===applied());addonsButton.querySelector('span').textContent=layer?`Add-ons · ${layer.author}`:'Add-ons';addonsButton.setAttribute('aria-pressed',String(!!layer));}
+ const layer=state.layers.find(l=>l.id===applied());addonsButton.querySelector('span:not(.addon-badge)').textContent=layer?`Add-ons · ${layer.author}`:'Add-ons';addonsButton.setAttribute('aria-pressed',String(!!layer));}
 function toast(text){const t=document.querySelector('.sg-toast');if(!t)return;t.textContent=text;t.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>t.classList.remove('show'),2400);}
 function togglePanel(force){const open=force??panel.hidden;panel.hidden=!open;addonsButton.setAttribute('aria-expanded',String(open));if(open){closeEditor();hidePlus();render();placePanel();if(!state.loading)load();}}
 // The panel opens above the Add-ons button and always stays inside the window.
@@ -111,12 +110,10 @@ async function moveDevice(){const v=view();await saveDraft(v.draft);saveDevice([
 function needSignIn(){state.error=state.unavailable?'Publishing add-ons is not switched on yet. Your draft is kept on this device for now.':backend()?.signedIn?.()?'Set up your profile name to publish your add-on.':'Sign in to publish your add-on. Your draft stays on this device until then.';togglePanel(true);}
 const pendingText=v=>v.published?plural(v.pending,'unpublished change'):plural(v.pending,'note');
 
-// The draft bar sits over the sheet while the draft has something to publish.
-function drawPill(){if(!pill)return;const v=view();pill.hidden=!v.pending||!library().has(state.piece)||!showMine();if(pill.hidden)return;pill.replaceChildren();
- const label=el('span',undefined,'addon-pill-label');label.append(el('strong','Your draft'),el('span',pendingText(v)+(!canSync()?' · this device':'')));pill.append(label);
- if(!canSync())pill.append(btn('Publish','addon-primary',needSignIn));
- else pill.append(confirmBtn(v.published?'Publish update':'Publish','Publish to everyone?','addon-primary',publish));
- pill.append(confirmBtn('Discard',v.published?'Discard changes?':'Discard draft?','addon-chip',discard));}
+// Nothing sits over the sheet: a small count on the Add-ons button says the draft has something
+// unpublished, and Publish / Discard live in the Add-ons panel. Keeping a draft unpublished is fine.
+function drawPill(){if(!badge)return;const v=view(),n=library().has(state.piece)?v.pending:0;badge.hidden=!n;badge.textContent=n>99?'99+':String(n);
+ addonsButton.title=n?`Add-ons · your draft has ${pendingText(v)} (only you see it)`:'Add-ons: your draft and the most helpful community add-ons for this piece';}
 
 function render(){if(!panel||panel.hidden)return;const be=backend(),signed=!!be?.signedIn?.(),p=P(),title=(p?.score?.title||'').replace(/ · (complete|full piece|learning arrangement|theme arrangement)$/i,'');
  panel.replaceChildren();requestAnimationFrame(placePanel);const head=el('div',undefined,'addon-head');head.append(el('h2','Add-ons'),el('span',title,'addon-piece'));panel.append(head);

@@ -1,6 +1,7 @@
 'use strict';
 // Note comments belong to a built-in repertoire piece. New roots are private until
 // their author reveals them; public notes can be copied into another account.
+// Anyone signed in can also post a public comment about the piece, about anything (no note needed).
 // (Whole-piece add-ons, with a draft and a published copy, live in piano-addons.js on the Practice page.)
 (() => {
 const $=s=>document.querySelector(s);
@@ -27,10 +28,12 @@ function openAddon(p){
 function composerForm(post=null,parent=null){
  const profile=window.PianoProfiles?.current();
  if(!profile){const prompt=el('div',undefined,'comment-profile-prompt'),a=el('a','Set up your profile to add a note');a.href='#profile';prompt.append(a);return prompt;}
+ if(!post&&!parent&&selectedAnchor?.note_beat==null)return generalForm(profile);
+ const general=post&&post.note_beat==null;
  const f=el('form',undefined,'community-form addon-composer');
  const top=el('div',undefined,'comment-composer-identity');top.append(window.PianoProfiles.identity(profile,profile.name));const edit=el('a','Edit profile');edit.href='#profile';top.append(edit);f.append(top);
  const anchor=post||selectedAnchor;
- if(!parent){
+ if(!parent&&!general){
   const selected=el('div',undefined,'addon-selected');
   if(anchor?.note_beat!=null)selected.append(anchorChip(anchor));
   else{selected.append(el('span','Choose a note in the practice score first.','muted'));const choose=el('a','Open score');choose.href='#practice';choose.onclick=()=>setTimeout(()=>window.dispatchEvent(new CustomEvent('piano-select-score',{detail:piece})),0);selected.append(choose);}
@@ -44,17 +47,31 @@ function composerForm(post=null,parent=null){
  const showDetail=()=>{detail.hidden=kind.value!=='fingering';fingers.required=!detail.hidden;};kind.onchange=showDetail;
  if(post){kind.value=post.kind;kind.disabled=true;body.value=post.body;hand.value=post.hand;fingers.value=post.fingers;}
  showDetail();
- if(!parent)f.append(kindLabel,detail);f.append(bodyLabel);
+ if(!parent&&!general)f.append(kindLabel,detail);f.append(bodyLabel);
  if(parent)f.append(el('p','Replies are public under your profile name.','muted'));
  else f.append(el('p',post?'Editing keeps the current visibility.':'Saved privately first. You choose Reveal when it is ready for everyone.','muted'));
- const submit=el('button',post?'Save changes':parent?'Reply':'Save note');submit.type='submit';submit.disabled=!parent&&anchor?.note_beat==null;f.append(submit);
+ const submit=el('button',post?'Save changes':parent?'Reply':'Save note');submit.type='submit';submit.disabled=!parent&&!general&&anchor?.note_beat==null;f.append(submit);
  if(post||parent)f.append(button('Cancel',()=>f.remove()));
  const profileId=profile.id;
  f.onsubmit=e=>{e.preventDefault();if(!signed()){needSignIn();return;}if(profileId!==window.PianoProfiles?.current()?.id){say('Your account changed. Reopen the composer.',true);return;}if(!f.reportValidity())return;const target=piece,epoch=generation;action(submit,async()=>{
   const chosen=post||selectedAnchor;
-  await rpc('community_write',{p_piece:target,p_alias:'',p_body:body.value.trim(),p_kind:parent?'comment':kind.value,p_bars:chosen?.note_beat!=null?anchorText({...chosen,hand:hand.value}):'',p_hand:parent?'BH':hand.value,p_fingers:kind.value==='fingering'?fingers.value.trim():'',p_parent:parent?.id||post?.parent||null,p_id:post?.id||null,p_publish:!!parent,p_note_beat:parent?null:Number(chosen.note_beat),p_note_midi:parent?null:Number(chosen.note_midi),p_visibility:parent?'public':'private'});
+  await rpc('community_write',{p_piece:target,p_alias:'',p_body:body.value.trim(),p_kind:parent?'comment':kind.value,p_bars:chosen?.note_beat!=null?anchorText({...chosen,hand:hand.value}):'',p_hand:parent?'BH':hand.value,p_fingers:kind.value==='fingering'?fingers.value.trim():'',p_parent:parent?.id||post?.parent||null,p_id:post?.id||null,p_publish:!!parent,p_note_beat:parent||chosen?.note_beat==null?null:Number(chosen.note_beat),p_note_midi:parent||chosen?.note_beat==null?null:Number(chosen.note_midi),p_visibility:parent?'public':'private'});
   if(epoch!==generation)return;if(post||parent)f.remove();else{body.value='';fingers.value='';}await load();say(parent?'Reply published.':'Note saved privately. Reveal it when you want to share.');
  });};return f;
+}
+// A public comment about the piece: questions, tips, anything. No note needed.
+function generalForm(profile){
+ const f=el('form',undefined,'community-form general-composer');
+ const top=el('div',undefined,'comment-composer-identity');top.append(window.PianoProfiles.identity(profile,profile.name));const edit=el('a','Edit profile');edit.href='#profile';top.append(edit);f.append(top);
+ const [label,body]=field('Write a comment','textarea',4000);body.required=true;body.rows=3;body.placeholder='Ask a question, share a tip, or say how practice is going…';
+ const submit=el('button','Post comment');submit.type='submit';f.append(label,el('p','Comments are public under your profile name. Share your own advice, and be kind.','muted'),submit);
+ const profileId=profile.id;
+ f.onsubmit=e=>{e.preventDefault();if(!signed()){needSignIn();return;}if(profileId!==window.PianoProfiles?.current()?.id){say('Your account changed. Reopen the composer.',true);return;}if(!f.reportValidity())return;const target=piece,epoch=generation;action(submit,async()=>{
+  // Until the database update that allows piece comments is installed, the server asks for a note.
+  try{await rpc('community_write',{p_piece:target,p_alias:'',p_body:body.value.trim(),p_kind:'comment',p_bars:'',p_hand:'BH',p_fingers:'',p_parent:null,p_id:null,p_publish:true,p_note_beat:null,p_note_midi:null,p_visibility:'public'});}catch(err){if(/Choose a note/i.test(err.message))throw new Error('Comments are not switched on yet. Please try again later.');throw err;}
+  if(epoch!==generation)return;body.value='';await load();say('Comment posted.');
+ });};
+ return f;
 }
 function identity(p){const head=el('div',undefined,'community-post-head'),who=window.PianoProfiles?.identity(p.profile,p.alias)||el('strong',p.alias);head.append(who);if(p.bot)head.append(el('span','BOT','bot-badge'));head.append(el('span',new Date(p.created_at||p.saved_at).toLocaleDateString()+(p.edited_at?' · edited':''),'muted'));return head;}
 function reportForm(box,p){if(box.querySelector('.community-report'))return;const f=el('form',undefined,'community-report'),[label,reason]=field('Why are you reporting this?','textarea',500);reason.required=true;const send=el('button','Send report');send.type='submit';f.append(label,send,button('Cancel',()=>f.remove()));f.onsubmit=e=>{e.preventDefault();if(!f.reportValidity())return;action(send,async()=>{await rpc('community_report',{p_post:p.id,p_reason:reason.value.trim()});f.remove();say('Report sent privately to the maintainer.');});};box.append(f);}
@@ -67,49 +84,51 @@ function card(p,{reply=false,personal=false,snapshot=false}={}){
  const actions=el('div',undefined,'actions community-actions');
  if(snapshot){const remove=button('Remove',()=>action(remove,async()=>{await rpc('community_save_addon',{p_post:p.source_post||p.id,p_on:false});await load();say('Removed from your repertoire.');}));actions.append(button('Open note',()=>openAddon(p)),remove);}
  else if(personal){
-  actions.append(button('Open note',()=>openAddon(p)));
+  if(p.note_beat!=null)actions.append(button('Open note',()=>openAddon(p)));
   const reveal=button(p.visibility==='public'?'Make private':'Reveal',()=>action(reveal,async()=>{await rpc('community_reveal',{p_post:p.id,p_public:p.visibility!=='public'});await load();say(p.visibility==='public'?'Note is private again.':'Note revealed to the community.');}));actions.append(reveal);
   actions.append(button('Edit',()=>{if(!box.querySelector('form'))box.append(composerForm(p));}));
   const withdraw=button('Remove',()=>action(withdraw,async()=>{await rpc('community_hide',{p_post:p.id,p_hide:true});await load();say('Note removed.');}));actions.append(withdraw);
  }else{
   const vote=button(`${p.voted?'✓ Helpful':'Helpful'} · ${p.votes}`,()=>{if(!signed()){needSignIn();return;}action(vote,async()=>{await rpc('community_vote',{p_post:p.id,p_on:!p.voted});await load(true);});});vote.setAttribute('aria-pressed',String(!!p.voted));vote.disabled=!!p.mine;actions.append(vote);
   if(!reply)actions.append(button('Reply',()=>{if(!signed()){needSignIn();return;}if(!box.querySelector('form'))box.append(composerForm(null,p));}));
-  if(!reply){const add=button(p.saved?'✓ Added':'Add to mine',()=>{if(!signed()){needSignIn();return;}action(add,async()=>{await rpc('community_save_addon',{p_post:p.id,p_on:!p.saved});await load(true);say(p.saved?'Removed from your repertoire.':'Added to your repertoire with credit.');});});add.setAttribute('aria-pressed',String(!!p.saved));actions.append(add,button('Open note',()=>openAddon(p)));}
+  // Saving a copy and opening the note only make sense for a comment attached to a note.
+  if(!reply&&p.note_beat!=null){const add=button(p.saved?'✓ Added':'Add to mine',()=>{if(!signed()){needSignIn();return;}action(add,async()=>{await rpc('community_save_addon',{p_post:p.id,p_on:!p.saved});await load(true);say(p.saved?'Removed from your repertoire.':'Added to your repertoire with credit.');});});add.setAttribute('aria-pressed',String(!!p.saved));actions.append(add,button('Open note',()=>openAddon(p)));}
   if(!p.mine)actions.append(button('Report',()=>{if(!signed()){needSignIn();return;}reportForm(box,p);}));
  }
  box.append(actions);for(const r of p.replies||[])box.append(card(r,{reply:true}));return box;
 }
 function render(){
- list.replaceChildren();if(!loaded.length)list.append(el('p','No public notes yet.','muted'));for(const p of loaded)list.append(card(p));title.textContent='Notes and discussion';
+ list.replaceChildren();if(!loaded.length)list.append(el('p','No comments yet. Start the conversation.','muted'));for(const p of loaded)list.append(card(p));title.textContent='Comments';
  mine.replaceChildren();if(signed()){
-  const h=el('div',undefined,'addon-section-title');h.append(el('h3','My notes'),el('span',`${own.length+saved.length} saved`,'muted'));mine.append(h);
-  if(!own.length&&!saved.length)mine.append(el('p','Your private note comments and saved community notes will appear here.','muted'));
+  // Private note comments and saved copies, for those who have any.
+  if(own.length||saved.length){const h=el('div',undefined,'addon-section-title');h.append(el('h3','My notes'),el('span',`${own.length+saved.length} saved`,'muted'));mine.append(h);}
   for(const p of own)mine.append(card(p,{personal:true}));for(const p of saved)mine.append(card(p,{personal:true,snapshot:true}));
   if(!composer.querySelector('form'))composer.replaceChildren(composerForm());
- }else{mine.replaceChildren();composer.replaceChildren();const a=el('a','Sign in to create and save notes');a.href='#mine';composer.append(a);}
+ }else{mine.replaceChildren();composer.replaceChildren();const a=el('a','Sign in to comment');a.href='#mine';composer.append(a);}
 }
 async function load(quiet=false){
- if(!piece)return;const epoch=++generation,target=piece;if(!quiet)say('Loading notes…');
- try{const[publicData,mineData]=await Promise.all([rpc('community_list',{p_piece:target,p_sort:sort,p_offset:0}),signed()?rpc('community_mine',{p_piece:target}):Promise.resolve({posts:[],saved:[]})]);if(epoch!==generation||piece!==target)return;loaded=publicData.posts||[];total=publicData.total||0;own=mineData.posts||[];saved=mineData.saved||[];render();say(total?`${total} public note${total===1?'':'s'} · community advice is not teacher verification.`:'Notes are private until their authors reveal them.');}
- catch(e){if(epoch!==generation)return;list.replaceChildren(el('p','Notes could not load. The practice score still works.','muted'));say(e.message,true);composer.replaceChildren(button('Try again',()=>load()));}
+ if(!piece)return;const epoch=++generation,target=piece;if(!quiet)say('Loading comments…');
+ try{const[publicData,mineData]=await Promise.all([rpc('community_list',{p_piece:target,p_sort:sort,p_offset:0}),signed()?rpc('community_mine',{p_piece:target}):Promise.resolve({posts:[],saved:[]})]);if(epoch!==generation||piece!==target)return;loaded=publicData.posts||[];total=publicData.total||0;own=mineData.posts||[];saved=mineData.saved||[];render();say(total?`${total} comment${total===1?'':'s'} · community advice is not teacher verification.`:'');}
+ catch(e){if(epoch!==generation)return;list.replaceChildren(el('p','Comments could not load. The practice score still works.','muted'));say(e.message,true);composer.replaceChildren(button('Try again',()=>load()));}
 }
 function shapePiecePost(){const layout=$('.lib-piece .piece-layout'),course=$('#piece-course');if(!layout||!course)return;layout.classList.add('repertoire-post');if(course.querySelector('.piece-learning-guide'))return;const steps=course.querySelector('.course-steps');if(!steps)return;const guide=el('details',undefined,'piece-learning-guide');guide.append(el('summary','Learning guide'));const intro=course.children[3],pattern=course.querySelector('.piece-pattern'),notice=course.lastElementChild;for(const n of[intro,pattern,steps,notice])if(n&&n.tagName!=='H2'&&n!==guide)guide.append(n);course.append(guide);}
 function route(){
  const hash=location.hash,practice=hash==='#practice',lesson=hash.startsWith('#library/piece');let id=null;if(practice)id=$('#trainer-song')?.value;else if(lesson){try{id=JSON.parse(localStorage.getItem('my-journey-piano-pathway-v2'))?.selected;}catch{}}
- if(!catalog.has(id)||(!practice&&!lesson)||(practice&&window.PianoAddons)){root.hidden=true;piece=null;++generation;return;}
+ if(!catalog.has(id)||(!practice&&!lesson)){root.hidden=true;piece=null;++generation;return;}
  root.querySelector('#community-permalink').href='#library/piece/'+encodeURIComponent(id);if(lesson)shapePiecePost();(practice?$('#community-practice-slot'):$('#community-library-slot')).append(root);root.hidden=false;
  if(piece!==id){piece=id;selectedAnchor=null;loaded=[];own=[];saved=[];composer.replaceChildren();load();}
 }
 document.addEventListener('DOMContentLoaded',()=>{
  catalog=new Set((window.PianoCurriculum?.pieces||[]).map(p=>p.id));const lesson=$('.lib-piece'),practice=$('#note-trainer');if(!lesson||!practice)return;
  const librarySlot=el('div');librarySlot.id='community-library-slot';(lesson.querySelector('.piece-layout')||lesson).append(librarySlot);const practiceSlot=el('div');practiceSlot.id='community-practice-slot';practice.append(practiceSlot);
- root=el('section',undefined,'community');root.id='piece-community';root.hidden=true;root.setAttribute('aria-label','Personal and community notes');root.addEventListener('keydown',e=>e.stopPropagation());
- title=el('h2','Notes and discussion');root.append(title,el('p','Click a note in the practice score to attach a private comment or fingering. Reveal it only when you want others to see it.','community-intro'));
+ root=el('section',undefined,'community');root.id='piece-community';root.hidden=true;root.setAttribute('aria-label','Comments on this piece');root.addEventListener('keydown',e=>e.stopPropagation());
+ title=el('h2','Comments');root.append(title,el('p','Talk about this piece: questions, tips, how practice is going. Fingering and notes on the score go in your add-on (click a note in Practice, then +).','community-intro'));
  composer=el('div',undefined,'community-composer');mine=el('section',undefined,'my-addons');
  const controls=el('div',undefined,'community-toolbar'),[label,order]=field('Show','select');for(const[v,t]of[['best','Most useful'],['new','Newest']]){const o=el('option',t);o.value=v;order.append(o);}order.onchange=()=>{sort=order.value;load();};controls.append(label);const permalink=el('a','Link to piece');permalink.id='community-permalink';controls.append(permalink);
  list=el('div',undefined,'community-list');status=el('p','', 'community-status');status.setAttribute('role','status');root.append(composer,mine,controls,list,status);
  const later=()=>setTimeout(route,0);window.addEventListener('hashchange',later);window.addEventListener('piano-select-score',later);window.addEventListener('piano-import-score',later);$('#trainer-song')?.addEventListener('change',later);new MutationObserver(later).observe($('#piece-course'),{childList:true});
- window.addEventListener('piano-note-selected',e=>{if(e.detail?.piece!==piece||!catalog.has(piece))return;selectedAnchor={...e.detail,note_beat:e.detail.beat,note_midi:e.detail.midi,note_label:e.detail.note};composer.replaceChildren(signed()?composerForm():el('a','Sign in to add a note'));if(!window.PianoAddons)composer.scrollIntoView({behavior:'smooth',block:'nearest'});say(`Selected ${e.detail.note} in bar ${e.detail.bar}.`);});
+ window.addEventListener('piano-note-selected',e=>{if(e.detail?.piece!==piece||!catalog.has(piece))return;if(location.hash==='#practice'&&window.PianoAddons)return; // on Practice, notes go to your add-on (the + on the sheet)
+ selectedAnchor={...e.detail,note_beat:e.detail.beat,note_midi:e.detail.midi,note_label:e.detail.note};composer.replaceChildren(signed()?composerForm():el('a','Sign in to add a note'));if(!window.PianoAddons)composer.scrollIntoView({behavior:'smooth',block:'nearest'});say(`Selected ${e.detail.note} in bar ${e.detail.bar}.`);});
  window.addEventListener('piano-profile-changed',()=>{composer.replaceChildren();if(piece)render();});window.addEventListener('piano-community-auth',()=>{composer.replaceChildren();route();if(piece)load();});route();
 });
 })();

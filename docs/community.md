@@ -113,8 +113,9 @@ In Practice:
   substitution) and press **Enter**, and/or add a comment. With the editor open, clicking another
   note moves it there.
 - Everything goes into your **draft**, the working copy of your add-on that only you see. It is
-  saved as you go (the whole draft each time). A draft bar at the top right of the sheet shows how
-  many notes (or unpublished changes) it has, with **Publish** and **Discard**.
+  saved as you go (the whole draft each time). Nothing covers the sheet: a small count on the
+  Add-ons button shows how many notes (or unpublished changes) are waiting, and **Publish** and
+  **Discard** are in the Add-ons panel. A draft can stay unpublished as long as you like.
 - **Publish** copies the whole draft to the published add-on in one step. You can keep editing:
   changes, including removed notes, stay in the draft (drawn dashed/italic) until you publish
   again; **Discard** returns the draft to the published copy; **Unpublish** takes the add-on down
@@ -135,7 +136,11 @@ piece with `draft` and `published` note lists (`{b, m, h, f, c}`: beat, MIDI pit
 fingers, comment), checked by `community_addon_clean` (finger numbers 1–5 only, comments up to
 500 characters, each note once, at most 3000 notes). RPCs: `addon_list` (public, 20 per page),
 `addon_mine`, `addon_save_draft`, `addon_publish`, `addon_discard`, `addon_unpublish`,
-`addon_vote`, `addon_report`. The per-note comments panel (`piano-community.js`) remains on the
-library piece pages as "Notes and discussion" and is not shown on Practice.
+`addon_vote`, `addon_report`. Below the score, **Comments** (`piano-community.js`, on Practice and on library piece
+pages) lets anyone signed in post a public comment about the piece, about anything; no note is
+needed. Replies, helpful votes and reports work as before; older private note comments still show
+under "My notes" for their authors. `supabase-addon-layers.sql` also replaces `community_write` so a
+root comment may have no note (only `comment`, and public only when confirmed); until it runs, the
+box says comments are not switched on yet.
 `site/piano-addons-demo.js` is an in-browser stand-in used by previews and tests; the live site
 never loads it.

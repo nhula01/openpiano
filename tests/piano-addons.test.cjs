@@ -52,10 +52,10 @@ test('the demo bots and the SQL seed describe the same Für Elise add-ons',()=>{
  const w=load('piano-addons-demo.js',{PianoProfiles:null});
  assert.equal(J(rows),J(w.PianoAddonsDemo.seed));assert.equal(Object.values(rows).flat().length,39);
 });
-test('the add-on migration keeps tables private and grants only the add-on functions',()=>{
+test('the add-on migration keeps tables private and grants only the add-on functions (and the updated comment writer)',()=>{
  const sql=fs.readFileSync('scripts/supabase-addon-layers.sql','utf8');
  assert.match(sql,/revoke all on public\.community_addons,public\.community_addon_votes,public\.community_addon_reports from public,anon,authenticated/);
  for(const t of ['community_addons','community_addon_votes','community_addon_reports'])assert.match(sql,new RegExp(`alter table public\\.${t} enable row level security`));
  const grants=[...sql.matchAll(/grant execute on function public\.(\w+)\([^)]*\) to ([\w,]+)/g)].map(m=>m[1]+':'+m[2]);
- assert.equal(J(grants),J(['addon_list:anon,authenticated','addon_mine:authenticated','addon_save_draft:authenticated','addon_publish:authenticated','addon_discard:authenticated','addon_unpublish:authenticated','addon_vote:authenticated','addon_report:authenticated']));
+ assert.equal(J(grants),J(['addon_list:anon,authenticated','addon_mine:authenticated','addon_save_draft:authenticated','addon_publish:authenticated','addon_discard:authenticated','addon_unpublish:authenticated','addon_vote:authenticated','addon_report:authenticated','community_write:authenticated']));
 });

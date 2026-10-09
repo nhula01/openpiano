@@ -6,6 +6,7 @@
 -- Run after supabase-community.sql, supabase-community-catalog.sql, supabase-profiles.sql and
 -- supabase-note-addons.sql (it reuses community_pieces, community_profiles and community_bots).
 -- All access goes through the functions below; the tables are not readable directly.
+-- It also lets a public comment be about the piece as a whole (no note), for the Comments section.
 begin;
 
 create table if not exists public.community_addons (
@@ -195,5 +196,46 @@ begin
 end $$;
 revoke all on function public.addon_report(uuid,text) from public,anon,authenticated;
 grant execute on function public.addon_report(uuid,text) to authenticated;
+
+-- Comments about a piece as a whole: a root comment may now have no note. It is public only when the
+-- author confirms (p_publish); everything else about community_write is unchanged.
+create or replace function public.community_write(
+ p_piece text,p_alias text default '',p_body text default '',p_kind text default 'comment',p_bars text default '',p_hand text default 'BH',p_fingers text default '',
+ p_parent uuid default null,p_id uuid default null,p_publish boolean default false,p_note_beat numeric default null,p_note_midi integer default null,p_visibility text default 'private')
+returns uuid language plpgsql security definer set search_path='' as $$
+declare u uuid:=auth.uid();result uuid;parent_row public.community_posts;profile_name text;chosen_visibility text:=coalesce(p_visibility,'private');
+begin
+ if u is null then raise exception 'Sign in to add a note';end if;
+ select display_name into profile_name from public.community_profiles where owner=u;
+ if profile_name is null then raise exception 'Set up your profile name before adding a note';end if;
+ if not exists(select 1 from public.community_pieces where id=p_piece) then raise exception 'Add-ons are only available for library pieces';end if;
+ if p_parent is not null then
+  select * into parent_row from public.community_posts where id=p_parent;
+  if not found or parent_row.piece<>p_piece or parent_row.parent is not null or parent_row.visibility<>'public' or parent_row.hidden_at is not null or parent_row.moderated_at is not null then raise exception 'Reply to an available public add-on in this piece';end if;
+  if p_kind<>'comment' or p_publish is distinct from true then raise exception 'Replies are public comments';end if;
+  chosen_visibility:='public';p_note_beat:=null;p_note_midi:=null;
+ elsif (p_note_beat is null) <> (p_note_midi is null) then raise exception 'Choose a note in the score first';
+ -- A comment about the piece as a whole needs no note; fingering always belongs to a note.
+ elsif p_note_beat is null and p_kind<>'comment' then raise exception 'Fingering needs a note in the score';
+ elsif chosen_visibility='public' and p_publish is distinct from true then raise exception 'Confirm before revealing this add-on';
+ end if;
+ if chosen_visibility not in ('private','public') then raise exception 'Choose private or public visibility';end if;
+ perform pg_advisory_xact_lock(hashtextextended('community:'||u::text,0));
+ if p_id is null then
+  if (select count(*) from public.community_posts where owner=u and created_at>now()-interval '1 hour')>=10 or
+     (select count(*) from public.community_posts where owner=u and created_at>now()-interval '1 day')>=30 then raise exception 'Please wait before adding more (10 per hour, 30 per day)';end if;
+  if p_parent is not null and (select count(*) from public.community_posts where parent=p_parent)>=50 then raise exception 'This thread has reached 50 replies';end if;
+  insert into public.community_posts(piece,owner,alias,body,kind,bars,hand,fingers,parent,visibility,note_beat,note_midi,note_label)
+  values(p_piece,u,profile_name,btrim(p_body),p_kind,btrim(p_bars),p_hand,btrim(p_fingers),p_parent,chosen_visibility,p_note_beat,p_note_midi,
+   case when p_note_midi is null then null else public.community_note_name(p_note_midi) end) returning id into result;
+ else
+  update public.community_posts set alias=profile_name,body=btrim(p_body),bars=btrim(p_bars),hand=p_hand,fingers=btrim(p_fingers),edited_at=now()
+  where id=p_id and owner=u and piece=p_piece and kind=p_kind and parent is not distinct from p_parent and hidden_at is null and moderated_at is null returning id into result;
+  if result is null then raise exception 'Only the author can edit an available add-on';end if;
+ end if;
+ return result;
+end $$;
+revoke all on function public.community_write(text,text,text,text,text,text,text,uuid,uuid,boolean,numeric,integer,text) from public,anon,authenticated;
+grant execute on function public.community_write(text,text,text,text,text,text,text,uuid,uuid,boolean,numeric,integer,text) to authenticated;
 
 commit;

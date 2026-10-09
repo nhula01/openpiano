@@ -39,8 +39,10 @@ const impl={
  addon_unpublish({p_piece}){const d=db(),a=mine(d,p_piece);if(a){a.published=null;a.published_at=null;save(d);}return mineJson(d,p_piece);},
  addon_vote({p_addon,p_on}){const d=db(),a=d.addons.find(x=>x.id===p_addon);if(!a||a.owner===YOU||!a.published)throw new Error('Vote for another learner’s published add-on');d.votes=d.votes.filter(v=>!(v.addon===p_addon&&v.owner===YOU));if(p_on)d.votes.push({addon:p_addon,owner:YOU});save(d);},
  addon_report(){},
- // The per-note discussion below the score has nothing to show in the preview.
- community_list(){return {posts:[],total:0};},community_mine(){return {posts:[],saved:[]};}
+ // The Comments section below the score: public comments about the piece (kept in this browser).
+ community_list({p_piece}){const d=db(),posts=(d.comments||[]).filter(c=>c.piece===p_piece).map(c=>({...c,votes:0,voted:false,saved:false,replies:[]})).reverse();return {posts,total:posts.length};},
+ community_mine(){return {posts:[],saved:[]};},
+ community_write(a){if(a.p_note_beat!=null||a.p_parent||a.p_id)throw new Error('Not available in the preview');const body=String(a.p_body||'').trim();if(!body)throw new Error('Write something first');const d=db();(d.comments=d.comments||[]).push({id:'c-'+Date.now(),piece:a.p_piece,alias:'You (preview)',profile:{id:'demo-you',name:'You (preview)'},bot:false,body,kind:'comment',hand:'BH',fingers:'',bars:'',visibility:'public',note_beat:null,created_at:new Date().toISOString(),mine:true});save(d);return 'ok';}
 };
 const api={demo:true,ready:()=>true,signedIn:()=>true,async rpc(name,args={}){if(!impl[name])throw new Error('Not available in the preview');return clone(impl[name](args));},reset(){try{localStorage.removeItem(KEY);}catch{}},seed:SEED_NOTES};
 window.PianoAddonsDemo=api;

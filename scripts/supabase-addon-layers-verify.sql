@@ -38,6 +38,15 @@ do $$ declare me jsonb;blocked boolean:=false;begin
  if jsonb_array_length(public.addon_list('__layer_test__')->'addons'->0->'notes')<>3 then raise exception 'Unpublished change leaked';end if;
  me:=public.addon_discard('__layer_test__');
  if me->'draft'<>me->'published' then raise exception 'Discard did not restore the published copy';end if;
+ -- A comment about the whole piece needs no note and is public once confirmed.
+ perform public.community_write('__layer_test__','','Which edition do you use?','comment','','BH','',null,null,true,null,null,'public');
+ if public.community_list('__layer_test__')->>'total'<>'1' then raise exception 'Piece comment not listed';end if;
+ blocked:=false;begin perform public.community_write('__layer_test__','','Unconfirmed','comment','','BH','',null,null,false,null,null,'public');exception when others then blocked:=true;end;
+ if not blocked then raise exception 'Public comment without confirmation accepted';end if;
+ blocked:=false;begin perform public.community_write('__layer_test__','','Fingering 3','fingering','Bar 1','RH','3',null,null,true,null,null,'public');exception when others then blocked:=true;end;
+ if not blocked then raise exception 'Fingering without a note accepted';end if;
+ blocked:=false;begin perform public.community_write('__layer_test__','','Half anchor','comment','','BH','',null,null,true,1,null,'public');exception when others then blocked:=true;end;
+ if not blocked then raise exception 'Beat without pitch accepted';end if;
 end $$;
 
 -- B: sees only the published copy, votes once for the add-on, cannot touch A's.
