@@ -27,3 +27,21 @@ test('an older discussion response cannot replace the selected private practice 
 test('only authors see editing and withdrawal and self-voting is disabled',async()=>{
  const ui=await setup({posts:[{...post,mine:true}]});const buttons=[...ui.w.document.querySelectorAll('.community-actions button')];assert.ok(buttons.find(b=>b.textContent==='Edit'));assert.ok(buttons.find(b=>b.textContent==='Withdraw'));assert.equal(buttons[0].disabled,true);buttons.find(b=>b.textContent==='Edit').click();assert.equal(ui.w.document.querySelector('.community-post form textarea').value,post.fingers);ui.dom.window.close();
 });
+
+test('adapt starts a separate version with attribution, without rewriting the original plan',async()=>{
+ const ui=await setup();const d=ui.w.document;d.querySelectorAll('.community-actions button').forEach(b=>{if(b.textContent==='Adapt')b.click();});
+ const f=d.querySelector('.community-form');assert.equal(f.querySelector('select').value,'fingering');assert.ok([...f.querySelectorAll('textarea')].at(-1).value.includes('Adapted from A learner'));
+ f.querySelector('input').value='Another learner';f.querySelector('input[type=checkbox]').checked=true;
+ f.dispatchEvent(new ui.w.Event('submit',{cancelable:true}));await tick();const write=ui.calls.find(c=>c.name==='community_write');assert.equal(write.args.p_id,null);assert.equal(write.args.p_kind,'fingering');assert.ok(write.args.p_body.includes('post-a'));ui.dom.window.close();
+});
+
+test('a shared piece link opens the correct discussion even when the hidden course is filtered to another level',async()=>{
+ const dom=new JSDOM(fs.readFileSync('site/index.html','utf8'),{url:'https://example.test/#library/piece/entertainer',runScripts:'outside-only',virtualConsole:new VirtualConsole()});const w=dom.window;
+ w.PianoRepertoire={entertainer:{title:'The Entertainer',composer:'Scott Joplin'}};w.PianoSkills={units:[]};w.PianoCommunityAuth={ready:()=>true,signedIn:()=>false,rpc:async()=>({data:{posts:[],total:0},error:null})};
+ w.eval(fs.readFileSync('site/piano-curriculum.js','utf8'));
+ for(const name of ['piano-course','piano-app','piano-community'])w.eval(fs.readFileSync('site/'+name+'.js','utf8'));
+ await tick();await tick();assert.equal(JSON.parse(w.localStorage.getItem('my-journey-piano-pathway-v2')).selected,'entertainer');
+ assert.equal(w.document.querySelector('#piece-course h2').textContent,'The Entertainer');assert.equal(w.document.querySelector('#piece-community').hidden,false);
+ assert.equal(w.document.querySelector('#community-permalink').hash,'#library/piece/entertainer');
+ assert.equal(w.document.querySelectorAll('#piece-library [data-piece-progress="entertainer"]').length,0);dom.window.close();
+});

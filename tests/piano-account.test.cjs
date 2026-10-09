@@ -38,3 +38,14 @@ test('Google sign-in requires age/terms confirmation and uses the exact website 
  const consent=JSON.parse(ui.w.sessionStorage.getItem('openpiano-oauth-consent'));assert.equal(consent.age_13_or_older,true);
  assert.ok(consent.accepted_terms_at);ui.dom.window.close();
 });
+
+test('community practice plans sync privately and a newer removal wins over an older saved plan',async()=>{
+ const ui=await setup();const key='openpiano-community-plans-v1';
+ ui.w.localStorage.setItem(key,JSON.stringify({entertainer:{alias:'Public alias',fingers:'C4(1)',date:'2026-10-08T10:00:00Z'}}));
+ ui.w.dispatchEvent(new ui.w.Event('piano-progress-changed'));await new Promise(r=>setTimeout(r,30));
+ assert.equal(ui.rows.get('account-a')[key].entertainer.fingers,'C4(1)');
+ ui.rows.set('account-b',{[key]:{entertainer:{removed:true,date:'2026-10-09T10:00:00Z'}}});
+ ui.w.localStorage.setItem('openpiano-progress-cache:account-b',JSON.stringify({[key]:{entertainer:{fingers:'C4(1)',date:'2026-10-08T10:00:00Z'}}}));
+ await ui.switch('account-b');assert.equal(JSON.parse(ui.w.localStorage.getItem(key)).entertainer.removed,true);
+ await ui.switch('account-a');assert.equal(JSON.parse(ui.w.localStorage.getItem(key)).entertainer.alias,'Public alias');ui.dom.window.close();
+});

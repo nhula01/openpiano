@@ -36,7 +36,7 @@ function form(post=null,parent=null,adapt=null){
  if(post||parent)f.append(button('Cancel',()=>f.remove()));
  f.onsubmit=async e=>{e.preventDefault();if(!signed()){needSignIn();return;}if(!f.reportValidity())return;const target=piece,epoch=generation;await action(submit,async()=>{
   await rpc('community_write',{p_piece:target,p_alias:alias.value.trim(),p_body:body.value.trim(),p_kind:parent?'comment':kind.value,p_bars:kind.value==='fingering'?bars.value.trim():'',p_hand:hand.value,p_fingers:kind.value==='fingering'?fingers.value.trim():'',p_parent:parent?.id||post?.parent||null,p_id:post?.id||null,p_publish:agree.checked});
-  if(epoch!==generation)return;f.reset();if(post||parent)f.remove();await load();say('Published. Thank you for helping another learner.');
+  if(epoch!==generation)return;f.reset();visibility();if(post||parent)f.remove();await load();say('Published. Thank you for helping another learner.');
  });};return f;
 }
 function usePlan(p){
@@ -68,9 +68,9 @@ function card(p,reply=false){
  }));
  box.append(actions);for(const r of p.replies||[])box.append(card(r,true));return box;
 }
-function render(){list.replaceChildren();if(!loaded.length)list.append(el('p','No contributions yet. Ask a question or share the fingering that helped you.','muted'));for(const p of loaded)list.append(card(p));if(loaded.length<total)list.append(button('Load more',()=>{offset=loaded.length;load(false,true);}));composer.replaceChildren();if(signed())composer.append(form());else{const a=el('a','Sign in to contribute');a.href='#mine';composer.append(a);} }
+function render(){list.replaceChildren();if(!loaded.length)list.append(el('p','No contributions yet. Ask a question or share the fingering that helped you.','muted'));for(const p of loaded)list.append(card(p));if(loaded.length<total)list.append(button('Load more',()=>{offset=loaded.length;load(false,true);}));if(signed()){if(!composer.querySelector('form')){composer.replaceChildren();composer.append(form());}}else{composer.replaceChildren();const a=el('a','Sign in to contribute');a.href='#mine';composer.append(a);} }
 async function load(quiet=false,more=false){
- if(!piece)return;const epoch=++generation,target=piece;if(!more)offset=0;if(!quiet)say('Loading discussion…');
+ if(!piece)return;const epoch=++generation,target=piece;if(!more)offset=0;if(!quiet){say('Loading discussion…');if(!more)list.replaceChildren();}
  try{const data=await rpc('community_list',{p_piece:target,p_sort:sort,p_offset:offset});if(epoch!==generation||piece!==target)return;loaded=more?[...loaded,...data.posts]:data.posts;total=data.total;render();say('Helpful votes reflect community preference, not verified accuracy.');}
  catch(e){if(epoch!==generation)return;list.replaceChildren(el('p','Discussion could not load. Your practice score still works.','muted'));say(e.message,true);composer.replaceChildren(button('Try again',()=>load()));}
 }
@@ -78,6 +78,7 @@ function route(){
  const hash=location.hash,practice=hash==='#practice',lesson=hash.startsWith('#library/piece');
  let id=null;if(practice)id=$('#trainer-song')?.value;else if(lesson){try{id=JSON.parse(localStorage.getItem('my-journey-piano-pathway-v2'))?.selected;}catch{}}
  showPlan();if(!catalog.has(id)||(!practice&&!lesson)){root.hidden=true;piece=null;++generation;return;}
+ root.querySelector('#community-permalink').href='#library/piece/'+encodeURIComponent(id);
  const slot=practice?$('#community-practice-slot'):$('#community-library-slot');slot.append(root);root.hidden=false;
  if(piece!==id){piece=id;loaded=[];offset=0;list.replaceChildren();composer.replaceChildren();load();}
 }
@@ -89,10 +90,10 @@ document.addEventListener('DOMContentLoaded',()=>{
  practicePlan=el('aside',undefined,'community-practice-plan');practicePlan.hidden=true;practicePlan.setAttribute('aria-label','Saved community fingering plan');practice.querySelector('.stage')?.append(practicePlan);
  root=el('section',undefined,'community');root.id='piece-community';root.setAttribute('aria-label','Community discussion and fingering');
  root.append(el('h2','Learn together'),el('p','Discuss this edition, ask questions, or share your own fingering. The most helpful contributions appear first. Plans are suggestions: hands and technique differ.','muted'));
- const controls=el('div',undefined,'community-toolbar'),[label,order]=fields('Sort','select');for(const [v,t]of [['best','Most helpful'],['new','Newest']]){const o=el('option',t);o.value=v;order.append(o);}order.onchange=()=>{sort=order.value;load();};controls.append(label,button('Refresh',()=>load()));root.append(controls);
+ const controls=el('div',undefined,'community-toolbar'),[label,order]=fields('Sort','select');for(const [v,t]of [['best','Most helpful'],['new','Newest']]){const o=el('option',t);o.value=v;order.append(o);}order.onchange=()=>{sort=order.value;load();};controls.append(label,button('Refresh',()=>load()));const permalink=el('a','Link to this piece');permalink.id='community-permalink';controls.append(permalink);root.append(controls);
  status=el('p','','community-status');status.setAttribute('role','status');list=el('div',undefined,'community-list');composer=el('div');root.append(status,list,composer);
  const later=()=>setTimeout(route,0);window.addEventListener('hashchange',later);window.addEventListener('piano-select-score',later);window.addEventListener('piano-import-score',later);$('#trainer-song')?.addEventListener('change',later);
  new MutationObserver(later).observe($('#piece-course'),{childList:true});
- window.addEventListener('piano-community-auth',()=>{route();if(piece)load();});window.addEventListener('piano-progress-changed',showPlan);window.addEventListener('storage',showPlan);route();
+ window.addEventListener('piano-community-auth',()=>{composer.replaceChildren();route();if(piece)load();});window.addEventListener('piano-progress-changed',showPlan);window.addEventListener('storage',showPlan);route();
 });
 })();

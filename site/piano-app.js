@@ -113,6 +113,7 @@ function courseCard(id) {
 }
 function openLesson(id) {
   quietUntil = Date.now() + 600;
+  if(window.PianoCourse?.select){ window.PianoCourse.select(id); return; }
   const btn = courseCard(id)?.querySelector('.actions button');
   if (btn) btn.click(); else go('library/piece');
 }
@@ -120,6 +121,7 @@ function practicePiece(id) {
   const p = pieces.find(p => p.id === id);
   if (p?.reference) return openLesson(id);
   quietUntil = Date.now() + 600;
+  if(window.PianoCourse?.practice){ window.PianoCourse.practice(id); return; }
   const btns = courseCard(id)?.querySelectorAll('.actions button');
   if (btns && btns[1]) btns[1].click(); else window.dispatchEvent(new CustomEvent('piano-select-score', { detail: id }));
 }
@@ -151,7 +153,7 @@ window.addEventListener('hashchange', () => apply(location.hash.slice(1)));
 const origScroll = Element.prototype.scrollIntoView;
 Element.prototype.scrollIntoView = function (...args) {
   const id = this.id;
-  if (id === 'piece-course') { history.replaceState(null, '', '#library/piece'); apply('library/piece', { noScroll: true }); window.scrollTo(0, 0); return; }
+  if (id === 'piece-course') { const route = 'library/piece/' + encodeURIComponent(selectedId()); history.replaceState(null, '', '#' + route); apply(route, { noScroll: true }); window.scrollTo(0, 0); return; }
   if (id === 'piece-library') { const lv = $('#piece-filter')?.value; history.replaceState(null, '', '#library'); apply('library', { noScroll: true }); const shelf = lv && document.getElementById('shelf-' + lv); if (shelf) return origScroll.call(shelf, { block: 'start' }); window.scrollTo(0, 0); return; }
   const view = this.closest?.('.view');
   if (view && view.hidden) { history.replaceState(null, '', '#' + view.dataset.view); apply(view.dataset.view, { noScroll: true }); }
@@ -493,7 +495,7 @@ function showLibrary(sub, arg) {
     renderBrowse(sub === 'level' ? { level: Number(arg) } : sub === 'shelf' ? { shelf: arg } : {});
   }
   if (which === 'composer') renderComposer(arg);
-  if (which === 'piece') renderPieceArt();
+  if (which === 'piece') { if(arg && arg !== selectedId() && pieces.some(p=>p.id===arg))window.PianoCourse?.select(arg,false); renderPieceArt(); }
 }
 function renderPieceArt() {
   const art = $('#piece-art'); if (!art || !pieces.length) return;

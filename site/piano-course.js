@@ -29,6 +29,8 @@ function draw(){drawPath();const grid=document.querySelector('#piece-library');g
  const links=el('div',undefined,'actions'),play=el('button','Open complete practice score');play.onclick=()=>practice(p.id);if(!p.reference)links.append(play);if(p.reference){const a=el('a','Find a source score ↗','secondary');a.href=p.resourceURL;a.target='_blank';a.rel='noopener';links.append(a);}if(score?.pdf){const a=el('a','View source sheet ↗','secondary');a.href=score.pdf;a.target='_blank';a.rel='noopener';links.append(a);}course.append(links,el('p',`Pattern to recognize: ${p.pattern}`,'piece-pattern'));
  const steps=el('div',undefined,'course-steps');stages(p).forEach(([title,text,check],i)=>{const step=el('details',undefined,'course-step');step.open=i===0||saved.checks[p.id+':'+(i-1)]===true;step.append(el('summary',`${String(i+1).padStart(2,'0')} / ${title}`),el('p',text),checklist(saved.checks,p.id+':'+i,check));steps.append(step);});course.append(steps,el('p','Source editions retain their printed fingerings. No generated fingerings are added.','muted'));
 }
+// Public selection API avoids depending on hidden filtered library cards.
+window.PianoCourse = { select: (id, scroll = true) => { if(!pieces.some(p=>p.id===id))return; saved.selected=id;persist();draw();if(scroll)document.querySelector('#piece-course').scrollIntoView({behavior:'smooth',block:'start'}); }, practice: id => { if(pieces.some(p=>p.id===id))practice(id); } };
 filter.value=String(pieces.find(p=>p.id===saved.selected)?.level||1);filter.onchange=draw;search.oninput=draw;draw();
 let audio,timer,nextBeat=0,count=0;
 const button=document.querySelector('#metronome'),tempo=document.querySelector('#tempo'),status=document.querySelector('#beat-status');
