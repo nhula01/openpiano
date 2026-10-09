@@ -84,7 +84,8 @@ function chooseHands(){
  load(score);seekToBeat(cursor);
  inputHint.textContent=inputChoice.value==='microphone'?'Microphone checks one clear note in the '+(hands.value==='LH'?'left':'right')+' hand. Use MIDI for chords.':'MIDI checks '+(hands.value==='BH'?'both hands':hands.value==='LH'?'your left hand':'your right hand')+'.';
 }
-hands.onchange=()=>{if(hands.value==='BH'&&inputChoice.value==='microphone'){inputChoice.value='MIDI';monitorLabel.hidden=false;}chooseHands();};
+// Both hands with a microphone listens to the top line (see begin); listening still plays everything.
+hands.onchange=()=>chooseHands();
 inputChoice.onchange=()=>{stop();monitorLabel.hidden=inputChoice.value!=='MIDI';if(score?.notes.some(n=>n.hand)){if(inputChoice.value==='microphone'&&hands.value==='BH')hands.value='RH';chooseHands();}setFeedback(inputChoice.value==='microphone'?'Press Practice to use your microphone.':inputChoice.value==='keys'?'Press Practice, then tap or type the notes.':'Press Practice to connect your MIDI keyboard.');inputHint.textContent=inputChoice.value==='microphone'?'Microphone listens to one melody note at a time. Your audio stays on this device.':inputChoice.value==='keys'?'Tap the on-screen keys, or type A W S E D F T G Y H U J K. The octave follows the score.':'MIDI checks every note in both hands. Connect your keyboard with USB.';emit('state');};
 function setType(){stop();scoreView?.setMode(practiceType.value==='guide'?'scroll':practiceType.value);movingStart.hidden=practiceType.value!=='scroll';previousPage.hidden=nextPage.hidden=practiceType.value!=='sheet';preview.textContent='Listen';renderScore();setFeedback(practiceType.value==='scroll'?'In time keeps moving and counts missed notes. Use MIDI.':practiceType.value==='guide'?'Follow me pauses at every unplayed note. Play correctly to continue.':'Sheet waits for the correct notes.');}
 practiceType.onchange=setType;
