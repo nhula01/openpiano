@@ -1,6 +1,7 @@
 'use strict';
-// Note add-ons belong to a built-in repertoire piece. New roots are private until
-// their author reveals them; public add-ons can be copied into another account.
+// Note comments belong to a built-in repertoire piece. New roots are private until
+// their author reveals them; public notes can be copied into another account.
+// (Whole-piece add-ons, with a draft and a published copy, live in piano-addons.js on the Practice page.)
 (() => {
 const $=s=>document.querySelector(s);
 const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!=null)n.textContent=text;if(cls)n.className=cls;return n;};
@@ -46,13 +47,13 @@ function composerForm(post=null,parent=null){
  if(!parent)f.append(kindLabel,detail);f.append(bodyLabel);
  if(parent)f.append(el('p','Replies are public under your profile name.','muted'));
  else f.append(el('p',post?'Editing keeps the current visibility.':'Saved privately first. You choose Reveal when it is ready for everyone.','muted'));
- const submit=el('button',post?'Save changes':parent?'Reply':'Save add-on');submit.type='submit';submit.disabled=!parent&&anchor?.note_beat==null;f.append(submit);
+ const submit=el('button',post?'Save changes':parent?'Reply':'Save note');submit.type='submit';submit.disabled=!parent&&anchor?.note_beat==null;f.append(submit);
  if(post||parent)f.append(button('Cancel',()=>f.remove()));
  const profileId=profile.id;
  f.onsubmit=e=>{e.preventDefault();if(!signed()){needSignIn();return;}if(profileId!==window.PianoProfiles?.current()?.id){say('Your account changed. Reopen the composer.',true);return;}if(!f.reportValidity())return;const target=piece,epoch=generation;action(submit,async()=>{
   const chosen=post||selectedAnchor;
   await rpc('community_write',{p_piece:target,p_alias:'',p_body:body.value.trim(),p_kind:parent?'comment':kind.value,p_bars:chosen?.note_beat!=null?anchorText({...chosen,hand:hand.value}):'',p_hand:parent?'BH':hand.value,p_fingers:kind.value==='fingering'?fingers.value.trim():'',p_parent:parent?.id||post?.parent||null,p_id:post?.id||null,p_publish:!!parent,p_note_beat:parent?null:Number(chosen.note_beat),p_note_midi:parent?null:Number(chosen.note_midi),p_visibility:parent?'public':'private'});
-  if(epoch!==generation)return;if(post||parent)f.remove();else{body.value='';fingers.value='';}await load();say(parent?'Reply published.':'Add-on saved privately. Reveal it when you want to share.');
+  if(epoch!==generation)return;if(post||parent)f.remove();else{body.value='';fingers.value='';}await load();say(parent?'Reply published.':'Note saved privately. Reveal it when you want to share.');
  });};return f;
 }
 function identity(p){const head=el('div',undefined,'community-post-head'),who=window.PianoProfiles?.identity(p.profile,p.alias)||el('strong',p.alias);head.append(who);if(p.bot)head.append(el('span','BOT','bot-badge'));head.append(el('span',new Date(p.created_at||p.saved_at).toLocaleDateString()+(p.edited_at?' · edited':''),'muted'));return head;}
@@ -67,9 +68,9 @@ function card(p,{reply=false,personal=false,snapshot=false}={}){
  if(snapshot){const remove=button('Remove',()=>action(remove,async()=>{await rpc('community_save_addon',{p_post:p.source_post||p.id,p_on:false});await load();say('Removed from your repertoire.');}));actions.append(button('Open note',()=>openAddon(p)),remove);}
  else if(personal){
   actions.append(button('Open note',()=>openAddon(p)));
-  const reveal=button(p.visibility==='public'?'Make private':'Reveal',()=>action(reveal,async()=>{await rpc('community_reveal',{p_post:p.id,p_public:p.visibility!=='public'});await load();say(p.visibility==='public'?'Add-on is private again.':'Add-on revealed to the community.');}));actions.append(reveal);
+  const reveal=button(p.visibility==='public'?'Make private':'Reveal',()=>action(reveal,async()=>{await rpc('community_reveal',{p_post:p.id,p_public:p.visibility!=='public'});await load();say(p.visibility==='public'?'Note is private again.':'Note revealed to the community.');}));actions.append(reveal);
   actions.append(button('Edit',()=>{if(!box.querySelector('form'))box.append(composerForm(p));}));
-  const withdraw=button('Remove',()=>action(withdraw,async()=>{await rpc('community_hide',{p_post:p.id,p_hide:true});await load();say('Add-on removed.');}));actions.append(withdraw);
+  const withdraw=button('Remove',()=>action(withdraw,async()=>{await rpc('community_hide',{p_post:p.id,p_hide:true});await load();say('Note removed.');}));actions.append(withdraw);
  }else{
   const vote=button(`${p.voted?'✓ Helpful':'Helpful'} · ${p.votes}`,()=>{if(!signed()){needSignIn();return;}action(vote,async()=>{await rpc('community_vote',{p_post:p.id,p_on:!p.voted});await load(true);});});vote.setAttribute('aria-pressed',String(!!p.voted));vote.disabled=!!p.mine;actions.append(vote);
   if(!reply)actions.append(button('Reply',()=>{if(!signed()){needSignIn();return;}if(!box.querySelector('form'))box.append(composerForm(null,p));}));
@@ -79,31 +80,31 @@ function card(p,{reply=false,personal=false,snapshot=false}={}){
  box.append(actions);for(const r of p.replies||[])box.append(card(r,{reply:true}));return box;
 }
 function render(){
- list.replaceChildren();if(!loaded.length)list.append(el('p','No public add-ons yet.','muted'));for(const p of loaded)list.append(card(p));title.textContent='Community add-ons';
+ list.replaceChildren();if(!loaded.length)list.append(el('p','No public notes yet.','muted'));for(const p of loaded)list.append(card(p));title.textContent='Notes and discussion';
  mine.replaceChildren();if(signed()){
-  const h=el('div',undefined,'addon-section-title');h.append(el('h3','My add-ons'),el('span',`${own.length+saved.length} saved`,'muted'));mine.append(h);
-  if(!own.length&&!saved.length)mine.append(el('p','Your private note comments and saved community add-ons will appear here.','muted'));
+  const h=el('div',undefined,'addon-section-title');h.append(el('h3','My notes'),el('span',`${own.length+saved.length} saved`,'muted'));mine.append(h);
+  if(!own.length&&!saved.length)mine.append(el('p','Your private note comments and saved community notes will appear here.','muted'));
   for(const p of own)mine.append(card(p,{personal:true}));for(const p of saved)mine.append(card(p,{personal:true,snapshot:true}));
   if(!composer.querySelector('form'))composer.replaceChildren(composerForm());
- }else{mine.replaceChildren();composer.replaceChildren();const a=el('a','Sign in to create and save add-ons');a.href='#mine';composer.append(a);}
+ }else{mine.replaceChildren();composer.replaceChildren();const a=el('a','Sign in to create and save notes');a.href='#mine';composer.append(a);}
 }
 async function load(quiet=false){
- if(!piece)return;const epoch=++generation,target=piece;if(!quiet)say('Loading add-ons…');
- try{const[publicData,mineData]=await Promise.all([rpc('community_list',{p_piece:target,p_sort:sort,p_offset:0}),signed()?rpc('community_mine',{p_piece:target}):Promise.resolve({posts:[],saved:[]})]);if(epoch!==generation||piece!==target)return;loaded=publicData.posts||[];total=publicData.total||0;own=mineData.posts||[];saved=mineData.saved||[];render();say(total?`${total} public add-on${total===1?'':'s'} · community advice is not teacher verification.`:'Add-ons are private until their authors reveal them.');}
- catch(e){if(epoch!==generation)return;list.replaceChildren(el('p','Add-ons could not load. The practice score still works.','muted'));say(e.message,true);composer.replaceChildren(button('Try again',()=>load()));}
+ if(!piece)return;const epoch=++generation,target=piece;if(!quiet)say('Loading notes…');
+ try{const[publicData,mineData]=await Promise.all([rpc('community_list',{p_piece:target,p_sort:sort,p_offset:0}),signed()?rpc('community_mine',{p_piece:target}):Promise.resolve({posts:[],saved:[]})]);if(epoch!==generation||piece!==target)return;loaded=publicData.posts||[];total=publicData.total||0;own=mineData.posts||[];saved=mineData.saved||[];render();say(total?`${total} public note${total===1?'':'s'} · community advice is not teacher verification.`:'Notes are private until their authors reveal them.');}
+ catch(e){if(epoch!==generation)return;list.replaceChildren(el('p','Notes could not load. The practice score still works.','muted'));say(e.message,true);composer.replaceChildren(button('Try again',()=>load()));}
 }
 function shapePiecePost(){const layout=$('.lib-piece .piece-layout'),course=$('#piece-course');if(!layout||!course)return;layout.classList.add('repertoire-post');if(course.querySelector('.piece-learning-guide'))return;const steps=course.querySelector('.course-steps');if(!steps)return;const guide=el('details',undefined,'piece-learning-guide');guide.append(el('summary','Learning guide'));const intro=course.children[3],pattern=course.querySelector('.piece-pattern'),notice=course.lastElementChild;for(const n of[intro,pattern,steps,notice])if(n&&n.tagName!=='H2'&&n!==guide)guide.append(n);course.append(guide);}
 function route(){
  const hash=location.hash,practice=hash==='#practice',lesson=hash.startsWith('#library/piece');let id=null;if(practice)id=$('#trainer-song')?.value;else if(lesson){try{id=JSON.parse(localStorage.getItem('my-journey-piano-pathway-v2'))?.selected;}catch{}}
- if(!catalog.has(id)||(!practice&&!lesson)){root.hidden=true;piece=null;++generation;return;}
+ if(!catalog.has(id)||(!practice&&!lesson)||(practice&&window.PianoAddons)){root.hidden=true;piece=null;++generation;return;}
  root.querySelector('#community-permalink').href='#library/piece/'+encodeURIComponent(id);if(lesson)shapePiecePost();(practice?$('#community-practice-slot'):$('#community-library-slot')).append(root);root.hidden=false;
  if(piece!==id){piece=id;selectedAnchor=null;loaded=[];own=[];saved=[];composer.replaceChildren();load();}
 }
 document.addEventListener('DOMContentLoaded',()=>{
  catalog=new Set((window.PianoCurriculum?.pieces||[]).map(p=>p.id));const lesson=$('.lib-piece'),practice=$('#note-trainer');if(!lesson||!practice)return;
  const librarySlot=el('div');librarySlot.id='community-library-slot';(lesson.querySelector('.piece-layout')||lesson).append(librarySlot);const practiceSlot=el('div');practiceSlot.id='community-practice-slot';practice.append(practiceSlot);
- root=el('section',undefined,'community');root.id='piece-community';root.hidden=true;root.setAttribute('aria-label','Personal and community note add-ons');root.addEventListener('keydown',e=>e.stopPropagation());
- title=el('h2','Community add-ons');root.append(title,el('p','Click a note in the practice score to attach a private comment or fingering. Reveal it only when you want others to see it.','community-intro'));
+ root=el('section',undefined,'community');root.id='piece-community';root.hidden=true;root.setAttribute('aria-label','Personal and community notes');root.addEventListener('keydown',e=>e.stopPropagation());
+ title=el('h2','Notes and discussion');root.append(title,el('p','Click a note in the practice score to attach a private comment or fingering. Reveal it only when you want others to see it.','community-intro'));
  composer=el('div',undefined,'community-composer');mine=el('section',undefined,'my-addons');
  const controls=el('div',undefined,'community-toolbar'),[label,order]=field('Show','select');for(const[v,t]of[['best','Most useful'],['new','Newest']]){const o=el('option',t);o.value=v;order.append(o);}order.onchange=()=>{sort=order.value;load();};controls.append(label);const permalink=el('a','Link to piece');permalink.id='community-permalink';controls.append(permalink);
  list=el('div',undefined,'community-list');status=el('p','', 'community-status');status.setAttribute('role','status');root.append(composer,mine,controls,list,status);

@@ -8,10 +8,10 @@ async function setup({signed=true,posts=[post],minePosts=[],savedPosts=[],rpcOve
  w.PianoProfiles={current:()=>profile,identity:(p,fallback)=>{const n=w.document.createElement('div');n.textContent=p?.name||fallback;return n;}};
  w.eval(fs.readFileSync('site/piano-community.js','utf8'));await tick();return{dom,w,calls};
 }
-test('public add-ons render untrusted text safely and private song IDs never reach community RPCs',async()=>{
+test('public notes render untrusted text safely and private song IDs never reach community RPCs',async()=>{
  const ui=await setup({signed:false,posts:[{...post,alias:'<img src=x onerror=alert(1)>',body:'<script>bad()</script>'}]});const d=ui.w.document;
  assert.equal(d.querySelectorAll('.community img,.community script').length,0);assert.ok(d.querySelector('.community').textContent.includes('<script>bad()</script>'));
- assert.ok(d.querySelector('.community').textContent.includes('Sign in to create and save add-ons'));[...d.querySelectorAll('.community-actions button')].find(b=>b.textContent.startsWith('Helpful')).click();await tick();assert.equal(ui.calls.filter(c=>c.name==='community_vote').length,0);
+ assert.ok(d.querySelector('.community').textContent.includes('Sign in to create and save notes'));[...d.querySelectorAll('.community-actions button')].find(b=>b.textContent.startsWith('Helpful')).click();await tick();assert.equal(ui.calls.filter(c=>c.name==='community_vote').length,0);
  ui.w.location.hash='#practice';d.querySelector('#trainer-song').value='private-id';d.querySelector('#trainer-song').dispatchEvent(new ui.w.Event('change'));await tick();assert.equal(d.querySelector('#piece-community').hidden,true);assert.ok(ui.calls.every(c=>c.args.p_piece!=='private-id'));ui.dom.window.close();
 });
 test('selecting an engraved note creates a private add-on with its pitch, beat and hand',async()=>{

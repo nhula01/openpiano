@@ -1,50 +1,61 @@
 const {test}=require('node:test');const assert=require('node:assert/strict');const vm=require('node:vm');const fs=require('node:fs');
 function load(file,extra={}){const store=new Map();const ctx={window:{addEventListener(){},dispatchEvent(){},...extra},document:{addEventListener(){},createElement:()=>({}),createElementNS:()=>({})},localStorage:{getItem:k=>store.get(k)??null,setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)},setTimeout,requestAnimationFrame:()=>0,Event:class{constructor(t){this.type=t;}},console};vm.runInNewContext(fs.readFileSync('site/'+file,'utf8'),ctx);return ctx.window;}
 const A=load('piano-addons.js').PianoAddons;
-const post=(o)=>({id:'x'+Math.random(),kind:'fingering',fingers:'1',hand:'RH',note_beat:0,note_midi:60,votes:0,voted:false,mine:false,alias:'Ann',profile:{id:'ann'},...o});
+const J=x=>JSON.stringify(x);
 
 test('finger numbers are read only from clear fingering, never invented from free text',()=>{
  assert.equal(A.digits('3'),'3');assert.equal(A.digits('3-1'),'3–1');assert.equal(A.digits(' 4 – 2 '),'4–2');
  assert.equal(A.digits('E5(1), A5(5)'),'1');assert.equal(A.digits('use the thumb'),'');assert.equal(A.digits('6'),'');assert.equal(A.digits('E5'),'');
+ assert.equal(A.storeFingers('4 – 2'),'4-2');assert.equal(A.storeFingers('1, 2, 3'),'1 2 3');
 });
-test('add-ons group by author, rank by votes, and one voter counts once',()=>{
- const posts=[post({alias:'Bot A',bot:true,profile:{name:'Bot A',bot:true},votes:0}),post({alias:'Bot A',bot:true,profile:{name:'Bot A',bot:true},note_beat:1,votes:0}),
-  post({alias:'Ben',profile:{id:'ben'},votes:1,voted:true}),post({alias:'Ben',profile:{id:'ben'},note_beat:1,votes:1,voted:true}),post({alias:'Ben',profile:{id:'ben'},note_beat:2,kind:'comment',body:'soft',votes:1,voted:true}),
-  post({alias:'Me',mine:true,votes:5}),post({alias:'Ann',parent:'p1',votes:9})];
- const layers=A.groupLayers(posts);assert.equal(layers.length,2,'own posts and replies are excluded');
- assert.equal(layers[0].author,'Ben');assert.equal(layers[0].votes,1);assert.equal(layers[0].voted,true);assert.equal(layers[0].fingerings,2);assert.equal(layers[0].comments,1);
- assert.equal(layers[1].author,'Bot A');assert.equal(layers[1].bot,true);
+test('the draft is one list for the whole piece: setting a note adds, replaces or removes it',()=>{
+ let d=A.setNote([],{b:1,m:76,h:'RH',f:'5'});d=A.setNote(d,{b:0,m:75,h:'RH',f:'4',c:'light'});assert.equal(J(d),J([{b:0,m:75,h:'RH',f:'4',c:'light'},{b:1,m:76,h:'RH',f:'5'}]),'kept in score order');
+ d=A.setNote(d,{b:1,m:76,h:'RH',f:'4'});assert.equal(d[1].f,'4','one entry per note');assert.equal(d.length,2);
+ d=A.setNote(d,{b:0,m:75});assert.equal(J(d),J([{b:1,m:76,h:'RH',f:'4'}]),'empty note is removed');
 });
-test('marks show digits for fingering and turn unreadable fingering into a comment',()=>{
- const marks=A.toMarks([post({fingers:'2',body:'Fingering 2'}),post({fingers:'thumb under',body:'Fingering thumb under',note_beat:1}),post({kind:'comment',body:'Pedal',note_beat:2,note_midi:40,hand:'LH'})],'layer','Ann');
- assert.equal(JSON.stringify(marks.map(m=>[m.kind,m.fingers||'',m.body])),JSON.stringify([['fingering','2',''],['comment','','Fingering: thumb under · Fingering thumb under'],['comment','','Pedal']]));
+test('unpublished changes are counted against the published copy of the whole add-on',()=>{
+ const pub=[{b:0,m:76,h:'RH',f:'5'},{b:.25,m:75,h:'RH',f:'4'},{b:2,m:45,h:'LH',c:'pedal'}];
+ assert.equal(A.changes(pub,pub).total,0);
+ const draft=[{b:0,m:76,h:'RH',f:'4'},{b:.25,m:75,h:'RH',f:'4'},{b:3,m:64,h:'RH',f:'2'}];
+ assert.equal(J(A.changes(draft,pub)),J({added:1,edited:1,removed:1,total:3}));
+ assert.equal(A.changes(draft,null).total,3,'never published: every note is new');
+});
+test('marks show digits for fingering and a bubble for comments, with ids the viewer can resolve',()=>{
+ const marks=A.toMarks([{b:0,m:76,h:'RH',f:'3-1',c:'slow'},{b:2,m:40,h:'LH',c:'Pedal'}],'layer','Ann');
+ assert.equal(J(marks.map(m=>[m.kind,m.fingers||'',m.body,m.id])),J([['fingering','3–1','','layer:0.000:76:f'],['comment','','slow','layer:0.000:76:c'],['comment','','Pedal','layer:2.000:40:c']]));
  assert.ok(marks.every(m=>m.source==='layer'&&m.author==='Ann'));
 });
-test('the preview stand-in keeps notes private until shared, and blocks voting for yourself',async()=>{
+test('a device draft from the first version becomes notes',()=>{
+ const old=[{note_beat:0,note_midi:76,hand:'RH',kind:'fingering',fingers:'5'},{note_beat:0,note_midi:76,hand:'RH',kind:'comment',body:'light'},{note_beat:1,note_midi:60,hand:'LH',kind:'fingering',fingers:'1'}];
+ assert.equal(J(A.fromDevice(old)),J([{b:0,m:76,h:'RH',f:'5',c:'light'},{b:1,m:60,h:'LH',f:'1'}]));
+});
+test('the preview stand-in keeps the draft private, publishes the whole draft, and counts one vote per person',async()=>{
  const w=load('piano-addons-demo.js',{PianoProfiles:null}),api=w.PianoAddonsDemo;
- const before=(await api.rpc('community_list',{p_piece:'fur'})).total;assert.ok(before>=39);
- const id=await api.rpc('community_write',{p_piece:'fur',p_body:'Fingering 3',p_kind:'fingering',p_fingers:'3',p_hand:'RH',p_note_beat:6,p_note_midi:76,p_visibility:'private'});
- assert.equal((await api.rpc('community_list',{p_piece:'fur'})).total,before,'private notes are not listed');
- assert.equal((await api.rpc('community_mine',{p_piece:'fur'})).posts.length,1);
- await api.rpc('community_reveal',{p_post:id,p_public:true});assert.equal((await api.rpc('community_list',{p_piece:'fur'})).total,before+1);
- await assert.rejects(api.rpc('community_vote',{p_post:id,p_on:true}),/another learner/);
- const bot=(await api.rpc('community_list',{p_piece:'fur'})).posts.find(p=>p.bot);await api.rpc('community_vote',{p_post:bot.id,p_on:true});
- assert.equal((await api.rpc('community_list',{p_piece:'fur'})).posts[0].votes,1,'voted add-on rises to the top');
+ assert.equal((await api.rpc('addon_list',{p_piece:'fur'})).total,3);
+ let me=await api.rpc('addon_save_draft',{p_piece:'fur',p_notes:[{b:6,m:76,h:'RH',f:'3'},{b:6.25,m:75,h:'RH',f:'2 – 1'},{b:7,m:72,h:'RH',f:'',c:''}]});
+ assert.equal(J(me.draft),J([{b:6,m:76,h:'RH',f:'3'},{b:6.25,m:75,h:'RH',f:'2-1'}]),'tidied and empty notes dropped');
+ assert.equal((await api.rpc('addon_list',{p_piece:'fur'})).total,3,'a draft is not listed');
+ await assert.rejects(api.rpc('addon_save_draft',{p_piece:'fur',p_notes:[{b:0,m:76,f:'6'}]}),/1 to 5/);
+ me=await api.rpc('addon_publish',{p_piece:'fur'});assert.equal(J(me.published),J(me.draft));
+ const listed=(await api.rpc('addon_list',{p_piece:'fur'})).addons.find(a=>a.mine);assert.equal(listed.notes.length,2);
+ await api.rpc('addon_save_draft',{p_piece:'fur',p_notes:[{b:6,m:76,h:'RH',f:'4'}]});
+ assert.equal((await api.rpc('addon_list',{p_piece:'fur'})).addons.find(a=>a.mine).notes.length,2,'changes wait for the next publish');
+ me=await api.rpc('addon_discard',{p_piece:'fur'});assert.equal(J(me.draft),J(me.published));
+ await assert.rejects(api.rpc('addon_vote',{p_addon:listed.id,p_on:true}),/another learner/);
+ const bot=(await api.rpc('addon_list',{p_piece:'fur'})).addons.find(a=>a.bot&&a.author.includes('Alternate'));
+ await api.rpc('addon_vote',{p_addon:bot.id,p_on:true});await api.rpc('addon_vote',{p_addon:bot.id,p_on:true});
+ const top=(await api.rpc('addon_list',{p_piece:'fur'})).addons[0];assert.equal(top.id,bot.id,'voted add-on rises to the top');assert.equal(top.votes,1);
 });
-test('the demo bots and the SQL seed describe the same Für Elise notes',()=>{
- const sql=fs.readFileSync('scripts/supabase-note-addons-demo-fur.sql','utf8');const rows=[...sql.matchAll(/'(fingering-demo|alt-fingering-demo|phrasing-demo)',([\d.]+)(?:::numeric)?,(\d+),'(RH|LH)','(fingering|comment)','([^']*)'/g)].map(m=>[m[1],Number(m[2]),Number(m[3]),m[4],m[5],m[6]].join('|')).sort();
+test('the demo bots and the SQL seed describe the same Für Elise add-ons',()=>{
+ const sql=fs.readFileSync('scripts/supabase-addon-layers-demo-fur.sql','utf8');
+ const rows=Object.fromEntries([...sql.matchAll(/'(fingering-demo|alt-fingering-demo|phrasing-demo)',\$\$(\[.*?\])\$\$/g)].map(m=>[m[1],JSON.parse(m[2])]));
  const w=load('piano-addons-demo.js',{PianoProfiles:null});
- return w.PianoAddonsDemo.rpc('community_list',{p_piece:'fur',p_offset:0}).then(async first=>{let all=first.posts;for(let o=20;o<first.total;o+=20)all=all.concat((await w.PianoAddonsDemo.rpc('community_list',{p_piece:'fur',p_offset:o})).posts);
-  const bots={'OpenPiano Fingering Bot':'fingering-demo','OpenPiano Alternate Fingering Bot':'alt-fingering-demo','OpenPiano Phrasing Bot':'phrasing-demo'};
-  const demo=all.map(p=>[bots[p.alias],p.note_beat,p.note_midi,p.hand,p.kind,p.fingers].join('|')).sort();assert.equal(rows.length,39);assert.equal(JSON.stringify(demo),JSON.stringify(rows));});
+ assert.equal(J(rows),J(w.PianoAddonsDemo.seed));assert.equal(Object.values(rows).flat().length,39);
 });
-test('your add-on is published notes plus a draft; publishing updates changed notes in place and reveals new ones',()=>{
- const mk=(o)=>post({mine:true,visibility:'private',...o});
- const pubF=mk({id:'p1',visibility:'public',fingers:'5',note_beat:0,note_midi:76}),pubC=mk({id:'p2',visibility:'public',kind:'comment',body:'light',note_beat:0,note_midi:76}),
-  draftF=mk({id:'d1',fingers:'4',note_beat:0,note_midi:76}),newF=mk({id:'d2',fingers:'2',note_beat:1.25,note_midi:71});
- const s=A.splitMine([pubF,pubC,draftF,newF]);
- assert.equal(JSON.stringify(s.shown.map(x=>x.id).sort()),JSON.stringify(['d1','d2','p2']),'a draft change hides the published version it replaces');
- assert.equal(JSON.stringify(s.plan.map(x=>[x.op,x.draft.id,x.target?.id||''])),JSON.stringify([['update','d1','p1'],['reveal','d2','']]));
- assert.equal(A.splitMine([pubF,pubC]).plan.length,0,'nothing to publish without a draft');
- const marks=A.toMarks(s.shown,x=>x.visibility==='public'?'mine':'draft','You');assert.equal(JSON.stringify(marks.map(m=>[m.id,m.source]).sort()),JSON.stringify([['d1','draft'],['d2','draft'],['p2','mine']]));
+test('the add-on migration keeps tables private and grants only the add-on functions',()=>{
+ const sql=fs.readFileSync('scripts/supabase-addon-layers.sql','utf8');
+ assert.match(sql,/revoke all on public\.community_addons,public\.community_addon_votes,public\.community_addon_reports from public,anon,authenticated/);
+ for(const t of ['community_addons','community_addon_votes','community_addon_reports'])assert.match(sql,new RegExp(`alter table public\\.${t} enable row level security`));
+ const grants=[...sql.matchAll(/grant execute on function public\.(\w+)\([^)]*\) to ([\w,]+)/g)].map(m=>m[1]+':'+m[2]);
+ assert.equal(J(grants),J(['addon_list:anon,authenticated','addon_mine:authenticated','addon_save_draft:authenticated','addon_publish:authenticated','addon_discard:authenticated','addon_unpublish:authenticated','addon_vote:authenticated','addon_report:authenticated']));
 });

@@ -25,8 +25,9 @@ in the database for moderation.
 ## Deployment
 
 Run `scripts/supabase-community.sql`, `scripts/supabase-community-catalog.sql`,
-`scripts/supabase-profiles.sql`, the profile-photo migration, and finally
-`scripts/supabase-note-addons.sql` in the project SQL Editor. The catalog contains
+`scripts/supabase-profiles.sql`, the profile-photo migration,
+`scripts/supabase-note-addons.sql` and finally `scripts/supabase-addon-layers.sql` (whole-piece
+add-ons for Stage) in the project SQL Editor. The catalog contains
 only built-in repertoire IDs, never private uploaded songs. Repeat its seed when
 new public pieces are added.
 
@@ -41,15 +42,16 @@ content (to avoid coordinated flagging attacks).
 
 `scripts/supabase-community-verify.sql` checks the original discussion controls;
 `scripts/supabase-note-addons-verify.sql` checks private roots, reveal, copying and
-note validation. Both use synthetic users inside a transaction and roll back.
+note validation; `scripts/supabase-addon-layers-verify.sql` checks private drafts, whole-draft
+publishing, discard/unpublish, note validation, one vote per person and anonymous denial. All use
+synthetic users inside a transaction and roll back.
 
 Three public Entertainer examples are seeded as clearly labeled OpenPiano demo bots.
 They contain general practice prompts, not generated fingering. The optional
-`scripts/supabase-note-addons-demo-fur.sql` adds three more bots on Für Elise (two fingering
+`scripts/supabase-addon-layers-demo-fur.sql` adds three bot add-ons on Für Elise (two fingering
 add-ons that differ, and one of phrasing comments) so the add-on browser has something to
 compare. Their fingerings are examples written for the demo, not from a printed edition, and
-the file ends with the statement that removes them. Bots have their own
-system identity rather than fake authentication accounts and users cannot post as bots.
+the file ends with the statement that removes them.
 
 ## Moderation (project owner)
 
@@ -103,31 +105,37 @@ private/public signed-URL eligibility and removal; its synthetic rows also roll 
 
 ## Add-ons on the score (Stage)
 
-Each person's note posts on a piece form their **add-on** for that piece. In Practice:
+An **add-on** is one person's fingering and comments for a whole piece: one per person per piece.
+In Practice:
 
-- **Click a note** and a **+** appears beside it (not while the piece is playing). The + opens a
-  small editor: type or tap 1–5 (or `3-1` for a substitution) and press **Enter**, and/or add a
-  comment. With the editor open, clicking another note moves it there.
-- Everything you add goes into your **draft**: a layer over the piece that only you see, drawn
-  dashed/italic on the sheet, with a draft bar (top right of the sheet) to **Publish** or
-  **Discard**. Draft notes are private posts; publishing reveals them. A change to a note you
-  already published is a new private post until you publish again, when the published post is
-  updated in place (so its votes stay) and the draft copy is hidden. Deleting a published note
-  takes effect at once (after a confirm). Signed out, the draft stays on this device
-  (`openpiano-addons-device-v1`) and can be moved into the account later.
-- The live `community_write` allows 10 new posts an hour and 30 a day per person (edits do not
-  count), so a long fingering draft fills up slowly; a one-row-per-add-on table would remove that
-  limit if it becomes a problem.
-- Fingering appears as numbers beside the notes (above for the right hand, below for the left),
-  comments as small bubbles; tapping a mark shows it. Your add-on is amber, an applied community
-  add-on is indigo, printed fingering keeps its own colour.
-- **Add-ons** (layers icon, next to ⚙) lists your add-on (show/hide, publish or discard the draft, unpublish) and
-  community add-ons grouped by author, most helpful first. **Apply** shows one on your score; the
-  choice is stored per piece in this browser (`openpiano-addons-applied-v1`).
-- An add-on's score is its best-voted note, so one person voting for a whole add-on counts once.
-  Voting for an add-on votes for each of its notes through the existing `community_vote`.
+- **Click a note** and a small **+** appears beside it (not while the piece is playing; a note under
+  the playhead can be clicked too). The + opens a small editor: type or tap 1–5 (or `3-1` for a
+  substitution) and press **Enter**, and/or add a comment. With the editor open, clicking another
+  note moves it there.
+- Everything goes into your **draft**, the working copy of your add-on that only you see. It is
+  saved as you go (the whole draft each time). A draft bar at the top right of the sheet shows how
+  many notes (or unpublished changes) it has, with **Publish** and **Discard**.
+- **Publish** copies the whole draft to the published add-on in one step. You can keep editing:
+  changes, including removed notes, stay in the draft (drawn dashed/italic) until you publish
+  again; **Discard** returns the draft to the published copy; **Unpublish** takes the add-on down
+  and keeps the draft.
+- Signed out, the draft stays on this device (`openpiano-addons-device-v1`; entries written by the
+  first per-note version are converted) and can be moved into the account.
+- Fingering appears as small numbers just above the notes (right hand) or below (left hand); in a
+  chord they stack beyond the outer note, read top to bottom. Comments are small bubbles; tapping a
+  mark shows it. Your add-on is amber, an applied community add-on is indigo, printed fingering
+  keeps its own colour.
+- **Add-ons** (layers icon, next to ⚙) shows your add-on (show/hide, publish, discard changes,
+  unpublish) and the published community add-ons, most voted first. Each is voted for and applied
+  as a whole. **Apply** shows one on your score; the choice is stored per piece in this browser
+  (`openpiano-addons-applied-v2`).
 
-`site/piano-addons.js` uses the existing RPCs only (`community_list`, `community_mine`,
-`community_write`, `community_reveal`, `community_vote`, `community_hide`); no new tables.
+Storage is `scripts/supabase-addon-layers.sql`: `community_addons` holds one row per author and
+piece with `draft` and `published` note lists (`{b, m, h, f, c}`: beat, MIDI pitch, hand,
+fingers, comment), checked by `community_addon_clean` (finger numbers 1–5 only, comments up to
+500 characters, each note once, at most 3000 notes). RPCs: `addon_list` (public, 20 per page),
+`addon_mine`, `addon_save_draft`, `addon_publish`, `addon_discard`, `addon_unpublish`,
+`addon_vote`, `addon_report`. The per-note comments panel (`piano-community.js`) remains on the
+library piece pages as "Notes and discussion" and is not shown on Practice.
 `site/piano-addons-demo.js` is an in-browser stand-in used by previews and tests; the live site
 never loads it.
