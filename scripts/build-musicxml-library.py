@@ -268,7 +268,7 @@ for id, meta in sources.items():
             y0 = (geo[k - 1][2] and (max(s[2] for s in geo[k - 1][2]) + upper) / 2) if k else upper - 1100
             y1 = (bottom + geo[k + 1][1][0]) / 2 if k + 1 < len(geo) else bottom + 1100
             left = min(s[3] for s in staves); right = max(s[4] for s in staves)
-            positions = {}
+            positions = {}; head_ys = []
             for st in staves:
                 staff_n = '1' if round(st[1]) == upper else '2'
                 for note in (e for e in st[0].iter(ns + 'g') if e.get('class') == 'note'):
@@ -283,6 +283,12 @@ for id, meta in sources.items():
                     heads[nid] = True
                     page_notes.append({'beat': beat, 'midi': pitch, 'x': (x + mx) / 100, 'y': (y + my) / 100, 'hand': hand})
                     positions[beat] = min(positions.get(beat, 1e9), x - left)
+                    head_ys.append(y)
+            # Notes on many ledger lines can reach past the halfway line to the next system; widen the
+            # band so the moving score never cuts them off (other systems are removed from the crop).
+            if head_ys:
+                space = (staves[0][2] - staves[0][1]) / 4
+                y0 = min(y0, min(head_ys) - 3 * space); y1 = max(y1, max(head_ys) + 3 * space)
             # Continuous-score crop: this system only, without the page title.
             crop = copy.deepcopy(inner)
             for parent in crop.iter():

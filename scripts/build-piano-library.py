@@ -1,4 +1,5 @@
 import pathlib,json,re,xml.etree.ElementTree as ET,copy,subprocess,shutil,sys,hashlib
+sys.path.insert(0,str(pathlib.Path(__file__).resolve().parent));from engraving_staves import staff_lines,staves,systems_of,layout,crop,note_key
 root=pathlib.Path(sys.argv[1] if len(sys.argv)>1 else '/tmp/journey-library');choices=json.loads(pathlib.Path(sys.argv[2] if len(sys.argv)>2 else 'scripts/piano-library-sources.json').read_text());ns='{http://www.w3.org/2000/svg}';ET.register_namespace('',ns[1:-1]);ET.register_namespace('xlink','http://www.w3.org/1999/xlink')
 titles={'minuet':('Minuet in G major, BWV Anh. 114','Christian Petzold'),'melody':('Melody, Op. 68 No. 1','Robert Schumann'),'wild-rider':('The Wild Rider, Op. 68 No. 8','Robert Schumann'),'happy-farmer':('The Happy Farmer, Op. 68 No. 10','Robert Schumann'),'innocence':('Innocence, Op. 100 No. 1','Friedrich Burgmüller'),'arabesque':('Arabesque, Op. 100 No. 2','Friedrich Burgmüller'),'ballade':('Ballade, Op. 100 No. 15','Friedrich Burgmüller'),'clementi':('Sonatina in C, Op. 36 No. 1 · all three movements','Muzio Clementi'),'prelude':('Prelude in C major, BWV 846','Johann Sebastian Bach'),'fur':('Für Elise · complete','Ludwig van Beethoven'),'gymnopedie':('Gymnopédie No. 1','Erik Satie'),'chopin-prelude':('Prelude in E minor, Op. 28 No. 4','Frédéric Chopin'),'invention1':('Invention No. 1 in C, BWV 772','Johann Sebastian Bach'),'mozart545':('Sonata in C, K. 545 · first movement','Wolfgang Amadeus Mozart'),'clair':('Clair de lune','Claude Debussy'),'nocturne':('Nocturne in E-flat, Op. 9 No. 2','Frédéric Chopin'),'traumerei':('Träumerei, Op. 15 No. 7','Robert Schumann'),'pathetique':('Pathétique Sonata · second movement','Ludwig van Beethoven'),'revolutionary':('Revolutionary Étude, Op. 10 No. 12','Frédéric Chopin'),'czerny':('Eight-measure study, Op. 821 No. 1','Carl Czerny'),'fugue':('Fugue in C major, BWV 846','Johann Sebastian Bach'),'etude9':('Étude in F minor, Op. 10 No. 9','Frédéric Chopin')}
 titles.update({'ode':('Ode to Joy · theme arrangement','Ludwig van Beethoven'),'twinkle':('Twinkle, Twinkle · learning arrangement','Traditional'),'frere':('Frère Jacques · learning arrangement','Traditional')})
@@ -20,24 +21,18 @@ for id,path in choices.items():
  notes.sort(key=lambda n:(n['beat'],n['midi']));pages=[];systems=[];movement=0;previousStart=-1
  files=sorted(d.glob('practice*.svg'),key=lambda p:int(re.search(r'-(\d+)\.svg$',p.name)[1]) if re.search(r'-(\d+)\.svg$',p.name) else 0)
  for file in files:
-  tree=ET.fromstring(file.read_text());width=float(tree.get('viewBox').split()[2]);heads=[];lines=[];edges={}
+  tree=ET.fromstring(file.read_text());width=float(tree.get('viewBox').split()[2]);heads=[]
   for g in tree:
    if g.get('class')=='score-note' and g.find(ns+'g') is not None:
     t=g.find(ns+'g').get('transform','');v=re.findall(r'[-\d.]+',t)
     if len(v)>=2:heads.append((g,{'beat':float(g.get('data-beat')),'midi':int(g.get('data-midi')),'x':float(v[0]),'y':float(v[1]),'hand':g.get('data-hand'),'grace':any('scale(0.0028' in e.get('transform','') for e in g.iter())}))
-   else:
-    line=g.find(ns+'line');trans=g.get('transform','')
-    if line is not None and abs(float(line.get('x2','0'))-float(line.get('x1','0')))>20 and 'translate' in trans:
-     x,y=map(float,re.findall(r'[-\d.]+',trans));lines.append(y);edges[y]=(x+float(line.get('x1','0')),x+float(line.get('x2','0')))
   if not heads:continue
-  staffs=[]
-  for y in sorted(set(lines)):
-   if not staffs or y-staffs[-1][-1]>1.1:staffs.append([y])
-   else:staffs[-1].append(y)
-  if len(staffs)%2: 
-   last=staffs[-1][0];staffs.append([last+18+j for j in range(5)]);edges[last+18]=edges[last]
-  centers=[(staffs[i][0]+staffs[i+1][-1])/2 for i in range(0,len(staffs),2)];buckets=[[] for _ in centers]
-  for g,n in heads:buckets[min(range(len(centers)),key=lambda i:abs(n['y']-centers[i]))].append((g,n))
+  # Only real five-line staves; hairpins, 8va lines and brackets are not staves (see engraving_staves.py).
+  edges=staff_lines(tree);staffs=staves(edges);assert staffs,f'{id} {file.name}: no staves found'
+  groups=systems_of(tree,staffs)  # grand-staff pairs, or one staff where the left hand is hidden
+  # Which system each notehead belongs to, and where each system's crop is cut.
+  owner,bounds=layout(groups,[(n['beat'],n['x'],n['y']) for g,n in heads]);buckets=[[] for _ in groups]
+  for (g,n),o in zip(heads,owner):buckets[o].append((g,n))
   page=len(pages)
   for i,bucket in enumerate(buckets):
    if not bucket:continue
@@ -59,20 +54,14 @@ for id,path in choices.items():
      j,attack=min(candidates,key=lambda pair:pair[1]['beat'] if n['grace'] else abs(pair[1]['beat']-raw));n['beat']=attack['beat'];used.add(j)
     else:n['beat']=raw
     g.set('data-beat',str(n['beat']))
-   y0=(centers[i-1]+centers[i])/2 if i else centers[i]-19;y1=(centers[i]+centers[i+1])/2 if i+1<len(centers) else centers[i]+19
-   left=min(edges[staffs[i*2][0]][0],edges[staffs[i*2+1][0]][0]);right=max(edges[staffs[i*2][0]][1],edges[staffs[i*2+1][0]][1]);positions={}
+   y0,y1=bounds[i]
+   up,low=groups[i];left=min(edges[up[0]][0],edges[low[0]][0]);right=max(edges[up[0]][1],edges[low[0]][1]);positions={}
    for g,n in bucket:positions[n['beat']]=min(positions.get(n['beat'],999),n['x']-left)
-   cropped=copy.deepcopy(tree)
-   for child in list(cropped):
-    transforms=[e.get('transform','') for e in child.iter() if 'translate' in e.get('transform','')]
-    if transforms:
-     coords=re.findall(r'[-\d.]+',transforms[0]);cy=float(coords[1])
-     if not y0-1<=cy<=y1+1:cropped.remove(child)
-   cropped.set('viewBox',f'{left} {y0} {right-left} {y1-y0}')
-   systems.append({'svg':ET.tostring(cropped,encoding='unicode'),'page':page,'y':y0,'height':y1-y0,'staffTop':staffs[i*2][0]-y0,'staffGap':staffs[i*2+1][-1]-staffs[i*2][0],'start':min(positions),'positions':sorted([[b,x] for b,x in positions.items()]),'width':right-left})
+   systems.append({'svg':crop(tree,left,right,y0,y1,{note_key(g) for g,n in bucket}),'page':page,'y':y0,'height':y1-y0,'staffTop':up[0]-y0,'staffGap':low[-1]-up[0],'start':min(positions),'positions':sorted([[b,x] for b,x in positions.items()]),'width':right-left})
   pn=[n for g,n in heads];pages.append({'svg':ET.tostring(tree,encoding='unicode'),'start':min(n['beat'] for n in pn),'end':max(n['beat'] for n in pn),'notes':pn})
  end=offsets[-1]+lengths[-1]
  for i,s in enumerate(systems):s['end']=systems[i+1]['start'] if i+1<len(systems) else end
+ assert all(s['start']<s['end'] and 0<=s['staffTop'] and s['staffTop']+s['staffGap']<=s['height'] for s in systems),f'{id}: a staff system is cut in the wrong place'
  hands={}
  for p in pages:
   for head in p['notes']:
