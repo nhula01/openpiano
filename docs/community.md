@@ -105,13 +105,23 @@ private/public signed-URL eligibility and removal; its synthetic rows also roll 
 
 Each person's note posts on a piece form their **add-on** for that piece. In Practice:
 
-- **Annotate** (pencil) turns note clicks into an editor: tap 1–5 (or type `3-1` for a
-  substitution) and/or write a comment. Saved privately to the account; signed out, notes stay
-  on this device (`openpiano-addons-device-v1`) and can be moved into the account later.
+- **Click a note** and a **+** appears beside it (not while the piece is playing). The + opens a
+  small editor: type or tap 1–5 (or `3-1` for a substitution) and press **Enter**, and/or add a
+  comment. With the editor open, clicking another note moves it there.
+- Everything you add goes into your **draft**: a layer over the piece that only you see, drawn
+  dashed/italic on the sheet, with a draft bar (top right of the sheet) to **Publish** or
+  **Discard**. Draft notes are private posts; publishing reveals them. A change to a note you
+  already published is a new private post until you publish again, when the published post is
+  updated in place (so its votes stay) and the draft copy is hidden. Deleting a published note
+  takes effect at once (after a confirm). Signed out, the draft stays on this device
+  (`openpiano-addons-device-v1`) and can be moved into the account later.
+- The live `community_write` allows 10 new posts an hour and 30 a day per person (edits do not
+  count), so a long fingering draft fills up slowly; a one-row-per-add-on table would remove that
+  limit if it becomes a problem.
 - Fingering appears as numbers beside the notes (above for the right hand, below for the left),
   comments as small bubbles; tapping a mark shows it. Your add-on is amber, an applied community
   add-on is indigo, printed fingering keeps its own colour.
-- **Add-ons** (layers icon, next to ⚙) lists your add-on (show/hide, share all, make private) and
+- **Add-ons** (layers icon, next to ⚙) lists your add-on (show/hide, publish or discard the draft, unpublish) and
   community add-ons grouped by author, most helpful first. **Apply** shows one on your score; the
   choice is stored per piece in this browser (`openpiano-addons-applied-v1`).
 - An add-on's score is its best-voted note, so one person voting for a whole add-on counts once.

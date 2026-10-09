@@ -16,6 +16,7 @@ const NS='http://www.w3.org/2000/svg';
 function icon(d){const s=document.createElementNS(NS,'svg');s.setAttribute('viewBox','0 0 24 24');s.setAttribute('aria-hidden','true');s.setAttribute('fill','none');s.setAttribute('stroke','currentColor');s.setAttribute('stroke-width','1.8');s.setAttribute('stroke-linecap','round');s.setAttribute('stroke-linejoin','round');s.innerHTML=d;return s;}
 const LAYERS='<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>';
 const plural=(n,word)=>`${n} ${word}${n===1?'':'s'}`;
+const notesIn=list=>new Set(list.map(x=>Number(x.note_beat).toFixed(3)+':'+x.note_midi)).size;
 
 // ---------- Pure helpers (also used by tests) ----------
 // Finger numbers to draw: "3", "3-1" (substitution) or "1 2 3" sequences; free text yields nothing.
@@ -51,7 +52,7 @@ function deviceNotes(){return (read(DEVICE,{})[state.piece]||[]);}
 function saveDevice(list){const all=read(DEVICE,{});if(list.length)all[state.piece]=list;else delete all[state.piece];write(DEVICE,all);}
 function anchorText(beat,midi,hand){const p=P();return `Bar ${p.barOf(beat)+1} · ${window.PianoEngine.noteName(midi)} · ${hand}`;}
 // Device notes are always draft (they have no visibility); account notes split into draft and published.
-const mineView=()=>{const s=splitMine(state.mine);return {...s,device:state.device,draftCount:s.drafts.length+state.device.length,shown:[...s.shown,...state.device]};};
+const mineView=()=>{const s=splitMine(state.mine);return {...s,device:state.device,draftCount:notesIn([...s.drafts,...state.device]),publishedCount:notesIn(s.published),shown:[...s.shown,...state.device]};};
 
 async function load(){const p=P(),id=p?.score?.id;if(!id)return;const gen=++state.generation;state.piece=id;state.device=deviceNotes();state.error=null;
  const be=backend();if(!be||!library().has(id)){state.mine=[];state.layers=[];render();paint();return;}
@@ -108,7 +109,7 @@ function needSignIn(){state.error=backend()?.signedIn?.()?'Set up your profile n
 
 // The draft bar sits over the sheet while you have unpublished changes.
 function drawPill(){if(!pill)return;const v=mineView(),n=v.draftCount;pill.hidden=!n||!library().has(state.piece)||!showMine();if(pill.hidden)return;pill.replaceChildren();
- const label=el('span',undefined,'addon-pill-label');label.append(el('strong','Your draft'),el('span',`${plural(n,v.published.length?'change':'note')}${state.device.length&&canSync()?'':state.device.length?' · this device':''}`));pill.append(label);
+ const label=el('span',undefined,'addon-pill-label');label.append(el('strong','Your draft'),el('span',`${plural(n,v.publishedCount?'change':'note')}${state.device.length&&canSync()?'':state.device.length?' · this device':''}`));pill.append(label);
  if(canSync()&&state.device.length)pill.append(btn('Move to account','addon-chip',e=>run(e.currentTarget,moveDevice)));
  else if(!canSync())pill.append(btn('Publish','addon-primary',needSignIn));
  else pill.append(confirmBtn('Publish','Publish to everyone?','addon-primary',publishDraft));
@@ -120,14 +121,14 @@ function render(){if(!panel||panel.hidden)return;const be=backend(),signed=!!be?
  // Your add-on: draft and published
  const v=mineView(),mineBox=el('section',undefined,'addon-yours');
  const row=el('div',undefined,'addon-row');const who=el('div');
- const parts=[v.draftCount?`Draft: ${plural(v.draftCount,v.published.length?'change':'note')}`:'',v.published.length?`Published: ${plural(v.published.length,'note')}`:''].filter(Boolean);
+ const parts=[v.draftCount?`Draft: ${plural(v.draftCount,v.publishedCount?'change':'note')}`:'',v.publishedCount?`Published: ${plural(v.publishedCount,'note')}`:''].filter(Boolean);
  who.append(el('strong','Your add-on'),el('span',parts.join(' · ')||'Click a note on the sheet, then + to add fingering or a comment.','addon-muted'));row.append(who);
  const show=btn(showMine()?'Shown':'Hidden','addon-chip',()=>{write(SHOW_MINE,!showMine());paint();render();});show.setAttribute('aria-pressed',String(showMine()));show.title='Show or hide your add-on on the sheet';row.append(show);mineBox.append(row);
  const actions=el('div',undefined,'addon-actions');
  if(v.draftCount){if(canSync()&&state.device.length)actions.append(btn(`Move ${plural(state.device.length,'device note')} to your account`,'addon-primary',e=>run(e.currentTarget,moveDevice)));
-  else if(canSync())actions.append(confirmBtn(`Publish ${plural(v.draftCount,v.published.length?'change':'note')}`,'Publish: everyone can see them','addon-primary',publishDraft));
+  else if(canSync())actions.append(confirmBtn(`Publish ${plural(v.draftCount,v.publishedCount?'change':'note')}`,'Publish: everyone can see them','addon-primary',publishDraft));
   actions.append(confirmBtn('Discard draft','Discard: this cannot be undone','addon-chip',discardDraft));}
- if(canSync()&&v.published.length)actions.append(confirmBtn('Unpublish','Unpublish: make it private','addon-chip',unpublish));
+ if(canSync()&&v.publishedCount)actions.append(confirmBtn('Unpublish','Unpublish: make it private','addon-chip',unpublish));
  if(actions.children.length)mineBox.append(actions);
  if(!signed)mineBox.append(el('p','Signed out: your draft stays on this device. Sign in to keep it in your account and publish it.','addon-muted'));
  else if(!profile()){const a=el('a','Set up your profile name');a.href='#profile';const pp=el('p',undefined,'addon-muted');pp.append(a,' to save your draft to your account and publish it.');mineBox.append(pp);}
@@ -166,13 +167,13 @@ function openEditor(d){closeEditor();closeViewer();hidePlus();const synced=canSy
  const here=at(v.shown,d.beat,d.midi),fingerPost=here.find(x=>x.kind==='fingering'),commentPost=here.find(x=>x.kind==='comment');
  editor=el('form',undefined,'addon-editor');editor.setAttribute('aria-label',`Add-on for ${d.note}`);
  const head=el('div',undefined,'addon-editor-head');head.append(el('strong',d.note),el('span',`Bar ${d.bar} · ${d.hand==='LH'?'left hand':d.hand==='RH'?'right hand':'both hands'}`,'addon-muted'));editor.append(head);
- const fl=el('label','Fingering');const pad=el('div',undefined,'addon-pad');const finger=el('input');finger.name='fingers';finger.maxLength=40;finger.placeholder='1–5, Enter to save';finger.value=fingerPost?.fingers||'';finger.inputMode='numeric';finger.autocomplete='off';
+ const fl=el('label','Fingering');const pad=el('div',undefined,'addon-pad');const finger=el('input');finger.name='fingers';finger.maxLength=40;finger.placeholder='3 or 3-1';finger.value=fingerPost?.fingers||'';finger.inputMode='numeric';finger.autocomplete='off';
  for(let n=1;n<=5;n++){const b=btn(String(n),'addon-finger',()=>{finger.value=finger.value&&/[1-5]$/.test(finger.value)&&finger.dataset.typed==='1'?finger.value+'-'+n:String(n);finger.dataset.typed='1';finger.focus();});b.title=['','Thumb','Index finger','Middle finger','Ring finger','Little finger'][n];pad.append(b);}
  pad.append(finger);fl.append(pad);
  const cl=el('label','Comment');const comment=el('textarea');comment.name='comment';comment.rows=2;comment.maxLength=4000;comment.placeholder='How it should sound or feel here';comment.value=commentPost?.body||'';cl.append(comment);
  const more=btn('+ Add a comment','addon-link',()=>{more.remove();cl.hidden=false;comment.focus();});cl.hidden=!commentPost;
  const published=here.some(x=>x.visibility==='public');
- const note=el('p',synced?(published?'Changes go into your draft until you publish again.':'Goes into your draft. Only you see it until you publish.'):backend()?.signedIn?.()?'Set up your profile name to save to your account; for now your draft stays on this device.':'Your draft stays on this device. Sign in to publish it.','addon-muted');
+ const note=el('p',synced?(published?'Enter saves the change to your draft; others see it after you publish again.':'Enter saves it to your draft. Only you see it until you publish.'):backend()?.signedIn?.()?'Set up your profile name to save to your account; for now your draft stays on this device.':'Your draft stays on this device. Sign in to publish it.','addon-muted');
  const acts=el('div',undefined,'addon-actions');const save=el('button','Save','addon-primary');save.type='submit';acts.append(save);
  if(fingerPost||commentPost)acts.append(confirmBtn('Delete',published?'Delete from published?':'Delete?','addon-chip',async()=>{await removeAt(d);closeEditor();await load();toast('Removed from your add-on.');}));
  acts.append(btn('Cancel','addon-chip',closeEditor));editor.append(fl);if(cl.hidden)editor.append(more);editor.append(cl,note,acts);
