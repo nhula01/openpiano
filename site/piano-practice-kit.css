@@ -29,3 +29,7 @@
 .kit-help dt{font-weight:700;font-variant-numeric:tabular-nums}.kit-help dd{margin:0;color:var(--kit-muted)}
 .kit-help-close{margin-top:16px}
 @media (prefers-reduced-motion:reduce){.kit-bars-head{transition:none}}
+.kit-bars-knob{position:absolute;left:50%;top:-11px;width:20px;height:20px;margin-left:-10px;border-radius:50%;background:var(--kit-head);box-shadow:0 0 0 4px color-mix(in srgb,var(--kit-head) 25%,transparent);cursor:grab;pointer-events:none}
+.kit-bars.is-scrubbing .kit-bars-knob{cursor:grabbing;transform:scale(1.15)}
+.kit-bars.has-knob .kit-bars-head{width:4px;margin-left:-2px}
+.kit-bars.is-scrubbing .kit-bars-head{transition:none}

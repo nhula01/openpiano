@@ -34,9 +34,10 @@ const level=id=>window.PianoCurriculum?.pieces?.find(p=>p.id===id)?.level;
 const handsName={LH:'left hand',RH:'right hand',BH:'both hands'};
 
 // Bar strip: one cell per bar. Colour = mistakes in this session; drag across bars to loop them.
-function barStrip(host,{labels=true}={}){
+function barStrip(host,{labels=true,knob=false}={}){
  const strip=el('div',undefined,'kit-bars');strip.tabIndex=0;strip.setAttribute('role','group');
  const cells=el('div',undefined,'kit-bars-cells'),marks=el('div',undefined,'kit-bars-marks'),head=el('div',undefined,'kit-bars-head'),sel=el('div',undefined,'kit-bars-loop');
+ if(knob){const k=el('span',undefined,'kit-bars-knob');k.setAttribute('aria-hidden','true');head.append(k);strip.classList.add('has-knob');}
  cells.append(sel,head);strip.append(cells);if(labels)strip.append(marks);host.append(strip);
  let count=0,drag=null,stamp='';
  const barAt=x=>{const r=cells.getBoundingClientRect();return Math.max(0,Math.min(count-1,Math.floor((x-r.left)/r.width*count)));};
@@ -45,10 +46,11 @@ function barStrip(host,{labels=true}={}){
   const m=p.mistakes,loop=p.loop,key=JSON.stringify(m)+JSON.stringify(loop);if(key!==stamp){stamp=key;for(const c of cells.querySelectorAll('.kit-bar')){const n=m[c.dataset.bar]||0;c.dataset.heat=n===0?0:n===1?1:n<=3?2:3;c.title=`Bar ${Number(c.dataset.bar)+1}${n?` · ${n} mistake${n>1?'s':''}`:''}`;}
    if(loop){sel.hidden=false;sel.style.left=(p.barOf(loop.start)/count*100)+'%';sel.style.width=((p.barOf(loop.end-.001)-p.barOf(loop.start)+1)/count*100)+'%';}else if(!drag)sel.hidden=true;}
   head.style.left=Math.min(100,p.position/(count*p.meter)*100)+'%';}
- cells.addEventListener('pointerdown',e=>{if(!P()?.score)return;e.preventDefault();cells.setPointerCapture(e.pointerId);drag={a:barAt(e.clientX),b:barAt(e.clientX)};});
- cells.addEventListener('pointermove',e=>{if(!drag)return;drag.b=barAt(e.clientX);if(drag.a!==drag.b){const lo=Math.min(drag.a,drag.b),hi=Math.max(drag.a,drag.b);sel.hidden=false;sel.style.left=(lo/count*100)+'%';sel.style.width=((hi-lo+1)/count*100)+'%';}});
- const end=()=>{if(!drag)return;const {a,b}=drag;drag=null;stamp='';const p=P();if(a===b)p.seek(a*p.meter);else p.loopBars(a,b);};
- cells.addEventListener('pointerup',end);cells.addEventListener('pointercancel',()=>{drag=null;stamp='';paint();});
+ // With a knob, dragging the playhead moves it bar by bar; dragging anywhere else marks a loop.
+ cells.addEventListener('pointerdown',e=>{if(!P()?.score)return;e.preventDefault();cells.setPointerCapture(e.pointerId);const hx=head.getBoundingClientRect().left+1,reach=e.pointerType==='touch'?30:16;if(knob&&Math.abs(e.clientX-hx)<=reach){drag={scrub:true,last:-1};strip.classList.add('is-scrubbing');return;}drag={a:barAt(e.clientX),b:barAt(e.clientX)};});
+ cells.addEventListener('pointermove',e=>{if(!drag)return;if(drag.scrub){const b=barAt(e.clientX);if(b!==drag.last){drag.last=b;const p=P();p.seek(b*p.meter);}return;}drag.b=barAt(e.clientX);if(drag.a!==drag.b){const lo=Math.min(drag.a,drag.b),hi=Math.max(drag.a,drag.b);sel.hidden=false;sel.style.left=(lo/count*100)+'%';sel.style.width=((hi-lo+1)/count*100)+'%';}});
+ const end=()=>{if(!drag)return;strip.classList.remove('is-scrubbing');if(drag.scrub){drag=null;return;}const {a,b}=drag;drag=null;stamp='';const p=P();if(a===b)p.seek(a*p.meter);else p.loopBars(a,b);};
+ cells.addEventListener('pointerup',end);cells.addEventListener('pointercancel',()=>{drag=null;stamp='';strip.classList.remove('is-scrubbing');paint();});
  strip.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();e.stopPropagation();P().seekBars(e.key==='ArrowLeft'?-1:1);}});
  let queued=false;const schedule=()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;paint();});};
  for(const t of ['tick','state','load','result'])P().on(t,schedule);schedule();

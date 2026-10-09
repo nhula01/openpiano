@@ -1,7 +1,8 @@
 'use strict';
-/* Pitch C · Stage. Practice fills the window like a rehearsal stage: sheet, falling notes or
-   both; a heat-map timeline you drag to loop; one floating transport; a summary after each run.
-   Navigation shrinks to a slim top bar with piece search. */
+/* Stage. Practice fills the window like a rehearsal stage: one sheet line, falling notes, both,
+   or full pages; the piece in parts you tap to loop, with progress per part; a heat-map timeline
+   with a draggable playhead; swipe the music to move bar by bar; one floating transport; a summary
+   after each run. Navigation shrinks to a slim top bar with piece search. */
 (()=>{
 const K=window.PianoPracticeKit,P=()=>window.PianoPractice,{el,icon,button,segmented,toggle}=K;
 const VIEW_KEY='openpiano-stage-view';
@@ -38,6 +39,13 @@ function waterfall(canvas){
   const g=ctx.createLinearGradient(0,hit-16,0,hit);g.addColorStop(0,'rgba(240,179,90,0)');g.addColorStop(1,'rgba(240,179,90,.35)');ctx.fillStyle=g;ctx.fillRect(0,hit-16,W,16);ctx.fillStyle=COLORS.lamp;ctx.fillRect(0,hit,W,2);}
  requestAnimationFrame(frame);}
 
+// Parts: the piece's practice blocks, or even chunks of 4, 8 or 16 bars.
+const PARTS_KEY='openpiano-stage-parts-v1';
+const STEPS=[['R','Right hand'],['L','Left hand'],['B','Both hands'],['T','Both hands in time']];
+function partsOf(p){const blocks=(p.sections||[]).filter(s=>/^block-/.test(s.id));const m=p.meter,bars=p.barCount;
+ if(blocks.length>1)return blocks.map(b=>({start:b.start,end:b.end}));const size=bars<=24?4:bars<=64?8:16,out=[];for(let b=0;b<bars;b+=size)out.push({start:b*m,end:Math.min(bars,b+size)*m});return out;}
+function readParts(){try{return JSON.parse(localStorage.getItem(PARTS_KEY))||{};}catch{return {};}}
+function stepOf(r){if(r.kind==='play')return r.hands==='BH'?'T':r.hands==='LH'?'L':'R';return r.hands==='BH'?'B':r.hands==='LH'?'L':'R';}
 function build(){const p=P();if(!p)return;document.body.dataset.shell='stage';const parts=K.adopt();for(const n of parts.legacy)n.hidden=true;const root=parts.root;
  // Slim top bar: search lives in the navigation.
  const rail=document.querySelector('.rail');if(rail){const search=button('Search pieces',{icon:'search',cls:'sg-search'});search.append(el('kbd',/Mac|iPhone|iPad/.test(navigator.platform)?'⌘K':'Ctrl K'));search.onclick=()=>K.picker().open();rail.querySelector('.tabs')?.after(search);}
@@ -45,7 +53,7 @@ function build(){const p=P();if(!p)return;document.body.dataset.shell='stage';co
  const stage=el('section',undefined,'sg-stage');stage.setAttribute('aria-label','Practice stage');
  const hud=el('div',undefined,'sg-hud');const who=el('div',undefined,'sg-who');const title=el('h1',undefined,'sg-title');const sub=el('p',undefined,'sg-sub');who.append(title,sub);
  let view=(()=>{try{return localStorage.getItem(VIEW_KEY)||'split';}catch{return 'split';}})();
- const views=segmented('View',[['sheet','Sheet'],['notes','Falling notes'],['split','Both']],v=>{view=v;try{localStorage.setItem(VIEW_KEY,v);}catch{}layout();},'sg-views');
+ const views=segmented('View',[['sheet','Sheet'],['notes','Falling notes'],['split','Both'],['full','Full sheet']],v=>{view=v;try{localStorage.setItem(VIEW_KEY,v);}catch{}layout();},'sg-views');
  const live=el('div',undefined,'sg-live');const accBox=el('div',undefined,'sg-stat');const acc=el('strong','—');accBox.append(acc,el('span','accuracy'));const runBox=el('div',undefined,'sg-stat');const runN=el('strong','0');runBox.append(runN,el('span','in a row'));const doneBox=el('div',undefined,'sg-stat');const doneN=el('strong','0');doneBox.append(doneN,el('span','notes'));live.append(accBox,runBox,doneBox);
  hud.append(who,views.node,live);
 
@@ -54,7 +62,7 @@ function build(){const p=P();if(!p)return;document.body.dataset.shell='stage';co
  screen.append(sheet,fall);
  const keys=el('div',undefined,'sg-keys');if(parts.keyboard){parts.keyboard.setAttribute('preserveAspectRatio','none');keys.append(parts.keyboard);}
  const line=el('div',undefined,'sg-line');if(parts.feedback){parts.feedback.className='trainer-feedback sg-feedback';line.append(parts.feedback);}
- const timeline=el('div',undefined,'sg-timeline');K.barStrip(timeline);
+ const timeline=el('div',undefined,'sg-timeline');const ruler=el('div',undefined,'sg-parts');ruler.setAttribute('role','group');ruler.setAttribute('aria-label','Parts of this piece. Tap a part to loop it; tap it again to play the whole piece.');timeline.append(ruler);K.barStrip(timeline,{knob:true});
  stage.append(hud,screen,keys,line,timeline);
 
  // Floating transport
@@ -62,6 +70,7 @@ function build(){const p=P();if(!p)return;document.body.dataset.shell='stage';co
  let mode='wait';const modes=segmented('How to practise',[['wait','Wait'],['play','In time'],['listen','Listen']],v=>{mode=v;if(p.state!=='idle')p.pause();sync();},'sg-seg');
  modes.buttons[0].title='The music waits on each note until you play it';modes.buttons[1].title='The music keeps moving; notes count if you play them on time';modes.buttons[2].title='Hear the grand piano play';
  const back=button('Back to start',{icon:'restart',cls:'sg-icon',iconOnly:true,title:'Back to start ( R )'});back.onclick=()=>p.restart();
+ const prevBar=button('Previous bar',{icon:'prev',cls:'sg-icon',iconOnly:true,title:'Previous bar ( ← )'});prevBar.onclick=()=>p.seekBars(-1);const nextBar=button('Next bar',{icon:'next',cls:'sg-icon',iconOnly:true,title:'Next bar ( → )'});nextBar.onclick=()=>p.seekBars(1);
  const go=el('button',undefined,'sg-go');go.type='button';go.onclick=()=>{if(p.state==='idle')p.start(mode);else p.pause();};
  const hands=segmented('Hands',[['LH','L','','Left hand ( 1 )'],['RH','R','','Right hand ( 2 )'],['BH','Both','','Both hands ( 3 )']],v=>p.setHands(v),'sg-seg small');
  const tempo=el('div',undefined,'sg-tempo');const tm=button('Slower',{cls:'sg-icon',iconOnly:true,title:'Slower ( [ )'});tm.textContent='−';tm.onclick=()=>p.setTempo(p.tempo-5);const tv=el('span',undefined,'sg-tempo-val');const tp=button('Faster',{cls:'sg-icon',iconOnly:true,title:'Faster ( ] )'});tp.textContent='+';tp.onclick=()=>p.setTempo(p.tempo+5);tempo.append(tm,tv,tp);
@@ -69,10 +78,11 @@ function build(){const p=P();if(!p)return;document.body.dataset.shell='stage';co
  const clickT=toggle('Click','click',v=>p.setClick(v),'sg-tog');const otherT=toggle('Other hand','accompany',v=>p.setAccompany(v),'sg-tog');
  const more=el('details',undefined,'sg-more');const moreSum=el('summary');moreSum.append(icon('settings'),el('span','Settings','sr'));moreSum.title='Input and sheet settings';more.append(moreSum);
  const morePanel=el('div',undefined,'sg-more-panel');const inSeg=segmented('Listen with',INPUTS.map(([v,l,ic])=>[v,l,ic]),v=>{p.setInput(v);sync();},'sg-list');const typeSeg=segmented('Sheet',[['sheet','Pages'],['guide','One scrolling line']],v=>p.setType(v),'sg-list');const fingerT=toggle('Printed fingering','hands',v=>p.setFingering(v),'sg-tog wide');const speedT=toggle('Speed up after clean loops','loop',v=>p.setSpeedTrainer({on:v,step:4,target:Math.min(200,p.tempo+20)}),'sg-tog wide');const keysHelp=button('Keyboard shortcuts',{icon:'keys',cls:'sg-tog wide'});keysHelp.onclick=()=>K.shortcuts().open();
- morePanel.append(el('p','Listen with','sg-more-label'),inSeg.node);if(parts.device)morePanel.append(parts.device);morePanel.append(el('p','Sheet','sg-more-label'),typeSeg.node,fingerT.node,speedT.node,keysHelp);more.append(morePanel);
+ morePanel.append(el('p','Listen with','sg-more-label'),inSeg.node);if(parts.device)morePanel.append(parts.device);morePanel.append(el('p','Practice','sg-more-label'),fingerT.node,speedT.node,keysHelp);more.append(morePanel);
  document.addEventListener('click',e=>{if(more.open&&!more.contains(e.target))more.open=false;});
  const inputChip=el('span',undefined,'sg-input-chip');
- deck.append(modes.node,back,go,hands.node,tempo,loopB,clickT.node,otherT.node,inputChip,more);
+ const step=el('div',undefined,'sg-step');step.append(prevBar,go,nextBar);
+ deck.append(modes.node,back,step,hands.node,tempo,loopB,clickT.node,otherT.node,inputChip,more);
  stage.append(deck);
 
  // Summary after a run
@@ -83,8 +93,8 @@ function build(){const p=P();if(!p)return;document.body.dataset.shell='stage';co
  root.prepend(stage);if(parts.more)root.append(parts.more);
  waterfall(fall);
 
- function layout(){views.set(view);stage.dataset.view=view;fall.hidden=view==='sheet';sheet.hidden=view==='notes';if(view==='split'&&p.type==='sheet')p.setType('guide');hint();}
- function hint(){const f=parts.feedback;if(!f||p.state!=='idle')return;if(/^(Practice waits for correct notes|Choose an input|Press Practice|Sheet waits|Follow me pauses|In time keeps)/.test(f.textContent)||f.dataset.hint===f.textContent){const press=matchMedia('(pointer:coarse)').matches?'Press play':'Press Space';f.textContent=mode==='listen'?press+' to hear the grand piano play from the line.':mode==='play'?press+'. After the count-in, play as the notes reach the line.':press+', then play each note as it reaches the line. The music waits for you.';f.dataset.hint=f.textContent;}}
+ function layout(){views.set(view);stage.dataset.view=view;fall.hidden=view==='sheet'||view==='full';sheet.hidden=view==='notes';if((view==='sheet'||view==='split')&&p.type!=='guide')p.setType('guide');if(view==='full'&&p.type!=='sheet')p.setType('sheet');hint();}
+ function hint(){const f=parts.feedback;if(!f||p.state!=='idle')return;if(/^(Practice waits for correct notes|Choose an input|Press Practice|Sheet waits|Follow me pauses|In time keeps)/.test(f.textContent)||f.dataset.hint===f.textContent){const touch=matchMedia('(pointer:coarse)').matches,press=touch?'Press play':'Press Space';f.textContent=mode==='listen'?press+' to hear the grand piano play from the line.':mode==='play'?press+'. After the count-in, play as the notes reach the line.':press+', then play each note as it reaches the line. The music waits for you.'+(touch?' Swipe the music to move bar by bar.':'');f.dataset.hint=f.textContent;}}
  function sync(){if(!p.score)return;const m=window.PianoCurriculum?.pieces?.find(x=>x.id===p.score.id);
   title.textContent=p.score.title.replace(/ · (complete|full piece|learning arrangement|theme arrangement)$/i,'');sub.textContent=[p.score.imported?'Your song':(p.score.composer||m?.composer),m?.level?'Level '+m.level:''].filter(Boolean).join(' — ');
   const busy=p.state!=='idle';if(busy)mode=p.state;modes.set(mode);go.replaceChildren(icon(busy?'pause':'play'));go.setAttribute('aria-label',busy?'Pause ( Space )':mode==='listen'?'Listen ( Space )':'Start ( Space )');go.title=go.getAttribute('aria-label');go.classList.toggle('is-on',busy);
@@ -102,7 +112,33 @@ function build(){const p=P();if(!p)return;document.body.dataset.shell='stage';co
   sActs.replaceChildren();const spots=K.troubleSpots(1);if(spots.length){const s=spots[0];const b=button(s.from===s.to?`Loop bar ${s.from+1}`:`Loop bars ${s.from+1}–${s.to+1}`,{icon:'loop',cls:'sg-primary'});b.onclick=()=>{sum.close();p.loopBars(s.from,s.to);};sActs.append(b);}
   const again=button('Again',{icon:'restart',cls:spots.length?'sg-secondary':'sg-primary'});again.onclick=()=>{sum.close();p.restart();p.start(r.kind==='play'?'play':'wait');};const close=button('Close',{cls:'sg-secondary'});close.onclick=()=>sum.close();sActs.append(again,close);sum.showModal();sActs.querySelector('button')?.focus();}
  p.on('load',()=>fitRange(parts.keyboard));fitRange(parts.keyboard);for(const t of ['state','load','tempo'])p.on(t,sync);let q=false;p.on('tick',()=>{if(q)return;q=true;requestAnimationFrame(()=>{q=false;liveSync();});});p.on('load',()=>{streak=0;runN.textContent='0';});
- layout();sync();liveSync();K.bindGlobalKeys();
+ // ---------- Parts ----------
+ function renderParts(){if(!p.score)return;const list=partsOf(p),total=p.barCount*p.meter||1,done=readParts()[p.score.id]||{},loop=p.loop;
+  ruler.replaceChildren(...list.map((part,i)=>{const b=el('button',undefined,'sg-part');b.type='button';b.style.flexGrow=String(part.end-part.start);b.style.flexBasis='0';
+   const on=!!loop&&Math.abs(loop.start-part.start)<.001&&Math.abs(loop.end-part.end)<.001;b.setAttribute('aria-pressed',String(on));
+   const bars=(p.barOf(part.start)+1)+'–'+(p.barOf(part.end-.001)+1),got=done[part.start+'-'+part.end]||[];
+   b.setAttribute('aria-label',`Part ${i+1}, bars ${bars}. ${got.length?'Passed: '+STEPS.filter(([k])=>got.includes(k)).map(([,n])=>n.toLowerCase()).join(', ')+'.':'Not passed yet.'} ${on?'Looping; tap to play the whole piece.':'Tap to loop.'}`);b.title=`Part ${i+1} · bars ${bars}`;
+   const dots=el('span',undefined,'sg-part-dots');for(const[k,n]of STEPS){const d=el('span',undefined,got.includes(k)?'on':'');d.dataset.step=k;d.title=n;dots.append(d);}
+   b.append(el('strong',String(i+1)),el('span',bars,'sg-part-bars'),dots);
+   b.onclick=()=>{if(on){p.clearLoop();toastNow('Whole piece');}else{p.setLoop(part.start,part.end);toastNow(`Part ${i+1} · bars ${bars} · looping`);}};return b;}));
+  ruler.dataset.many=list.length>8?'1':'';}
+ function toastNow(text){clearTimeout(toastTimer);toast.textContent=text;toast.classList.add('show');toastTimer=setTimeout(()=>toast.classList.remove('show'),1600);}
+ p.on('result',r=>{if(r.complete===false||r.accuracy<90||!r.range||!p.score)return;const part=partsOf(p).find(x=>Math.abs(x.start-r.range.start)<.001&&Math.abs(x.end-r.range.end)<.001);if(!part)return;const all=readParts(),mine=all[p.score.id]||(all[p.score.id]={}),k=part.start+'-'+part.end,got=mine[k]||(mine[k]=[]),st=stepOf(r);if(!got.includes(st)){got.push(st);try{localStorage.setItem(PARTS_KEY,JSON.stringify(all));}catch{}renderParts();}});
+ for(const t of ['load','state'])p.on(t,renderParts);
+
+ // ---------- Swipe the music to move bar by bar ----------
+ // Horizontal: drag left to go forward. On the falling notes, dragging down also goes forward.
+ let swipe=null,swallowClick=false;
+ screen.addEventListener('pointerdown',e=>{if(e.button>0||e.target.closest?.('.fixed-playhead,.sg-pager,button'))return;swipe={x:e.clientX,y:e.clientY,id:e.pointerId,on:false,done:0,canvas:e.target===fall};});
+ screen.addEventListener('pointermove',e=>{if(!swipe||e.pointerId!==swipe.id)return;const dx=e.clientX-swipe.x,dy=e.clientY-swipe.y;
+  if(!swipe.on){const vertical=swipe.canvas&&Math.abs(dy)>Math.abs(dx);if(Math.max(Math.abs(dx),Math.abs(dy))<12)return;if(!vertical&&Math.abs(dx)<Math.abs(dy))return void(swipe=null);swipe.on=true;swipe.vertical=vertical;try{screen.setPointerCapture(e.pointerId);}catch{}stage.classList.add('is-swiping');}
+  const unit=swipe.vertical?Math.max(40,fall.clientHeight/4):Math.max(44,Math.min(90,screen.clientWidth/14)),want=Math.trunc((swipe.vertical?dy:-dx)/unit);
+  if(want!==swipe.done){p.seekBars(want-swipe.done);swipe.done=want;toastNow('Bar '+(p.barOf(p.position)+1));}});
+ const endSwipe=()=>{if(swipe?.on){swallowClick=true;setTimeout(()=>swallowClick=false,0);}swipe=null;stage.classList.remove('is-swiping');};
+ screen.addEventListener('pointerup',endSwipe);screen.addEventListener('pointercancel',endSwipe);
+ screen.addEventListener('click',e=>{if(swallowClick){e.stopPropagation();e.preventDefault();}},true);
+
+ layout();sync();liveSync();renderParts();K.bindGlobalKeys();
 }
 document.addEventListener('DOMContentLoaded',()=>requestAnimationFrame(build));
 })();
