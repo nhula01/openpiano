@@ -48,6 +48,20 @@ for (const id of fs.readdirSync('site/scores').sort()) {
     }));
     if (cut) problems.strip.push(`${id} at ${H} px: ${cut} cut (${where})`);
   }
+  // Zoomed in, the line grows taller than the window (which then scrolls) and still holds every notehead;
+  // zoomed out, it all stays inside the window.
+  for (const zoom of [.6, 2]) {
+    const L = strip.window.PianoScoreView.stripLayout(e, 300, k, zoom), half = L.space * L.scale / 2;
+    let cut = 0;
+    if (zoom > 1 ? L.height <= 300 : L.height !== 300) cut++;
+    e.pages.forEach((p, pi) => p.notes.forEach(n => {
+      const i = S.findIndex(s => s.page === pi && n.beat >= s.start - .001 && n.beat < s.end - .001 && n.y >= s.y - .01 && n.y <= s.y + s.height + .01);
+      if (i < 0) return;
+      const y = L.staffTop[i] + (n.y - S[i].y - S[i].staffTop) * L.scale;
+      if (y - half < -.5 || y + half > L.height + .5) cut++;
+    }));
+    if (cut) problems.strip.push(`${id} at zoom ${zoom}: ${cut} cut`);
+  }
   if (!e.pages[0].svg.includes('Verovio')) S.forEach((s, i) => {
     const [, y, , h] = viewBox(s.svg);
     for (const m of s.svg.matchAll(/class="score-note"[^>]*>\s*<g transform="translate\(([-\d.]+), ?([-\d.]+)\)/g)) {
@@ -65,7 +79,7 @@ test('every notehead lies inside the system that plays it, so the playhead and t
 
 test('LilyPond crops keep each notehead of the system and no notehead of a neighbouring system', () => assert.deepEqual(problems.lily, []));
 
-test('the moving score keeps every staff and notehead of every line in view at 220, 300 and 520 px', () => assert.deepEqual(problems.strip, []));
+test('the moving score keeps every staff and notehead of every line in view at 220, 300 and 520 px, and zoomed in or out', () => assert.deepEqual(problems.strip, []));
 
 test('the sheet playhead and auto-scroll follow systems on Verovio pages drawn in a nested viewBox', () => {
   // Verovio pages: outer <svg> has a pixel size but no viewBox; the drawing sits in an inner
@@ -103,5 +117,29 @@ test('setScore reads the unit scale from the stored crops', () => {
   const systems = h => [{ svg: `<svg viewBox="0 7 100 ${h}"></svg>`, height: 47.92, staffGap: 20, page: 0, start: 0, end: 4, positions: [] }];
   view.setScore({ id: 'v', engraving: { pages: [], systems: systems(4792) }, originalPages: 0 }); assert.equal(view.unitScale, 100);
   view.setScore({ id: 'l', engraving: { pages: [], systems: systems(47.92) }, originalPages: 0 }); assert.equal(view.unitScale, 1);
+  dom.window.close();
+});
+
+test('the moving score is laid out again for a new window height and zoom, even while paused', () => {
+  const dom = new JSDOM('<div id="root"><div id="score"></div></div>', { runScripts: 'outside-only', url: 'http://localhost/' });
+  dom.window.eval(fs.readFileSync('site/piano-score-view.js', 'utf8'));
+  const host = dom.window.document.querySelector('#score');
+  let height = 320; Object.defineProperty(host, 'clientHeight', { get: () => height });
+  const view = new dom.window.PianoScoreView(host, dom.window.document.querySelector('#root'));
+  const sys = (start, y) => ({ page: 0, start, end: start + 8, y, height: 40, staffTop: 10, staffGap: 20, width: 190, positions: [[start, 10]], svg: `<svg viewBox="0 ${y} 190 40"><g class="score-note" data-beat="${start}" data-midi="60"></g></svg>` });
+  view.setScore({ id: 's', title: 'Study', engraving: { pages: [{ svg: '<svg></svg>', start: 0, notes: [{ beat: 0, midi: 60, x: 10, y: 20 }, { beat: 8, midi: 62, x: 10, y: 75 }] }], systems: [sys(0, 0), sys(8, 50)] }, originalPages: 0 });
+  view.setMode('scroll');
+  const events = [{ beat: 0, duration: 1, notes: [60], members: [] }, { beat: 8, duration: 1, notes: [62], members: [] }];
+  view.update({ events, matcher: { index: 0, held: new Set() }, fingers: false, hintsRight: [], hintsLeft: [] });
+  assert.equal(host.querySelector('.scroll-strip').style.height, '300px');
+  // Switching from Both to Sheet changes the window height; nothing plays, yet the line follows.
+  height = 240; view.refresh();
+  assert.equal(host.querySelector('.scroll-strip').style.height, '220px');
+  view.setZoom(2);
+  assert.ok(parseFloat(host.querySelector('.scroll-strip').style.height) > 220, 'zoomed line is taller than the window');
+  assert.equal(host.style.overflowY, 'auto');
+  assert.equal(dom.window.document.querySelector('.score-zoom button:nth-child(2)').textContent, '200%');
+  view.setZoom(1);
+  assert.equal(host.querySelector('.scroll-strip').style.height, '220px'); assert.equal(host.style.overflowY, '');
   dom.window.close();
 });

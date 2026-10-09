@@ -560,3 +560,12 @@ button.small{min-height:34px;padding:5px 12px;font-size:13px}
 .ios-midi-support h2{margin-bottom:8px}
 .ios-midi-support p:last-child{max-width:66ch;margin:0;color:var(--muted)}
 .repertoire-post .piece-art{flex-direction:column}.repertoire-post .piece-art>span:last-child{max-width:100%;overflow-wrap:anywhere}
+/* Score zoom (moving score and full sheet): − 100% + in the corner of the score window. */
+.score-zoom{position:absolute;top:8px;right:8px;z-index:6;display:flex;align-items:center;gap:2px;padding:3px;border-radius:9px;background:rgb(26 28 39 / .8);color:#f4efe4;font:600 12px/1 system-ui,sans-serif;font-variant-numeric:tabular-nums;opacity:.7;transition:opacity .15s}
+.score-zoom:hover,.score-zoom:focus-within{opacity:1}
+.score-zoom[hidden]{display:none}
+.score-zoom button{min-width:28px;height:26px;padding:0 6px;border:0;border-radius:6px;background:transparent;color:inherit;font:inherit;cursor:pointer}
+.score-zoom button:hover,.score-zoom button:focus-visible{background:rgb(255 255 255 / .16);outline:none}
+/* Zoomed past the window width, pages scroll sideways; the score window itself keeps its width. */
+.stacked-sheet.zoomed{contain:inline-size}
+.stacked-sheet.zoomed .sheet-page{max-width:none;width:var(--page-max,100%)}

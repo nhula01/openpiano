@@ -4,10 +4,7 @@ const NS='http://www.w3.org/2000/svg';
 const el=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
 function svg(tag,attrs){const e=document.createElementNS(NS,tag);for(const[k,v]of Object.entries(attrs))e.setAttribute(k,v);return e;}
 class ScoreView{
- constructor(host,root){this.host=host;
- // A strip sized for its window is laid out again when the window changes height (Stage views, resizing).
- if(typeof ResizeObserver!=='undefined')new ResizeObserver(()=>{if(this.lastUpdate&&this.strip&&host.contains(this.strip))requestAnimationFrame(()=>{if(this.lastUpdate)this.update(this.lastUpdate);});}).observe(host);
- host.addEventListener('click',e=>{// The playhead lies over the current note; a click on it still reaches the note or mark beneath.
+ constructor(host,root){this.host=host;this.zooms=ScoreView.savedZooms();this.watch();host.addEventListener('click',e=>{// The playhead lies over the current note; a click on it still reaches the note or mark beneath.
  // (Dragging the playhead captures the pointer, so such a click arrives at the score itself.)
  const under=sel=>{const hit=e.target.closest?.(sel);if(hit)return hit;if(!e.target.closest?.('.fixed-playhead,.normal-playhead')&&e.target!==host)return null;for(const n of host.querySelectorAll(sel)){const r=n.getBoundingClientRect();if(e.clientX>=r.left-3&&e.clientX<=r.right+3&&e.clientY>=r.top-3&&e.clientY<=r.bottom+3)return n;}return null;};
  const mark=under('.addon-mark');if(mark){e.stopPropagation();this.onMark?.(mark.dataset.id,mark.getBoundingClientRect());return;}const note=under('.score-note');if(note){const detail={beat:Number(note.dataset.beat),midi:Number(note.dataset.midi)};if(host.dataset.annotate==='1'&&this.onAnnotate){this.onAnnotate(detail,note.getBoundingClientRect());return;}this.onNote?.(detail);this.onSeek?.(detail.beat);this.onPick?.(detail);}});host.addEventListener('pointerdown',e=>{if(!e.target.closest('.fixed-playhead'))return;e.preventDefault();const origin=e.clientX,beat=this.lastBeat??0,start=this.position(beat).globalX;host.setPointerCapture(e.pointerId);const move=ev=>{const x=start+(ev.clientX-origin)/this.scale;const a=this.anchors||[];let found=a.at(-1)?.[0]??beat;for(let i=0;i<a.length-1;i++)if(x<=a[i+1][1]){found=a[i][0]+Math.max(0,(x-a[i][1])/(a[i+1][1]-a[i][1]))*(a[i+1][0]-a[i][0]);break;}this.onSeek?.(found);};const end=()=>{host.removeEventListener('pointermove',move);host.removeEventListener('pointerup',end);host.removeEventListener('pointercancel',end);};host.addEventListener('pointermove',move);host.addEventListener('pointerup',end);host.addEventListener('pointercancel',end);});this.mode='sheet';this.page=-1;this.system=-1;this.scale=9;this.details=el('details',undefined,'original-sheet');this.details.open=true;this.details.append(this.summary=el('summary','Original sheet music · four pages'));const nav=el('div',undefined,'actions');this.originalImage=el('img');this.originalImage.alt='The Entertainer, original score, page 1';this.originalImage.loading='lazy';this.originalNav=nav;this.details.append(nav,this.originalImage);root.insertBefore(this.details,host);this.keyboard=svg('svg',{viewBox:'0 0 1040 125',role:'img','aria-label':'Piano keyboard. Right hand blue, left hand rose.'});this.keyboard.classList.add('practice-keyboard');root.insertBefore(this.keyboard,host.nextSibling);this.keys=new Map();let whites=0;const black=[];for(let n=21;n<=108;n++){if([1,3,6,8,10].includes(n%12)){black.push([n,whites*20-6]);continue;}const rect=svg('rect',{x:whites*20,y:0,width:20,height:118,fill:'#fff',stroke:'#a5aaa3','data-pitch':n});this.keyboard.append(rect);this.keys.set(n,rect);whites++;}for(const[n,x]of black){const rect=svg('rect',{x,y:0,width:12,height:74,fill:'#303e38','data-pitch':n});this.keyboard.append(rect);this.keys.set(n,rect);} }
@@ -47,8 +44,26 @@ class ScoreView{
     g.append(svg('path',{class:'addon-bubble',d}));const dots=svg('text',{x:x+bw/2,y:y+bh*.68,'text-anchor':'middle','font-size':bh*.75,'font-weight':700,class:'addon-bubble-text'});dots.textContent='…';g.append(dots);p.note.n.parentNode.insertBefore(g,p.note.n.nextSibling);}}}
  markGroup({m},note){const g=svg('g',{class:`addon-mark addon-${m.kind} addon-${m.source}`,'data-id':m.id,transform:note.getAttribute('transform')||''});const t=svg('title',{});t.textContent=(m.author?m.author+': ':'')+(m.kind==='fingering'?'fingering '+m.fingers+(m.body?' · '+m.body:''):m.body);g.append(t);return g;}
  showOriginal(page){this.originalPage=page;if(this.score?.imported){if(!this.score.originalAsset)return;this.originalImage.hidden=this.score.originalAsset.type==='application/pdf';if(!this.originalPDF){this.originalPDF=el('iframe');this.originalPDF.className='import-source-pdf';this.originalPDF.title='Your original sheet PDF';this.originalPDF.setAttribute('sandbox','');this.details.append(this.originalPDF);}this.originalPDF.hidden=this.score.originalAsset.type!=='application/pdf';if(this.originalPDF.hidden)this.originalImage.src=this.score.originalAsset.url;else this.originalPDF.src=this.score.originalAsset.url;this.originalImage.alt='Your attached original sheet';return;}this.originalImage.hidden=false;if(this.originalPDF)this.originalPDF.hidden=true;const folder=this.score?.folder||'scores/entertainer';this.originalImage.src=`${folder}/${this.fingered?'fingered':'original'}/page-${page}.jpg`;this.originalImage.alt=`${this.score?.title||'The Entertainer'} source score, page ${page}`;}
+ // The layout depends on the height of the score's window (Sheet, Both and Full sheet give it different
+ // heights; so do resizing and turning a phone). Lay it out again whenever that changes, even while paused.
+ watch(){const host=this.host;if(typeof ResizeObserver!=='undefined'){let queued=false;new ResizeObserver(()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;this.refresh();});}).observe(host);}
+  // Pinch on a trackpad (or Ctrl + wheel) zooms the score rather than the page.
+  host.addEventListener('wheel',e=>{if(!e.ctrlKey||!this.zoomKind())return;e.preventDefault();this.setZoom(this.zoomFor()*Math.exp(-e.deltaY*.01),true);},{passive:false});}
+ refresh(){if(this.available&&this.lastUpdate)this.update(this.lastUpdate);}
+ // Zoom: 100% fits every line of the piece in the window. The moving score and the full sheet keep their own zoom.
+ zoomKind(){return this.mode==='sheet'?(this.host.dataset?.stacked==='1'?'full':null):'strip';}
+ zoomFor(kind=this.zoomKind()){return this.zooms?.[kind]||1;}
+ setZoom(z,gradual=false){const kind=this.zoomKind();if(!kind)return;z=Math.round(Math.min(ScoreView.ZOOM_MAX,Math.max(ScoreView.ZOOM_MIN,z))*100)/100;if(Math.abs(z-1)<.03)z=1;
+  (this.zooms||={})[kind]=z;try{localStorage.setItem('openpiano.score-zoom',JSON.stringify(this.zooms));}catch{}this.zoomControls();
+  clearTimeout(this.zoomTimer);if(gradual)this.zoomTimer=setTimeout(()=>this.refresh(),140);else this.refresh();}
+ zoomControls(){const kind=this.zoomKind(),parent=this.host.parentElement;if(!parent)return;
+  if(!this.zoomBar){const bar=el('div',undefined,'score-zoom');bar.setAttribute('role','group');bar.setAttribute('aria-label','Score zoom');
+   const make=(text,label,step)=>{const b=el('button',text);b.type='button';b.title=label;b.setAttribute('aria-label',label);b.onclick=e=>{e.stopPropagation();this.setZoom(step?this.zoomFor()*step:1);};bar.append(b);return b;};
+   make('−','Zoom out',1/1.15);this.zoomLabel=make('100%','Fit the window (100%)',0);make('+','Zoom in',1.15);this.zoomBar=bar;}
+  if(this.zoomBar.parentElement!==parent){if(getComputedStyle(parent).position==='static')parent.style.position='relative';parent.append(this.zoomBar);}
+  this.zoomBar.hidden=!kind;const text=Math.round(this.zoomFor(kind)*100)+'%';if(kind&&this.zoomLabel.textContent!==text)this.zoomLabel.textContent=text;}
  setScore(score){this.score=score;this.data=score.engraving||(score.id==='entertainer'?window.PianoEngraving:null);this.available=!!this.data;{const first=this.data?.systems?.[0],box=first?.svg?.match(/viewBox="[-\d.]+ [-\d.]+ [-\d.]+ ([-\d.]+)"/),ratio=box&&first.height?Number(box[1])/first.height:1;this.unitScale=Math.pow(10,Math.round(Math.log10(ratio||1)));}this.details.hidden=!this.available||(score.imported&&!score.originalAsset)||(!score.imported&&score.originalPages===0);this.keyboard.hidden=!this.available;this.page=-1;this.system=-1;this.anchors=null;this.followSystem=null;this.originalPage=1;this.originalNav.replaceChildren();if(this.available&&this.details.hidden)this.scale=Math.min(9,195/Math.max(...this.data.systems.map(s=>s.staffGap||20)));if(this.available&&!this.details.hidden){this.scale=Math.min(9,195/Math.max(...this.data.systems.map(s=>s.staffGap||20)));for(let i=1;i<=(score.originalPages||4);i++){const button=el('button','Page '+i,'secondary');button.onclick=()=>this.showOriginal(i);this.originalNav.append(button);}this.showOriginal(1);}this.baseScale=this.scale;}
- setMode(mode){if(this.mode!==mode){this.mode=mode;this.followSystem=null;this.page=-1;this.system=-1;this.host.replaceChildren();}}
+ setMode(mode){if(this.mode!==mode){this.mode=mode;this.followSystem=null;this.page=-1;this.system=-1;this.host.replaceChildren();this.host.style.overflowY='';this.strip=null;}}
  pageFor(beat){const data=this.data;for(let i=data.pages.length-1;i>=0;i--)if(beat>=data.pages[i].start)return i;return 0;}
  position(beat){const data=this.data||window.PianoEngraving;let i=data.systems.findIndex(s=>beat>=s.start&&beat<s.end);if(i<0)i=beat<data.systems[0].start?0:data.systems.length-1;
  const anchors=this.anchors||(this.anchors=data.systems.flatMap((s,index)=>s.positions.map(([b,x])=>[b,data.systems.slice(0,index).reduce((sum,s)=>sum+s.width,0)+x])));let a=anchors[0],b=anchors[1];for(let j=0;j<anchors.length-1;j++){if(beat>=anchors[j][0]){a=anchors[j];b=anchors[j+1];}if(beat<b[0])break;}if(beat>=anchors.at(-1)[0]){a=anchors.at(-1);b=[a[0]+1,a[1]+6];}const fraction=(beat-a[0])/Math.max(.001,b[0]-a[0]);return {system:i,globalX:a[1]+fraction*(b[1]-a[1])};
@@ -59,12 +74,15 @@ class ScoreView{
  ease(current,target,dt,tau,far){return current==null||dt>.25||Math.abs(target-current)>far?target:current+(target-current)*(1-Math.exp(-dt/tau));}
  // One continuous line: every system laid side by side once, so nothing is redrawn at a line change.
  scrollStrip(at,where,dt){const data=this.data;
-  const H=Math.max(160,(this.host.clientHeight||320)-20);
-  if(!this.strip||!this.host.contains(this.strip)||this.stripData!==data||this.stripScale!==this.scale||Math.abs((this.stripHeight||0)-H)>8){this.labelsStamp=null;this.host.replaceChildren();this.host.className='live-score scrolling-score';this.strip=el('div',undefined,'scroll-strip');
+  const H=Math.max(160,(this.host.clientHeight||320)-20),zoom=this.zoomFor('strip');
+  if(!this.strip||!this.host.contains(this.strip)||this.stripData!==data||this.stripScale!==this.scale||Math.abs((this.stripHeight||0)-H)>8||this.stripZoom!==zoom){this.labelsStamp=null;this.host.replaceChildren();this.host.className='live-score scrolling-score';this.strip=el('div',undefined,'scroll-strip');
    // Size the line to the music it holds: every notehead, with room for stems and beams, fits the strip.
-   const lay=ScoreView.stripLayout(data,H,this.unitScale||1);this.scale=lay.scale;this.strip.style.height=H+'px';
-   data.systems.forEach((sys,i)=>{const panel=el('div',undefined,'scroll-system');panel.innerHTML=sys.svg;panel.style.width=(sys.width*this.scale)+'px';panel.style.height=H+'px';const drawing=panel.querySelector('svg');if(drawing){drawing.style.height=(sys.height*this.scale)+'px';drawing.style.position='absolute';drawing.style.top=(lay.staffTop[i]-sys.staffTop*this.scale)+'px';drawing.setAttribute('preserveAspectRatio','xMinYMin meet');}this.strip.append(panel);});
-   this.host.append(this.strip,el('div',undefined,'fixed-playhead'));this.stripData=data;this.stripScale=this.scale;this.stripHeight=H;this.stripBegin=0;this.smoothX=null;}
+   const lay=ScoreView.stripLayout(data,H,this.unitScale||1,zoom);this.scale=lay.scale;this.strip.style.height=lay.height+'px';
+   data.systems.forEach((sys,i)=>{const panel=el('div',undefined,'scroll-system');panel.innerHTML=sys.svg;panel.style.width=(sys.width*this.scale)+'px';panel.style.height=lay.height+'px';const drawing=panel.querySelector('svg');if(drawing){drawing.style.height=(sys.height*this.scale)+'px';drawing.style.position='absolute';drawing.style.top=(lay.staffTop[i]-sys.staffTop*this.scale)+'px';drawing.setAttribute('preserveAspectRatio','xMinYMin meet');}this.strip.append(panel);});
+   // Zoomed in past the window's height, the line scrolls up and down, starting with the staves in view.
+   const playhead=el('div',undefined,'fixed-playhead'),tall=lay.height>H+1;this.host.style.overflowY=tall?'auto':'';if(tall){playhead.style.bottom='auto';playhead.style.height=(lay.height-10)+'px';}
+   this.host.append(this.strip,playhead);this.stripData=data;this.stripScale=this.scale;this.stripHeight=H;this.stripZoom=zoom;this.stripBegin=0;this.smoothX=null;
+   const mid=data.systems.reduce((sum,sys,i)=>sum+lay.staffTop[i]+(sys.staffGap||0)*this.scale/2,0)/data.systems.length;this.host.scrollTop=tall?Math.max(0,10+mid-this.host.clientHeight/2):0;}
   this.system='strip';const width=this.host.clientWidth||800;
   this.smoothX=this.ease(this.smoothX,this.barX(at)*this.scale,dt,.12,width*.6);
   this.strip.style.transform=`translateX(${Math.min(180,width*.25)-this.smoothX}px)`;return data.systems[where.system].page;}
@@ -75,8 +93,8 @@ class ScoreView{
   this.page='stack';this.system='stack';const hostBox=host.getBoundingClientRect(),unit=this.unitScale||1;
   const place=i=>{const sys=data.systems[i],div=host.querySelector(`.sheet-page[data-page="${sys.page}"]`),drawing=div?.querySelector('svg');if(!drawing)return null;const frame=drawing.viewBox?.baseVal?.width?drawing:(drawing.querySelector('svg[viewBox]')||drawing),box=frame.getBoundingClientRect(),units=frame.viewBox?.baseVal,scale=units?.width?box.width/units.width*unit:0;return {div,top:box.top-hostBox.top+host.scrollTop+(sys.y-(units?.y||0)/unit)*scale,height:sys.height*scale};};
   // Fit two full lines in the window: narrow the pages when the window is short (never below 560 px).
-  if(this.stackFitH!==host.clientHeight&&host.clientHeight>0){this.stackFitH=host.clientHeight;host.style.removeProperty('--page-max');const gaps=[];for(let k=0;k+1<data.systems.length&&gaps.length<12;k++){const a=place(k),b=place(k+1);if(a&&b&&b.div===a.div&&b.top>a.top)gaps.push([b.top-a.top,a.height]);}
-   if(gaps.length){gaps.sort((x,y)=>x[0]-y[0]);const [step,h]=gaps[Math.floor(gaps.length/2)],w=host.querySelector('.sheet-page')?.clientWidth||1000,fit=(host.clientHeight-20)/(step+h);host.style.setProperty('--page-max',Math.max(560,Math.min(1000,Math.floor(w*Math.min(1,fit))))+'px');}}
+  const zoom=this.zoomFor('full'),fitKey=host.clientHeight+':'+zoom;host.classList.toggle('zoomed',zoom>1);if(this.stackFitH!==fitKey&&host.clientHeight>0){this.stackFitH=fitKey;host.style.removeProperty('--page-max');const gaps=[];for(let k=0;k+1<data.systems.length&&gaps.length<12;k++){const a=place(k),b=place(k+1);if(a&&b&&b.div===a.div&&b.top>a.top)gaps.push([b.top-a.top,a.height]);}
+   if(gaps.length){gaps.sort((x,y)=>x[0]-y[0]);const [step,h]=gaps[Math.floor(gaps.length/2)],w=host.querySelector('.sheet-page')?.clientWidth||1000,fit=(host.clientHeight-20)/(step+h);host.style.setProperty('--page-max',Math.floor(Math.max(560,Math.min(1000,w*Math.min(1,fit)))*zoom)+'px');}}
   const i=where.system,sys=data.systems[i],cur=place(i);if(!cur)return sys.page;
   // Keep the line you are playing at the top with the next line fully readable below it; at each new line the
   // page glides up (about half a second) instead of jumping.
@@ -88,11 +106,13 @@ class ScoreView{
   let line=host.querySelector('.normal-playhead');if(!line){line=el('div',undefined,'normal-playhead');host.append(line);}
   const notes=[...cur.div.querySelectorAll('.score-note')].map(n=>[Number(n.dataset.beat),n]).filter(([b])=>b>=sys.start-.001&&b<sys.end-.001).sort((a,b)=>a[0]-b[0]);
   let a=null,b=null;for(const n of notes){if(n[0]<=at+1e-6)a=n;else{b=n;break;}}a=a||notes[0];
-  if(a){const xa=a[1].getBoundingClientRect().left,xb=b?b[1].getBoundingClientRect().left:xa,f=b?Math.max(0,Math.min(1,(at-a[0])/Math.max(.001,b[0]-a[0]))):0;line.style.left=(xa+f*(xb-xa)-hostBox.left+host.scrollLeft)+'px';}
+  if(a){const xa=a[1].getBoundingClientRect().left,xb=b?b[1].getBoundingClientRect().left:xa,f=b?Math.max(0,Math.min(1,(at-a[0])/Math.max(.001,b[0]-a[0]))):0;const x=xa+f*(xb-xa)-hostBox.left+host.scrollLeft;line.style.left=x+'px';
+   // Zoomed wider than the window, the page also follows sideways.
+   if(zoom>1&&(x<host.scrollLeft+40||x>host.scrollLeft+host.clientWidth-60))host.scrollLeft=Math.max(0,x-host.clientWidth*.3);}
   line.style.top=cur.top+'px';line.style.height=cur.height+'px';return sys.page;}
  update(args){this.lastUpdate=args;let {events,matcher,fingers,hintsRight,hintsLeft,page=null,beat=null,timed=null,demo=false}=args;if(!this.available)return false;const data=this.data;const current=events[Math.min(matcher.index,events.length-1)],at=beat??current.beat;this.lastBeat=at;const where=this.position(at);let activePage;
  const now=(typeof performance!=='undefined'?performance.now():Date.now())/1000,dt=this.lastTime==null?1:now-this.lastTime;this.lastTime=now;
- const stacked=this.mode==='sheet'&&this.host.dataset?.stacked==='1';
+ const stacked=this.mode==='sheet'&&this.host.dataset?.stacked==='1';this.zoomControls();
  if(stacked)activePage=this.stackedSheet(at,where,dt);
  else if(this.mode==='sheet'){activePage=page??this.pageFor(at);if(this.page!==activePage){this.labelsStamp=null;this.host.innerHTML=data.pages[activePage].svg;this.page=activePage;this.host.className='live-score engraved-sheet';}this.host.querySelector('svg').setAttribute('aria-label',`${this.score.title} interactive score, page ${activePage+1} of ${data.pages.length}`);}
  else activePage=this.scrollStrip(at,where,dt);
@@ -145,5 +165,7 @@ ScoreView.stripLayout=function(data,H,unitScale=1,zoom=1){
  const px=Math.min(9*sp,H/(A+B))*zoom,height=Math.max(H,Math.ceil((A+B)*px)),top=A*px+(height-(A+B)*px)/2;
  return {scale:px/sp,staffTop:S.map(()=>top),space:sp,height};
 };
+ScoreView.ZOOM_MIN=.5;ScoreView.ZOOM_MAX=2.5;
+ScoreView.savedZooms=function(){try{const z=JSON.parse(localStorage.getItem('openpiano.score-zoom')||'{}');return z&&typeof z==='object'?z:{};}catch{return {};}};
 window.PianoScoreView=ScoreView;
 })();
