@@ -1,30 +1,34 @@
 # Repertoire community
 
-Built-in library pieces have public discussion in their lesson page and beneath
-the practice score. Read without an account; sign in to contribute, reply, vote or
-report. Each contribution uses the name saved in the author’s music profile, never the account email or
+Built-in library pieces have note-specific add-ons in their lesson page and beneath
+the practice score. Click an engraved note to attach a private comment or personal
+fingering. The owner can later reveal that add-on; public add-ons can be read without
+an account, while saving, replying, voting and reporting require sign-in. Each
+contribution uses the name saved in the author’s music profile, never the account email or
 Google profile. The server derives the name from the signed-in account; clients cannot
 choose a different author name for each comment. Display names and claimed qualifications are not verified.
 
-Contributors can publish original comments or fingering plans describing the bars,
-edition, hand, note pitches and fingers. A public-publication checkbox is required.
-Plans do not replace printed source fingering or claim teacher verification.
+New root add-ons are private by default. Reveal is a separate owner-only action.
+The note beat, MIDI pitch, server-calculated note name and hand locate the advice in
+the built-in score. Learners enter any fingering numbers themselves; the site never
+generates them. Add-ons do not replace printed source fingering or claim teacher verification.
 Most helpful sorts by unique upvotes, then newest. Authors cannot vote for themselves.
 Newest is also available. Threads support 50 replies; the feed paginates 20 roots.
 
-Use in practice saves an attributed snapshot beside the score, privately synced
-with progress. Adapt pre-fills a new plan with attribution so a learner can explain
-their changes and publish a separate version. Removing a saved plan writes a dated
-tombstone so an older cloud copy cannot restore it. Authors may edit or withdraw
-their contributions; Undo restores a withdrawal. A moderator's hide cannot be
-undone by an author. Withdrawn/hidden content stays in the database for moderation.
+Add to mine stores an attributed snapshot in the signed-in account. It remains
+available if the source author later makes the add-on private; removing the copy
+does not change the source. Authors may edit, remove, reveal or make their root
+add-ons private again. Replies are public because they belong to a public thread.
+A moderator's hide cannot be undone by an author. Withdrawn/hidden content stays
+in the database for moderation.
 
 ## Deployment
 
-Run `scripts/supabase-community.sql`, then `scripts/supabase-community-catalog.sql`
-in the project SQL Editor. The catalog contains only built-in repertoire IDs, never
-private uploaded songs. Repeat when new public pieces are added. New installations
-need both the existing private-account migration and this migration.
+Run `scripts/supabase-community.sql`, `scripts/supabase-community-catalog.sql`,
+`scripts/supabase-profiles.sql`, the profile-photo migration, and finally
+`scripts/supabase-note-addons.sql` in the project SQL Editor. The catalog contains
+only built-in repertoire IDs, never private uploaded songs. Repeat its seed when
+new public pieces are added.
 
 Every table has RLS enabled and no direct anon/authenticated table privileges.
 Narrow security-definer RPCs use an empty search_path, auth.uid() ownership checks,
@@ -35,9 +39,13 @@ nested replies. Posts are limited to 10/hour and 30/day, reports to 20/day; thes
 limits use an account-level transaction lock. Reports do not automatically hide
 content (to avoid coordinated flagging attacks).
 
-`scripts/supabase-community-verify.sql` checks these controls with synthetic users
-and contributions inside a transaction and rolls everything back. Never create
-demonstration posts in the live public feed or copy real private music into it.
+`scripts/supabase-community-verify.sql` checks the original discussion controls;
+`scripts/supabase-note-addons-verify.sql` checks private roots, reveal, copying and
+note validation. Both use synthetic users inside a transaction and roll back.
+
+Three public Entertainer examples are seeded as clearly labeled OpenPiano demo bots.
+They contain general practice prompts, not generated fingering. Bots have their own
+system identity rather than fake authentication accounts and users cannot post as bots.
 
 ## Moderation (project owner)
 

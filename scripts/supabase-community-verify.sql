@@ -10,14 +10,14 @@ insert into public.community_profiles(owner,display_name) values
 set local role authenticated;
 select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-0000000000a3","role":"authenticated"}',true);
 do $$ declare id uuid; blocked boolean:=false; begin
- id:=public.community_write('__community_test__','Learner A','My original advice','fingering','bars 1–2','RH','C4(1), D4(2)',null,null,true);
+ id:=public.community_write('__community_test__','Learner A','My original advice','fingering','bars 1–2','RH','C4(1), D4(2)',null,null,true,0,60,'public');
  perform set_config('test.post',id::text,true);
  if public.community_list('__community_test__')->'posts'->0->>'mine'<>'true' then raise exception 'Own post flag missing';end if;
  begin perform public.community_vote(id,true);exception when others then blocked:=true;end;
  if not blocked then raise exception 'Self-vote accepted';end if;
- blocked:=false;begin perform public.community_write('private-score-id','Alias','Private score leak',p_publish=>true);exception when others then blocked:=true;end;
+ blocked:=false;begin perform public.community_write('private-score-id','Alias','Private score leak',p_publish=>true,p_note_beat=>0,p_note_midi=>60,p_visibility=>'public');exception when others then blocked:=true;end;
  if not blocked then raise exception 'Private score discussion accepted';end if;
- blocked:=false;begin perform public.community_write('__community_test__','Alias','No publication consent');exception when others then blocked:=true;end;
+ blocked:=false;begin perform public.community_write('__community_test__','Alias','No publication consent',p_note_beat=>0,p_note_midi=>60,p_visibility=>'public');exception when others then blocked:=true;end;
  if not blocked then raise exception 'Publication consent not required';end if;
  blocked:=false;begin perform * from public.community_posts;exception when insufficient_privilege then blocked:=true;end;
  if not blocked then raise exception 'Raw ownership data exposed';end if;
@@ -28,7 +28,7 @@ do $$ declare id uuid:=current_setting('test.post')::uuid; blocked boolean:=fals
  payload:=public.community_list('__community_test__');
  if payload->'posts'->0->>'votes'<>'1' or payload->'posts'->0->>'voted'<>'true' then raise exception 'Duplicate vote or own vote flag wrong';end if;
  if payload::text like '%owner%' or payload::text like '%example.invalid%' then raise exception 'Private identity exposed';end if;
- begin perform public.community_write('__community_test__','Imposter','Changed','fingering','1','RH','1',null,id,true);exception when others then blocked:=true;end;
+ begin perform public.community_write('__community_test__','Imposter','Changed','fingering','1','RH','1',null,id,true,0,60,'public');exception when others then blocked:=true;end;
  if not blocked then raise exception 'Cross-author edit allowed';end if;
  blocked:=false;begin perform public.community_hide(id,true);exception when others then blocked:=true;end;
  if not blocked then raise exception 'Cross-author withdrawal allowed';end if;
@@ -42,21 +42,21 @@ do $$ declare id uuid:=current_setting('test.post')::uuid; blocked boolean:=fals
 end $$;
 select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-0000000000a3","role":"authenticated"}',true);
 do $$ declare id uuid:=current_setting('test.post')::uuid; blocked boolean:=false; begin
- perform public.community_write('__community_test__','Learner A','Edited explanation','fingering','1–2','RH','C4(1)',null,id,true);
+ perform public.community_write('__community_test__','Learner A','Edited explanation','fingering','1–2','RH','C4(1)',null,id,true,0,60,'public');
  if public.community_list('__community_test__')->'posts'->0->>'edited_at' is null then raise exception 'Edit timestamp missing';end if;
  perform public.community_hide(id,true);
  if public.community_list('__community_test__')->>'total'<>'0' then raise exception 'Withdrawn post exposed';end if;
  perform public.community_hide(id,false);
  if public.community_list('__community_test__')->>'total'<>'1' then raise exception 'Restore failed';end if;
- for i in 1..9 loop perform public.community_write('__community_test__','Learner A','Temporary rate limit check',p_publish=>true);end loop;
- begin perform public.community_write('__community_test__','Learner A','Over quota',p_publish=>true);exception when others then blocked:=true;end;
+ for i in 1..9 loop perform public.community_write('__community_test__','Learner A','Temporary rate limit check',p_publish=>true,p_note_beat=>i,p_note_midi=>60,p_visibility=>'public');end loop;
+ begin perform public.community_write('__community_test__','Learner A','Over quota',p_publish=>true,p_note_beat=>10,p_note_midi=>60,p_visibility=>'public');exception when others then blocked:=true;end;
  if not blocked then raise exception 'Rate limit not enforced';end if;
 end $$;
 set local role anon;
 select set_config('request.jwt.claims','{"role":"anon"}',true);
 do $$ declare blocked boolean:=false; begin
  if public.community_list('__community_test__')->>'total'<>'10' then raise exception 'Public reading failed';end if;
- begin perform public.community_write('__community_test__','Anon','Should fail',p_publish=>true);exception when insufficient_privilege then blocked:=true;end;
+ begin perform public.community_write('__community_test__','Anon','Should fail',p_publish=>true,p_note_beat=>0,p_note_midi=>60,p_visibility=>'public');exception when insufficient_privilege then blocked:=true;end;
  if not blocked then raise exception 'Anonymous posting allowed';end if;
  blocked:=false;begin perform * from public.community_reports;exception when insufficient_privilege then blocked:=true;end;
  if not blocked then raise exception 'Private reports exposed';end if;

@@ -11,7 +11,7 @@ do $$ declare p jsonb; id uuid; feed jsonb; begin
  perform set_config('test.profile',p->>'id',true);
  if p->>'name'<>'Chosen name' or p->>'published'<>'false' then raise exception 'Own profile save failed';end if;
  if public.profile_public((p->>'id')::uuid) is not null then raise exception 'Private profile exposed';end if;
- id:=public.community_write('__profile_test__','Impersonated name','Original comment',p_publish=>true);
+ id:=public.community_write('__profile_test__','Impersonated name','Original comment',p_publish=>true,p_note_beat=>0,p_note_midi=>60,p_visibility=>'public');
  perform set_config('test.profile_post',id::text,true);
  feed:=public.community_list('__profile_test__')->'posts'->0;
  if feed->>'alias'<>'Chosen name' or feed->>'profile' is not null then raise exception 'Name spoofing or private skills leak';end if;
