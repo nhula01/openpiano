@@ -38,3 +38,10 @@ test('choosing a section clears a bar loop',()=>{
  ui.api.loopBars(0,0);assert.equal(ui.api.events.length,4);const section=ui.nodes.find(n=>n.id==='trainer-section');section.value='b';section.onchange();
  assert.equal(ui.api.loop,null);assert.equal(ui.api.events[0].beat,4);
 });
+test('tap chords that share a note with the previous chord do not stick',async()=>{
+ const ui=setup();ui.importScore({id:'share',title:'Share',caption:'test',notes:[{midi:43,beat:0,duration:1},{midi:64,beat:0,duration:1},{midi:48,beat:1,duration:1},{midi:64,beat:1,duration:1},{midi:60,beat:2,duration:1}]});
+ ui.api.setInput('keys');await ui.api.start('wait');
+ ui.api.noteOn(43);ui.api.noteOn(64);assert.equal(ui.api.index,1);ui.api.noteOff(43);ui.api.noteOff(64);
+ ui.api.noteOn(48);ui.api.noteOn(64);assert.equal(ui.api.index,2);ui.api.noteOff(48);ui.api.noteOff(64);
+ ui.api.noteOn(60);assert.match(ui.feedback(),/Passed this practice! 100%/);
+});
