@@ -540,4 +540,19 @@ button.small{min-height:34px;padding:5px 12px;font-size:13px}
 .community-form>label:has(>select){display:flex;align-items:center;gap:12px}.community-form>label>select{width:auto;min-height:34px;padding:6px 10px;font-weight:400}.profile-editor input:not([type=checkbox]),.profile-editor textarea,.profile-editor select{font-weight:400}
 .community-intro{margin:0 0 14px;color:var(--muted);font-size:14px;line-height:1.55}.community-composer{margin-bottom:18px}.addon-composer{padding:12px 14px;border-radius:20px;background:var(--bg);gap:9px}.addon-composer>label:has(>textarea){margin:0}.addon-composer>label>textarea{background:var(--surface);border-color:transparent;resize:vertical}.addon-selected{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:34px}.addon-anchor{display:inline-flex;align-items:center;width:max-content;max-width:100%;min-height:28px;margin:8px 0 2px;padding:4px 10px;border:0;border-radius:999px;background:var(--felt-soft);color:var(--felt-deep);font:700 12px/1.3 inherit}.comment-bubble button.addon-anchor{cursor:pointer}.comment-bubble button.addon-anchor:hover{background:var(--felt);color:white}.addon-fingering-fields{display:flex;align-items:end;gap:10px}.addon-fingering-fields[hidden]{display:none}.addon-fingering-fields label{display:grid;gap:5px;font-size:12px}.addon-fingering-fields label:last-of-type{flex:1}.addon-fingering-fields input,.addon-fingering-fields select{background:var(--surface)}.addon-fingering-fields small{max-width:230px}.addon-fingering{margin:8px 0 0;font-size:14px;font-weight:700;color:var(--felt-deep)}.my-addons{margin:18px 0 26px;padding:14px 16px;border:1px solid var(--line);border-radius:16px}.my-addons:empty{display:none}.addon-section-title{display:flex;align-items:center;justify-content:space-between;gap:12px}.addon-section-title h3{margin:0}.personal-addon{padding-top:12px}.personal-addon+.personal-addon{border-top:1px solid var(--line);margin-top:10px}.personal-addon .comment-bubble{background:transparent;padding:4px 0}.bot-badge{align-self:center;padding:2px 6px;border-radius:5px;background:#e7eefb;color:#345683;font-size:9px;font-weight:800;letter-spacing:.08em}.score-note{cursor:pointer}.score-note.addon-note{filter:drop-shadow(0 0 2px #f0b429) drop-shadow(0 0 4px #f0b429)}
 @media(max-width:600px){.addon-fingering-fields{align-items:stretch;flex-direction:column}.addon-fingering-fields small{max-width:none}.addon-selected{align-items:flex-start;flex-direction:column}.my-addons{padding:12px}}
+
+/* ---------- Installable app ---------- */
+.install-card{display:grid;grid-template-columns:52px minmax(0,1fr) auto;align-items:center;gap:14px;margin:0 0 28px;padding:14px 16px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+.install-card img{width:52px;height:52px;border-radius:13px}
+.install-card strong,.install-card span{display:block}
+.install-card span{margin-top:2px;color:var(--muted);font-size:14px;line-height:1.4}
+.install-card button{white-space:nowrap}
+.install-help{width:min(440px,calc(100% - 32px));padding:24px;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface);color:var(--ink);box-shadow:0 20px 70px rgb(31 29 36 / .28)}
+.install-help::backdrop{background:rgb(31 29 36 / .55)}
+.install-help-head{display:grid;grid-template-columns:64px minmax(0,1fr);gap:16px;align-items:center;margin-bottom:20px}
+.install-help-head img{width:64px;height:64px;border-radius:16px}
+.install-help h2{margin:0 0 5px}
+.install-help p{margin:0;color:var(--muted)}
+@media(display-mode:standalone){body{padding-top:env(safe-area-inset-top)}}
+@media(max-width:560px){.install-card{grid-template-columns:44px minmax(0,1fr)}.install-card img{width:44px;height:44px;border-radius:11px}.install-card button{grid-column:1/-1;width:100%}}
 .repertoire-post .piece-art{flex-direction:column}.repertoire-post .piece-art>span:last-child{max-width:100%;overflow-wrap:anywhere}

@@ -4,6 +4,10 @@ A free piano studio in the browser: complete public-domain repertoire by compose
 skills by level, sight-reading, and practice with a MIDI keyboard or a microphone.
 Anyone can import their own MusicXML, MIDI or PDF scores and keep them private.
 
+OpenPiano is also an installable Progressive Web App. The public app shell and public
+scores a learner opens can work offline; account traffic and private uploads are not
+stored in the service-worker cache.
+
 - **Library** — about 525 complete pieces: piano classics from Bach to Rachmaninoff, symphony and
   opera themes for piano, carols, hymns, folk and children’s songs, ragtime — each with source, transcriber and
   license on every score. Printed fingerings only; none are generated.
@@ -19,6 +23,8 @@ Anyone can import their own MusicXML, MIDI or PDF scores and keep them private.
 cd site && python3 -m http.server 8000
 ```
 Open http://localhost:8000/. Tests: `npm ci && npm run test:piano`.
+
+PWA installation and service workers require HTTP on localhost or HTTPS in production.
 
 ## Project documents
 
