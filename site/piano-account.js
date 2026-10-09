@@ -64,7 +64,46 @@ async function migrateOldScores() {
 
 // ---------- Cloud storage (Supabase) ----------
 let sb = null, user = null, communityReady = false;
-window.PianoCommunityAuth = { ready: () => communityReady, signedIn: () => !!user, rpc: (name, args) => sb.rpc(name, args) };
+const AVATAR_BUCKET = 'profile-avatars';
+const avatarUrls = new Map();
+async function uploadAvatar(file, profileId) {
+  if (!user) throw new Error('Sign in to add a profile picture.');
+  if (!/^[0-9a-f-]{36}$/i.test(profileId||'')) throw new Error('Save your profile before adding its picture.');
+  const types = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+  const ext = types[file?.type];
+  if (!ext) throw new Error('Choose a JPG, PNG or WebP picture.');
+  if (file.size > 3 * 1024 * 1024) throw new Error('Profile pictures must be 3 MB or smaller.');
+  const owner = user.id, path = `${profileId}/${crypto.randomUUID()}.${ext}`;
+  const { error } = await sb.storage.from(AVATAR_BUCKET).upload(path, file, { upsert: false, contentType: file.type, cacheControl: '3600' });
+  if (error) throw error;
+  if (user?.id !== owner) { await sb.storage.from(AVATAR_BUCKET).remove([path]); throw new Error('Your account changed. Choose the picture again.'); }
+  return path;
+}
+async function avatarUrl(path) {
+  if (!path || !sb) return '';
+  const cached = avatarUrls.get(path);
+  if (cached && cached.until > Date.now()) return cached.url;
+  const { data, error } = await sb.storage.from(AVATAR_BUCKET).createSignedUrl(path, 3600);
+  if (error) throw error;
+  avatarUrls.set(path, { url: data.signedUrl, until: Date.now() + 45 * 60 * 1000 });
+  return data.signedUrl;
+}
+async function removeAvatar(path) {
+  if (!path || !sb || !user) return;
+  const { error } = await sb.storage.from(AVATAR_BUCKET).remove([path]);
+  if (error) throw error;
+  avatarUrls.delete(path);
+}
+window.PianoCommunityAuth = {
+  ready: () => communityReady,
+  signedIn: () => !!user,
+  account: () => user ? { email: user.email } : null,
+  signOut: () => sb?.auth.signOut(),
+  rpc: (name, args) => sb.rpc(name, args),
+  uploadAvatar,
+  avatarUrl,
+  removeAvatar
+};
 const extOf = name => ((name || '').match(/\.[a-z0-9]{1,8}$/i) || [''])[0].toLowerCase();
 const cloud = {
   async list() {
@@ -147,15 +186,20 @@ let section, statusLine, accountBox, songs = [], inBrowser = [];
 function say(msg, bad) { if (!statusLine) return; statusLine.textContent = msg; statusLine.classList.toggle('bad', !!bad); }
 const where = () => user ? `Private to ${user.email}. Synced to your account.` : (CLOUD ? 'Saved in this browser only. Sign in to keep them in your account on any device.' : 'Saved in this browser only. Keep your original files as a backup.');
 
-function renderAccount() {
-  window.dispatchEvent(new Event('piano-community-auth'));
+function fallbackAccountAvatar(label) {
+  const avatar=el('span',(label||'?').trim().slice(0,1).toUpperCase(),'profile-avatar account-avatar');
+  avatar.setAttribute('aria-hidden','true');return avatar;
+}
+function renderAccount(notify = true) {
+  if (notify) window.dispatchEvent(new Event('piano-community-auth'));
   accountBox.replaceChildren();
   if (user) {
-    const profile=el('a','My profile','acct-label');profile.href='#profile';accountBox.append(profile,el('strong', user.email, 'acct-email'));
-    const out = el('button', 'Sign out', 'secondary'); out.type = 'button'; out.onclick = async () => { await sb.auth.signOut(); };
-    accountBox.append(out);
+    const current=window.PianoProfiles?.current();
+    const profile=el('a',undefined,'account-profile');profile.href='#profile';profile.setAttribute('aria-label','Open your profile');profile.title=current?.name||'Your profile';
+    profile.append(window.PianoProfiles?.avatar(current?.name||user.email,current?.avatar_path)||fallbackAccountAvatar(current?.name||user.email));
+    accountBox.append(profile);
   } else {
-    const a = el('a', CLOUD ? 'Sign in to sync your songs' : 'My songs', 'acct-link'); a.href = '#mine'; accountBox.append(a);
+    const a = el('a', CLOUD ? 'Sign in' : 'My songs', 'acct-link'); a.href = '#mine'; accountBox.append(a);
   }
 }
 
@@ -313,5 +357,6 @@ async function init() {
   renderAccount(); refresh(); window.dispatchEvent(new Event('piano-songs-where'));
 }
 document.addEventListener('DOMContentLoaded', init);
+window.addEventListener('piano-profile-changed',()=>{if(accountBox)renderAccount(false);});
 window.PianoSongs = { save, open, present, refresh, where, signedIn: () => !!user };
 })();

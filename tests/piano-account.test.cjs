@@ -49,3 +49,7 @@ test('community practice plans sync privately and a newer removal wins over an o
  await ui.switch('account-b');assert.equal(JSON.parse(ui.w.localStorage.getItem(key)).entertainer.removed,true);
  await ui.switch('account-a');assert.equal(JSON.parse(ui.w.localStorage.getItem(key)).entertainer.alias,'Public alias');ui.dom.window.close();
 });
+test('signed-in account chrome is a compact profile picture link instead of an email and sign-out card',async()=>{
+ const ui=await setup();ui.w.PianoProfiles={current:()=>({name:'Profile learner',avatar_path:'account-a/avatar.jpg'}),avatar:()=>{const n=ui.w.document.createElement('span');n.className='profile-avatar';return n;}};ui.w.dispatchEvent(new ui.w.Event('piano-profile-changed'));
+ const box=ui.w.document.querySelector('#account-box');assert.ok(box.querySelector('a.account-profile[href="#profile"] .profile-avatar'));assert.equal(box.textContent.includes('a@example.test'),false);assert.equal([...box.querySelectorAll('button')].some(b=>b.textContent==='Sign out'),false);ui.dom.window.close();
+});

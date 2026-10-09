@@ -69,6 +69,15 @@ Publishing a profile links current public details on the author's comments; maki
 it private removes that link/details while retaining already-published comment names.
 No real users' profiles or past comments are populated or rewritten by this migration.
 
+The account icon and comments use the same optional profile picture. Run
+`scripts/supabase-profile-photos.sql` on an existing installation. Pictures are JPG,
+PNG or WebP files up to 3 MB in the private `profile-avatars` bucket. Storage policies
+let an owner read or delete their own picture; anonymous readers can request a
+short-lived signed URL only while the matching music profile is public. The storage
+path starts with the separate random public profile ID, never the authentication ID,
+and is never accepted from another account. Making a profile private prevents new
+public URLs; a URL already issued can remain valid for up to one hour.
+
 Each piece is a single post card, with its learning guide collapsed and the comment
 composer/list beneath it. Comments have initials, author links, skills when public,
 reply bubbles and helpful votes. This is confined to piece pages and the existing
@@ -77,3 +86,5 @@ practice discussion area; the library/home/practice navigation retains its desig
 `supabase-profiles-verify.sql` verifies ownership, optional publication, canonical
 comment names and opt-out, with all synthetic rows rolled back. Run the updated
 community verification after the profile migration as well.
+`supabase-profile-photos-verify.sql` separately checks owner-only photo paths,
+private/public signed-URL eligibility and removal; its synthetic rows also roll back.

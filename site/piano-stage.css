@@ -17,7 +17,9 @@ body[data-shell=stage] .kit-picker-search input{color:var(--sg-text)}
  body[data-shell=stage] .tabs a[aria-current]{background:var(--sg-raised);color:var(--sg-text)}
  body[data-shell=stage] .rail-metronome,body[data-shell=stage] .rail-legal{display:none}
  body[data-shell=stage] .account-box{margin:0 0 0 auto}
- body[data-shell=stage] .account-box a,body[data-shell=stage] .account-box button{background:transparent;color:var(--sg-text);border-color:var(--sg-line)}
+ body[data-shell=stage] .account-box a{background:transparent;color:var(--sg-text);border-color:var(--sg-line)}
+ body[data-shell=stage] .account-profile:hover{background:var(--sg-raised)}
+ body[data-shell=stage] .account-profile .profile-avatar{border-color:var(--sg-base);box-shadow:0 0 0 1px var(--sg-line)}
  body[data-shell=stage] main{max-width:1240px;margin:0 auto;padding:30px 28px 60px}
 }
 .sg-search{display:inline-flex;align-items:center;gap:10px;min-width:260px;height:36px;padding:0 10px 0 12px;border-radius:9px;border:1px solid var(--sg-line);background:var(--sg-panel);color:var(--sg-muted);font:500 14px var(--sg-font);cursor:pointer}
