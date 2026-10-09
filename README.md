@@ -15,6 +15,9 @@ stored in the service-worker cache.
 - **Skills** — 35 short units, key and chord lab, first-reading miniatures.
 - **My songs** — add MusicXML, MIDI or a PDF from notation software (read into sheet music in the browser), check it
   and fix wrong notes, then practice; private to your browser, or to your account when signed in.
+- **Community** — follow other pianists (people who follow each other are friends), post progress,
+  practice results, photos and YouTube-linked performances, scroll performances in Reels, and show
+  what you are working on. Extra protections for members aged 13–17. See `docs/social.md`.
 - **Free** — donations are voluntary and never unlock features.
 
 ## Run locally
@@ -22,7 +25,8 @@ stored in the service-worker cache.
 ```
 cd site && python3 -m http.server 8000
 ```
-Open http://localhost:8000/. Tests: `npm ci && npm run test:piano`.
+Open http://localhost:8000/. Tests: `npm ci && npm run test:piano`; database checks:
+`tests/sql/run.sh` (needs a local PostgreSQL, see `docs/social.md`).
 
 PWA installation and service workers require HTTP on localhost or HTTPS in production.
 
@@ -33,6 +37,8 @@ PWA installation and service workers require HTTP on localhost or HTTPS in produ
 - `docs/piano-study-pathway.md` — how the library and study levels are built.
 - `docs/collection.md` — how the large public-domain collection was chosen and built.
 - `docs/piano-self-service.md` — how My songs reads, checks and stores people's own scores.
+- `docs/community.md` — note comments and fingering add-ons on library pieces.
+- `docs/social.md` — the Community tab, Reels, costs, moderation and the 13–17 protections.
 - `site/terms.html`, `site/privacy.html`, `site/copyright.html` — public policies.
 
 ## Licenses

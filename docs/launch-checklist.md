@@ -30,3 +30,8 @@ account, so they are not automated.
    check your university's intellectual-property policy.
 8. **Code license.** Choose a license for OpenPiano's own code (for example AGPL-3.0 or
    MIT) and add it as `LICENSE`.
+9. **Community.** Run `scripts/supabase-social.sql` in the Supabase SQL Editor (after the
+   other migrations; optionally `scripts/supabase-social-verify.sql`, which rolls back).
+   Until then the Community and Reels tabs say the community is not switched on yet. Plan
+   regular moderation: reports arrive in `social_reports` without email alerts
+   (`docs/social.md`). Direct video uploads stay off until support covers a paid plan.

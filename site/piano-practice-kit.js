@@ -9,7 +9,7 @@ const ICONS={
  play:'<path d="M8 5.5v13l11-6.5z" fill="currentColor" stroke="none"/>',
  pause:'<path d="M8 5h3v14H8zM13 5h3v14h-3z" fill="currentColor" stroke="none"/>',
  restart:'<path d="M4 12a8 8 0 1 0 2.5-5.8"/><path d="M4 4v4.5h4.5"/>',
- loop:'<path d="M17 2l3 3-3 3"/><path d="M4 11V9a4 4 0 0 1 4-4h12"/><path d="M7 22l-3-3 3-3"/><path d="M20 13v2a4 4 0 0 1-4 4H4"/>',
+ share:'<path d="M12 3v12"/><path d="M7 8l5-5 5 5"/><path d="M5 14v6h14v-6"/>',loop:'<path d="M17 2l3 3-3 3"/><path d="M4 11V9a4 4 0 0 1 4-4h12"/><path d="M7 22l-3-3 3-3"/><path d="M20 13v2a4 4 0 0 1-4 4H4"/>',
  search:'<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/>',
  click:'<path d="M9 3h6l3.5 18h-13z"/><path d="M12 15l5-9"/>',
  hands:'<path d="M7 11V5.5a1.5 1.5 0 0 1 3 0V11M10 10V4a1.5 1.5 0 0 1 3 0v6M13 10V5a1.5 1.5 0 0 1 3 0v8"/><path d="M16 12.5a1.5 1.5 0 0 1 3 0V15a7 7 0 0 1-7 7h-.5A6.5 6.5 0 0 1 5 15.5V12a1.5 1.5 0 0 1 3 0"/>',

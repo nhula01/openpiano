@@ -24,6 +24,14 @@ from video tutorials. If no source exists, show the score as written; never gene
 numbers.
 
 ## Accounts and privacy
-User uploads stay private (row-level security). Never add public sharing of uploaded
-files. Accounts require age 13+. Keep the Terms, Privacy and Copyright pages accurate
-when data handling changes.
+User uploads of scores and songs stay private (row-level security). Never add public
+sharing of uploaded scores. Accounts require age 13+. Keep the Terms, Privacy and
+Copyright pages accurate when data handling changes.
+
+## Community
+The community (`docs/social.md`) is the only place people share with others: posts,
+photos (re-encoded in the browser, private bucket, signed links) and YouTube links to
+their own performances. Direct video uploads stay off (`social_config.video_uploads`)
+until support pays for storage. Keep the 13–17 protections (approved followers,
+media to friends only, friends-only comments, not suggested to adults) and do not add
+private messaging. Run `tests/sql/run.sh` after changing any `scripts/supabase-*.sql`.

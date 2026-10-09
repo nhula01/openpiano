@@ -94,6 +94,34 @@ async function removeAvatar(path) {
   if (error) throw error;
   avatarUrls.delete(path);
 }
+// Community videos and their cover frames: a private bucket; signed URLs are issued only to the
+// uploader or to people allowed to see the post that uses the file (see scripts/supabase-social.sql).
+const MEDIA_BUCKET = 'social-media';
+const mediaUrls = new Map();
+async function uploadMedia(blob, path, contentType) {
+  if (!user) throw new Error('Sign in to share a video.');
+  if (!/^[0-9a-f-]{36}\/[0-9a-f-]{36}\.(mp4|webm|mov|jpg)$/i.test(path || '')) throw new Error('Invalid video path.');
+  const owner = user.id;
+  const { error } = await sb.storage.from(MEDIA_BUCKET).upload(path, blob, { upsert: false, contentType, cacheControl: '3600' });
+  if (error) throw new Error(/row-level|policy|security/i.test(error.message || '') ? 'Video space is full or your daily upload limit is reached. Try again tomorrow.' : error.message);
+  if (user?.id !== owner) { await sb.storage.from(MEDIA_BUCKET).remove([path]); throw new Error('Your account changed. Choose the video again.'); }
+  return path;
+}
+async function mediaUrlsFor(paths) {
+  const now = Date.now(), out = new Map(), missing = [];
+  for (const p of new Set((paths || []).filter(Boolean))) { const c = mediaUrls.get(p); if (c && c.until > now) out.set(p, c.url); else missing.push(p); }
+  if (missing.length && sb) {
+    const { data, error } = await sb.storage.from(MEDIA_BUCKET).createSignedUrls(missing, 3600);
+    if (error) throw error;
+    for (const r of data || []) if (r.signedUrl && !r.error) { mediaUrls.set(r.path, { url: r.signedUrl, until: now + 45 * 60 * 1000 }); out.set(r.path, r.signedUrl); }
+  }
+  return out;
+}
+async function removeMedia(paths) {
+  const list = (paths || []).filter(Boolean); if (!list.length || !sb || !user) return;
+  const { error } = await sb.storage.from(MEDIA_BUCKET).remove(list); if (error) throw error;
+  for (const p of list) mediaUrls.delete(p);
+}
 window.PianoCommunityAuth = {
   ready: () => communityReady,
   signedIn: () => !!user,
@@ -102,7 +130,10 @@ window.PianoCommunityAuth = {
   rpc: (name, args) => sb.rpc(name, args),
   uploadAvatar,
   avatarUrl,
-  removeAvatar
+  removeAvatar,
+  uploadMedia,
+  mediaUrls: mediaUrlsFor,
+  removeMedia
 };
 const extOf = name => ((name || '').match(/\.[a-z0-9]{1,8}$/i) || [''])[0].toLowerCase();
 const cloud = {
@@ -348,7 +379,7 @@ async function init() {
       const { data } = await sb.auth.getSession(); const initial=data.session?.user||null;const scoped=scopeProgress(initial);user=initial;communityReady=true;if(scoped&&!user){location.reload();return;}
       sb.auth.onAuthStateChange((event, session) => {
         const next = session?.user || null; if ((next && next.id) === (user && user.id)) return;
-        setTimeout(async()=>{clearTimeout(pushTimer);const changed=scopeProgress(next);user=next;renderAccount();await refresh();window.dispatchEvent(new Event('piano-songs-where'));if(user){try{await pullProgress();}catch(e){say('Progress sync failed: '+e.message,true);}}if(changed)location.reload();},0);
+        setTimeout(async()=>{clearTimeout(pushTimer);mediaUrls.clear();avatarUrls.clear();const changed=scopeProgress(next);user=next;renderAccount();await refresh();window.dispatchEvent(new Event('piano-songs-where'));if(user){try{await pullProgress();}catch(e){say('Progress sync failed: '+e.message,true);}}if(changed)location.reload();},0);
       });
       if(user&&sessionStorage.getItem('openpiano-oauth-consent')){try{const consent=JSON.parse(sessionStorage.getItem('openpiano-oauth-consent'));const updated=await sb.auth.updateUser({data:consent});if(!updated.error)sessionStorage.removeItem('openpiano-oauth-consent');}catch{}}
       if (user){try{await pullProgress();}catch(e){say('Progress sync failed: '+e.message,true);}if(scoped){location.reload();return;}}
