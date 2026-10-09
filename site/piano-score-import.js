@@ -223,6 +223,27 @@ function timeline(doc) {
 }
 
 const numbers = s => (s.match(/[-\d.]+/g) || []).map(Number);
+
+// Highest and lowest point a Verovio system draws, in page units. Lines, beams and curves give exact
+// points; a glyph (notehead, clef, flag, dynamic) is placed by its anchor, so it gets a staff space and
+// a half around it, and text reaches a font size above its baseline.
+function ink(g, space) {
+  let lo = Infinity, hi = -Infinity;
+  const add = (a, b = a) => { if (Number.isFinite(a) && Number.isFinite(b)) { lo = Math.min(lo, a); hi = Math.max(hi, b); } };
+  for (const e of g.querySelectorAll('path, polygon, polyline')) {
+    const v = numbers(e.getAttribute(e.tagName === 'path' ? 'd' : 'points') || '');
+    for (let i = 1; i < v.length; i += 2) add(v[i]);
+  }
+  for (const e of g.querySelectorAll('use')) { const y = numbers(e.getAttribute('transform') || '')[1] ?? Number(e.getAttribute('y')); add(y - 1.5 * space, y + 1.5 * space); }
+  for (const e of g.querySelectorAll('ellipse, circle')) { const y = Number(e.getAttribute('cy')), r = Number(e.getAttribute('ry') ?? e.getAttribute('r')) || 0; add(y - r, y + r); }
+  for (const e of g.querySelectorAll('rect')) { const y = Number(e.getAttribute('y')); add(y, y + Number(e.getAttribute('height') || 0)); }
+  for (const e of g.querySelectorAll('text')) {
+    const y = Number(e.getAttribute('y')), size = Math.max(0, ...[e, ...e.querySelectorAll('tspan')].map(t => parseFloat(t.getAttribute('font-size')) || 0));
+    if (e.getAttribute('y') !== null) add(y - size, y + size / 3);
+  }
+  return [lo, hi];
+}
+
 const compact = s => s.replace(/ data-(?:id|class)="[^"]*"/g, '').replace(/>\n\s*</g, '><');
 
 async function fromMusicXML(file, meta) {
@@ -259,7 +280,10 @@ async function fromXML(source, meta = {}) {
     }).filter(s => s.staves.length);
     const pageNotes = [];
     geo.forEach((s, k) => {
-      const y0 = k ? (geo[k - 1].bottom + s.upper) / 2 : s.upper - 1100, y1 = k + 1 < geo.length ? (s.bottom + geo[k + 1].upper) / 2 : s.bottom + 1100;
+      // Crop to everything the system draws (notes on many ledger lines, beams, fingering, 8va lines),
+      // not halfway to the next system, which sliced off low and high notes.
+      const space = (s.staves[0].bottom - s.staves[0].top) / 4, reach = ink(s.g, space), lo = Math.min(reach[0], s.upper), hi = Math.max(reach[1], s.bottom);
+      const y0 = Math.min(lo, s.upper - 2 * space) - space / 2, y1 = Math.max(hi, s.bottom + 2 * space) + space / 2;
       const left = Math.min(...s.staves.map(x => x.left)), right = Math.max(...s.staves.map(x => x.right)), positions = new Map();
       for (const st of s.staves) for (const note of st.el.querySelectorAll('g.note')) {
         const id = note.getAttribute('data-id'), head = note.querySelector(':scope > g.notehead > use'), t = timed.get(id);
@@ -278,7 +302,7 @@ async function fromXML(source, meta = {}) {
       if (positions.size) {
         const u = 0.01, sorted = [...positions].sort((a, b) => a[0] - b[0]);
         systems.push({ svg: compact(new XMLSerializer().serializeToString(crop)), page: p - 1, y: (y0 + my) * u, height: (y1 - y0) * u, staffTop: (s.upper - y0) * u,
-          staffGap: (s.bottom - s.upper) * u, start: sorted[0][0], positions: sorted.map(([b, x]) => [b, x * u]), width: (right - left) * u });
+          staffGap: (s.bottom - s.upper) * u, ink: [(lo - y0) * u, (hi - y0) * u], start: sorted[0][0], positions: sorted.map(([b, x]) => [b, x * u]), width: (right - left) * u });
       }
     });
     const css = document.createElementNS(SVGNS, 'style'); css.textContent = 'g.score-note, g.score-note * { fill: currentColor; }'; outer.append(css);
