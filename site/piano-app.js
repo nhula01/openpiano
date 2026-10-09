@@ -350,7 +350,7 @@ function arrangePractice() {
   if (intro) intro.classList.add('practice-intro');
   for (const k of rest) more.append(k);
   if (eyebrow) eyebrow.hidden = true; if (h2) h2.hidden = true;
-  const partControl = $('#practice-part-control', root); if (partControl) more.insertBefore(partControl, more.children[1] || null);
+  const partControl = $('#practice-part-control', bar); if (partControl) more.insertBefore(partControl, more.children[1] || null);
   root.append(head, bar, stage, more);
   if (sheet) sheet.open = false;
   syncPracticeTitle();
