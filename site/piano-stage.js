@@ -121,7 +121,7 @@ function build(){const p=P();if(!p)return;document.body.dataset.shell='stage';co
    const bars=(p.barOf(part.start)+1)+'–'+(p.barOf(part.end-.001)+1),got=done[part.start+'-'+part.end]||[];
    b.setAttribute('aria-label',`Part ${i+1}, bars ${bars}. ${got.length?'Passed: '+STEPS.filter(([k])=>got.includes(k)).map(([,n])=>n.toLowerCase()).join(', ')+'.':'Not passed yet.'} ${on?'Looping; tap to play the whole piece.':'Tap to loop.'}`);b.title=`Part ${i+1} · bars ${bars}`;
    const dots=el('span',undefined,'sg-part-dots');for(const[k,n]of STEPS){const d=el('span',undefined,got.includes(k)?'on':'');d.dataset.step=k;d.title=n;dots.append(d);}
-   b.append(el('strong',String(i+1)),el('span',bars,'sg-part-bars'),dots);
+   b.append(el('strong',String(i+1)),el('span',bars,'sg-part-bars'),dots);b.classList.toggle('has-progress',got.length>0);
    b.onclick=()=>{if(on){p.clearLoop();toastNow('Whole piece');}else{p.setLoop(part.start,part.end);toastNow(`Part ${i+1} · bars ${bars} · looping`);}};return b;}));
   ruler.dataset.many=list.length>8?'1':'';}
  function toastNow(text){clearTimeout(toastTimer);toast.textContent=text;toast.classList.add('show');toastTimer=setTimeout(()=>toast.classList.remove('show'),1600);}

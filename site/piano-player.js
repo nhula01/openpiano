@@ -109,6 +109,9 @@ function seekToBeat(beat){
 }
 seekBar.oninput=()=>seekToBeat(events[Number(seekBar.value)]?.beat??0);
 if(scoreView)scoreView.onSeek=seekToBeat;
+// Add-ons: annotate mode sends note clicks to the add-on editor; clicking a mark opens it.
+function noteDetail(beat,midi){const event=events.find(e=>Math.abs(e.beat-beat)<.001),member=event?.members?.find(n=>n.midi===midi);return {piece:score?.id,beat,midi,note:E.noteName(midi),hand:member?.hand==='left'?'LH':member?.hand==='right'?'RH':(midi<60?'LH':'RH'),bar:barOf(beat)+1};}
+if(scoreView){scoreView.onAnnotate=({beat,midi},rect)=>window.dispatchEvent(new CustomEvent('piano-note-annotate',{detail:{...noteDetail(beat,midi),rect}}));scoreView.onMark=(id,rect)=>window.dispatchEvent(new CustomEvent('piano-addon-mark',{detail:{id,rect,piece:score?.id}}));}
 if(scoreView)scoreView.onNote=({beat,midi})=>{
  const event=events.find(e=>Math.abs(e.beat-beat)<.001),member=event?.members?.find(n=>n.midi===midi);
  window.dispatchEvent(new CustomEvent('piano-note-selected',{detail:{piece:score?.id,beat,midi,note:E.noteName(midi),hand:member?.hand==='left'?'LH':member?.hand==='right'?'RH':'BH',bar:barOf(beat)+1}}));
@@ -227,6 +230,8 @@ const api={
  setFingering(v){fingers.checked=!!v;fingers.onchange();emit('state');},
  setAccompany(v){accompany=!!v;emit('state');},
  get clickAvailable(){return inputChoice.value!=='microphone';},
+ setMarks(marks){scoreView?.setAddonMarks?.(marks);},
+ setAnnotate(on){if(scoreBox?.dataset)scoreBox.dataset.annotate=on?'1':'';emit('state');},get annotating(){return scoreBox?.dataset?.annotate==='1';},
  setClick(v){clickOn=!!v;if(run&&context){const first=run.first;run.nextClick=Math.ceil(transportBeat??first);}emit('state');},
  setSpeedTrainer(o){speed={...speed,...o};emit('state');},
  noteOn(m,v){return virtualNote(m,true,v);},noteOff(m){return virtualNote(m,false);},

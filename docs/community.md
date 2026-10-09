@@ -44,7 +44,11 @@ content (to avoid coordinated flagging attacks).
 note validation. Both use synthetic users inside a transaction and roll back.
 
 Three public Entertainer examples are seeded as clearly labeled OpenPiano demo bots.
-They contain general practice prompts, not generated fingering. Bots have their own
+They contain general practice prompts, not generated fingering. The optional
+`scripts/supabase-note-addons-demo-fur.sql` adds three more bots on Für Elise (two fingering
+add-ons that differ, and one of phrasing comments) so the add-on browser has something to
+compare. Their fingerings are examples written for the demo, not from a printed edition, and
+the file ends with the statement that removes them. Bots have their own
 system identity rather than fake authentication accounts and users cannot post as bots.
 
 ## Moderation (project owner)
@@ -96,3 +100,24 @@ comment names and opt-out, with all synthetic rows rolled back. Run the updated
 community verification after the profile migration as well.
 `supabase-profile-photos-verify.sql` separately checks owner-only photo paths,
 private/public signed-URL eligibility and removal; its synthetic rows also roll back.
+
+## Add-ons on the score (Stage)
+
+Each person's note posts on a piece form their **add-on** for that piece. In Practice:
+
+- **Annotate** (pencil) turns note clicks into an editor: tap 1–5 (or type `3-1` for a
+  substitution) and/or write a comment. Saved privately to the account; signed out, notes stay
+  on this device (`openpiano-addons-device-v1`) and can be moved into the account later.
+- Fingering appears as numbers beside the notes (above for the right hand, below for the left),
+  comments as small bubbles; tapping a mark shows it. Your add-on is amber, an applied community
+  add-on is indigo, printed fingering keeps its own colour.
+- **Add-ons** (layers icon, next to ⚙) lists your add-on (show/hide, share all, make private) and
+  community add-ons grouped by author, most helpful first. **Apply** shows one on your score; the
+  choice is stored per piece in this browser (`openpiano-addons-applied-v1`).
+- An add-on's score is its best-voted note, so one person voting for a whole add-on counts once.
+  Voting for an add-on votes for each of its notes through the existing `community_vote`.
+
+`site/piano-addons.js` uses the existing RPCs only (`community_list`, `community_mine`,
+`community_write`, `community_reveal`, `community_vote`, `community_hide`); no new tables.
+`site/piano-addons-demo.js` is an in-browser stand-in used by previews and tests; the live site
+never loads it.
