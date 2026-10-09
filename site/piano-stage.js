@@ -54,7 +54,7 @@ function build(){const p=P();if(!p)return;document.body.dataset.shell='stage';co
  const hud=el('div',undefined,'sg-hud');const who=el('div',undefined,'sg-who');const title=el('h1',undefined,'sg-title');const sub=el('p',undefined,'sg-sub');who.append(title,sub);
  let view=(()=>{try{return localStorage.getItem(VIEW_KEY)||'split';}catch{return 'split';}})();
  const views=segmented('View',[['sheet','Sheet'],['notes','Falling notes'],['split','Both'],['full','Full sheet']],v=>{view=v;try{localStorage.setItem(VIEW_KEY,v);}catch{}layout();},'sg-views');
- const live=el('div',undefined,'sg-live');const accBox=el('div',undefined,'sg-stat');const acc=el('strong','—');accBox.append(acc,el('span','accuracy'));const runBox=el('div',undefined,'sg-stat');const runN=el('strong','0');runBox.append(runN,el('span','in a row'));const doneBox=el('div',undefined,'sg-stat');const doneN=el('strong','0');doneBox.append(doneN,el('span','notes'));live.append(accBox,runBox,doneBox);
+ const live=el('div',undefined,'sg-live');const accBox=el('div',undefined,'sg-stat');const acc=el('strong','—');accBox.append(acc,el('span','accuracy'));const runBox=el('div',undefined,'sg-stat');const runN=el('strong','0');runBox.append(runN,el('span','in a row'));const doneBox=el('div',undefined,'sg-stat');const doneN=el('strong','0');doneBox.append(doneN,el('span','notes'));const timeBox=el('div',undefined,'sg-stat');const timeN=el('strong','—');timeBox.append(timeN,el('span','timing'));timeBox.hidden=true;timeBox.title='How close to the beat: full marks within 50 ms, less the further off';live.append(accBox,timeBox,runBox,doneBox);
  hud.append(who,views.node,live);
 
  const screen=el('div',undefined,'sg-screen');const sheet=el('div',undefined,'sg-sheet');if(parts.score){parts.score.dataset.stacked='1';sheet.append(parts.score);}const pager=el('div',undefined,'sg-pager');const pv=button('Previous page',{icon:'prev',cls:'sg-icon',iconOnly:true});pv.onclick=()=>p.pages.prev();const nx=button('Next page',{icon:'next',cls:'sg-icon',iconOnly:true});nx.onclick=()=>p.pages.next();const pt=el('span');pager.append(pv,pt,nx);sheet.append(pager);
@@ -78,15 +78,37 @@ function build(){const p=P();if(!p)return;document.body.dataset.shell='stage';co
  const clickT=toggle('Click','click',v=>p.setClick(v),'sg-tog');const otherT=toggle('Other hand','accompany',v=>p.setAccompany(v),'sg-tog');
  const more=el('details',undefined,'sg-more');const moreSum=el('summary');moreSum.append(icon('settings'),el('span','Settings','sr'));moreSum.title='Input and sheet settings';more.append(moreSum);
  const morePanel=el('div',undefined,'sg-more-panel');const inSeg=segmented('Listen with',INPUTS.map(([v,l,ic])=>[v,l,ic]),v=>{p.setInput(v);sync();},'sg-list');const typeSeg=segmented('Sheet',[['sheet','Pages'],['guide','One scrolling line']],v=>p.setType(v),'sg-list');const fingerT=toggle('Printed fingering','hands',v=>p.setFingering(v),'sg-tog wide');const speedT=toggle('Speed up after clean loops','loop',v=>p.setSpeedTrainer({on:v,step:4,target:Math.min(200,p.tempo+20)}),'sg-tog wide');const keysHelp=button('Keyboard shortcuts',{icon:'keys',cls:'sg-tog wide'});keysHelp.onclick=()=>K.shortcuts().open();
- morePanel.append(el('p','Listen with','sg-more-label'),inSeg.node);if(parts.device)morePanel.append(parts.device);morePanel.append(el('p','Practice','sg-more-label'),fingerT.node,speedT.node,keysHelp);more.append(morePanel);
+ morePanel.append(el('p','Practice','sg-more-label'),fingerT.node,speedT.node,keysHelp);more.append(morePanel);
  document.addEventListener('click',e=>{if(more.open&&!more.contains(e.target))more.open=false;});
- const inputChip=el('span',undefined,'sg-input-chip');
+ // Input chooser: MIDI keyboard, microphone or tap, always one click away, with what each can do right now.
+ const inputBox=el('details',undefined,'sg-input');const inputSum=el('summary',undefined,'sg-input-sum');const inputDot=el('span',undefined,'sg-input-dot');inputBox.append(inputSum);
+ const inputPanel=el('div',undefined,'sg-input-panel');inputPanel.setAttribute('role','group');inputPanel.setAttribute('aria-label','Play with');inputBox.append(inputPanel);
+ const inputRows={};for(const [v,l,ic] of INPUTS){const row=el('button',undefined,'sg-input-row');row.type='button';row.dataset.value=v;const txt=el('span',undefined,'sg-input-text');const st=el('span','','sg-input-status');txt.append(el('strong',l),st);row.append(icon(ic),txt);row.onclick=()=>{p.setInput(v);if(v==='MIDI')p.probeMidi?.().then(msg=>{if(msg)midiMsg=msg;renderInput();});sync();renderInput();};inputRows[v]={row,st};inputPanel.append(row);}
+ const midiExtra=el('div',undefined,'sg-input-extra');const probe=button('Check for keyboards',{icon:'keys',cls:'sg-tog wide'});probe.onclick=async()=>{probe.disabled=true;midiMsg=await p.probeMidi?.()||'';probe.disabled=false;renderInput();};midiExtra.append(probe);if(parts.device){parts.device.classList.add('sg-input-device');midiExtra.append(parts.device);}inputPanel.append(midiExtra);
+ const meter=el('div',undefined,'sg-input-meter');const meterBar=el('span');meter.append(meterBar);meter.setAttribute('aria-hidden','true');inputPanel.append(meter);
+ const switchTip=el('button',undefined,'sg-input-switch');switchTip.type='button';switchTip.hidden=true;switchTip.onclick=()=>{p.setInput('MIDI');renderInput();sync();};inputPanel.append(switchTip);
+ let midiMsg='',lastHeard=[],lastHeardAt=0;
+ const names=ns=>ns.map(n=>window.PianoEngine.noteName(n)).join(' + ');
+ function renderInput(){const st=p.inputStatus||{input:p.input,midi:{devices:[]},mic:{}};const cur=st.input||p.input,inp=INPUTS.find(i=>i[0]===cur)||INPUTS[0];
+  inputSum.replaceChildren(icon(inp[2]),el('span',cur==='MIDI'?'MIDI':cur==='microphone'?'Mic':'Tap','sg-input-label'),inputDot);inputSum.title='Playing with '+inp[1]+' · change input';
+  const m=st.midi||{},devs=m.devices||[];
+  inputRows.MIDI.st.textContent=!m.supported?'Not in this browser (Safari, iPhone and iPad). Use Chrome or Edge.':m.permission==='denied'?'Blocked: allow MIDI devices in the site settings.':devs.length?'Connected: '+devs.join(', ')+(m.last!=null?' · last key '+window.PianoEngine.noteName(m.last):''):m.permission==='granted'?'No keyboard found. Plug in USB and switch it on.':'Best for both hands and fast music.';
+  inputRows.microphone.st.textContent=st.listening==='microphone'?(lastHeard.length&&Date.now()-lastHeardAt<1500?'Hearing '+names(lastHeard):'Listening…'):st.mic?.supported===false?'Not available here (needs HTTPS).':'Hears the whole piano, both hands and chords.';
+  inputRows.keys.st.textContent='On-screen keys or the computer keyboard.';
+  for(const [v,{row}] of Object.entries(inputRows))row.setAttribute('aria-pressed',String(v===cur));
+  midiExtra.hidden=cur!=='MIDI';meter.hidden=st.listening!=='microphone';
+  const ok=cur==='MIDI'?devs.length>0:cur==='microphone'?st.listening==='microphone':true;inputDot.dataset.state=cur==='MIDI'&&!ok&&m.permission!=='unknown'?'warn':ok&&(cur!=='keys')?'ok':'';
+  if(midiMsg&&cur==='MIDI'){inputRows.MIDI.st.textContent=midiMsg;}
+  switchTip.hidden=!(cur!=='MIDI'&&devs.length&&m.last!=null);switchTip.textContent=`Keyboard detected (${devs[0]||'MIDI'}): play with it`;}
+ inputBox.addEventListener('toggle',()=>{if(inputBox.open){if(p.input==='MIDI'||p.inputStatus?.midi?.permission==='granted')p.probeMidi?.().then(msg=>{midiMsg=msg||'';renderInput();});renderInput();}});
+ document.addEventListener('click',e=>{if(inputBox.open&&!inputBox.contains(e.target))inputBox.open=false;});
+ p.on('input',d=>{if(d?.kind==='microphone'){meterBar.style.width=Math.min(100,Math.round(Math.sqrt(d.level||0)*260))+'%';if(d.heard?.length){lastHeard=d.heard;lastHeardAt=Date.now();}}if(d?.kind==='MIDI'&&d.note!=null)midiMsg='';if(inputBox.open||d?.kind!=='microphone')renderInput();});
  const step=el('div',undefined,'sg-step');step.append(prevBar,go,nextBar);
- deck.append(modes.node,back,step,hands.node,tempo,loopB,clickT.node,otherT.node,inputChip,more);
+ deck.append(modes.node,back,step,hands.node,tempo,loopB,clickT.node,otherT.node,inputBox,more);
  stage.append(deck);
 
  // Summary after a run
- const sum=el('dialog',undefined,'sg-summary');const sBig=el('p',undefined,'sg-sum-big');const sLine=el('p',undefined,'sg-sum-line');const sHeat=el('div',undefined,'sg-sum-heat');const sActs=el('div',undefined,'sg-sum-acts');sum.append(sBig,sLine,sHeat,sActs);document.body.append(sum);sum.addEventListener('click',e=>{if(e.target===sum)sum.close();});
+ const sum=el('dialog',undefined,'sg-summary');const sScores=el('div',undefined,'sg-sum-scores');const sBig=el('p',undefined,'sg-sum-big');const sTime=el('p',undefined,'sg-sum-big sg-sum-time');const sLine=el('p',undefined,'sg-sum-line');const sHeat=el('div',undefined,'sg-sum-heat');const sActs=el('div',undefined,'sg-sum-acts');const accCol=el('div');accCol.append(sBig,el('span','accuracy · right notes','sg-sum-cap'));const timeCol=el('div');timeCol.append(sTime,el('span','timing · on the beat','sg-sum-cap'));sScores.append(accCol,timeCol);sum.append(sScores,sLine,sHeat,sActs);document.body.append(sum);sum.addEventListener('click',e=>{if(e.target===sum)sum.close();});
  const toast=el('p',undefined,'sg-toast');toast.setAttribute('role','status');stage.append(toast);let toastTimer;
 
  if(parts.more){const s=parts.more.querySelector('summary');if(s)s.textContent='Sources and original sheet';if(parts.original)parts.more.append(parts.original);}
@@ -103,13 +125,13 @@ function build(){const p=P();if(!p)return;document.body.dataset.shell='stage';co
   hands.set(p.hands,p.handsAvailable?{}:{LH:true,RH:true});tv.textContent=p.tempo;tv.title=p.tempo+' beats per minute';
   loopB.replaceChildren(icon('loop'),el('span',p.loop?p.loop.title:'Loop'));loopB.setAttribute('aria-pressed',String(!!p.loop));
   clickT.set(p.click,!p.clickAvailable);clickT.node.title=p.clickAvailable?'Metronome click ( M )':'No click with the microphone, which would hear it';otherT.set(p.accompany,p.hands==='BH'||p.input==='microphone');
-  const inp=INPUTS.find(i=>i[0]===p.input)||INPUTS[0];inputChip.replaceChildren(icon(inp[2]));inputChip.title='Listening with '+inp[1];inSeg.set(p.input);typeSeg.set(p.type);fingerT.set(p.fingering,!p.fingeringAvailable);speedT.set(p.speedTrainer.on);
+  renderInput();inSeg.set(p.input);typeSeg.set(p.type);fingerT.set(p.fingering,!p.fingeringAvailable);speedT.set(p.speedTrainer.on);
   pager.hidden=true;hint();}
  let streak=0;p.on('note',n=>{if(n.result==='wrong')streak=0;else if(n.result==='correct')streak++;runN.textContent=String(streak);});
- function liveSync(){const s=p.stats;acc.textContent=s.accuracy==null?'—':s.accuracy+'%';doneN.textContent=`${s.done}/${s.total}`;pt.textContent=p.pages.status.replace(/^Practice page (\d+) of (\d+).*/,'$1 / $2');pv.disabled=!p.pages.hasPrev;nx.disabled=!p.pages.hasNext;}
- let lastResult=null;p.on('result',r=>{lastResult=r;if(r.loop&&p.state!=='idle'){clearTimeout(toastTimer);toast.textContent=`Loop · ${r.accuracy}%${r.wrong?` · ${r.wrong} wrong`:''}${r.missed?` · ${r.missed} missed`:''}`;toast.classList.add('show');toastTimer=setTimeout(()=>toast.classList.remove('show'),2200);}});
+ function liveSync(){const s=p.stats;acc.textContent=s.accuracy==null?'—':s.accuracy+'%';timeBox.hidden=s.timing==null&&!s.timed;timeN.textContent=s.timing==null?'—':s.timing+'%';doneN.textContent=`${s.done}/${s.total}`;pt.textContent=p.pages.status.replace(/^Practice page (\d+) of (\d+).*/,'$1 / $2');pv.disabled=!p.pages.hasPrev;nx.disabled=!p.pages.hasNext;}
+ let lastResult=null;p.on('result',r=>{lastResult=r;if(r.loop&&p.state!=='idle'){clearTimeout(toastTimer);toast.textContent=`Loop · ${r.accuracy}%${r.timing!=null?` · timing ${r.timing}%`:''}${r.wrong?` · ${r.wrong} wrong`:''}${r.missed?` · ${r.missed} missed`:''}`;toast.classList.add('show');toastTimer=setTimeout(()=>toast.classList.remove('show'),2200);}});
  p.on('state',()=>{if(p.state==='idle'&&lastResult&&Date.now()-lastResult.time<1500){showSummary(lastResult);lastResult=null;}});
- function showSummary(r){clearTimeout(toastTimer);toast.classList.remove('show');sBig.textContent=r.accuracy+'%';sLine.textContent=`${r.correct} right · ${r.wrong} wrong${r.kind==='play'?` · ${r.missed} missed`:''} · ${K.handsName[r.hands]} · ${r.bpm} BPM${r.range?` · ${r.range.title}`:''}`;
+ function showSummary(r){clearTimeout(toastTimer);toast.classList.remove('show');sBig.textContent=r.accuracy+'%';sTime.textContent=r.timing==null?'':r.timing+'%';sTime.parentElement.hidden=r.timing==null;sLine.textContent=`${r.correct} right · ${r.wrong} wrong${r.kind==='play'?` · ${r.missed} missed`:''} · ${K.handsName[r.hands]} · ${r.bpm} BPM${r.range?` · ${r.range.title}`:''}`;
   sHeat.replaceChildren();const m=p.mistakes,from=r.range?p.barOf(r.range.start):0,to=r.range?p.barOf(r.range.end-.001):p.barCount-1;for(let b=from;b<=to;b++){const c=el('span');const n=m[b]||0;c.dataset.heat=n===0?0:n===1?1:n<=3?2:3;c.title=`Bar ${b+1}: ${n} mistake${n===1?'':'s'}`;sHeat.append(c);}
   sActs.replaceChildren();const spots=K.troubleSpots(1);if(spots.length){const s=spots[0];const b=button(s.from===s.to?`Loop bar ${s.from+1}`:`Loop bars ${s.from+1}–${s.to+1}`,{icon:'loop',cls:'sg-primary'});b.onclick=()=>{sum.close();p.loopBars(s.from,s.to);};sActs.append(b);}
   const again=button('Again',{icon:'restart',cls:spots.length?'sg-secondary':'sg-primary'});again.onclick=()=>{sum.close();p.restart();p.start(r.kind==='play'?'play':'wait');};const close=button('Close',{cls:'sg-secondary'});close.onclick=()=>sum.close();sActs.append(again,close);sum.showModal();sActs.querySelector('button')?.focus();}

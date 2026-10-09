@@ -16,6 +16,7 @@ const APP_SHELL = [
   './piano-practice-kit.css',
   './piano.css',
   './piano-stage.css',
+  './piano-listen.js',
   './piano-engine.js',
   './piano-repertoire.js',
   './piano-library.js',

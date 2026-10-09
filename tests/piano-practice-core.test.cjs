@@ -5,7 +5,7 @@ function setup(){
  const root=new Element('section'),tempo=new Element('input'),metronome=new Element('button');tempo.value='60';metronome.textContent='Start metronome';let audio;
  const input={id:'keyboard',name:'Test keyboard',state:'connected'},access={inputs:new Map([['keyboard',input]])};const storage=new Map();
  class AudioContext{constructor(){audio=this;this.sampleRate=48000;this.currentTime=0;}resume(){return Promise.resolve();}close(){return Promise.resolve();}}
- const window={PianoEngine:E,addEventListener(){}};
+ const window={PianoEngine:E,PianoListen:require('../site/piano-listen.js'),addEventListener(){}};
  const context={window,document:{createElement:t=>new Element(t),createElementNS:(_,t)=>new Element(t),querySelector:s=>s==='#note-trainer'?root:s==='#tempo'?tempo:s==='#metronome'?metronome:null,addEventListener(){}},navigator:{requestMIDIAccess:async()=>access},AudioContext,Float32Array,localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)},requestAnimationFrame:()=>1,cancelAnimationFrame:()=>{},setTimeout,clearTimeout,console};
  vm.runInNewContext(fs.readFileSync('site/piano-fingering.js','utf8'),context);
  vm.runInNewContext(fs.readFileSync('site/piano-player.js','utf8'),context);

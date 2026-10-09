@@ -3,13 +3,8 @@
 'use strict';
 const names=['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
 const noteName=n=>names[n%12]+(Math.floor(n/12)-1);
-function pitch(samples,rate){
- let rms=0;for(const x of samples)rms+=x*x;rms=Math.sqrt(rms/samples.length);if(rms<.008)return null;
- const min=Math.floor(rate/2200),max=Math.min(Math.floor(rate/32.7),Math.floor(samples.length/2));const diff=new Float64Array(max+1);let sum=0,best=0;
- for(let lag=1;lag<=max;lag++){let d=0;for(let i=0;i<samples.length-max;i++){const x=samples[i]-samples[i+lag];d+=x*x;}sum+=d;diff[lag]=sum?d*lag/sum:1;}
- for(let lag=min;lag<max-1;lag++){if(diff[lag]<.12){while(lag+1<max&&diff[lag+1]<diff[lag])lag++;best=lag;break;}}
- if(!best)return null;const a=diff[best-1],b=diff[best],c=diff[best+1],offset=(a-c)/(2*(a-2*b+c)||1);const frequency=rate/(best+Math.max(-1,Math.min(1,offset)));const exact=69+12*Math.log2(frequency/440),midi=Math.round(exact);if(midi<24||midi>96||Math.abs(exact-midi)>.35)return null;return {midi,frequency,rms};
-}
+// Pitch detection lives in piano-listen.js (whole piano range); kept here for older callers.
+function pitch(samples,rate){const L=typeof module!=='undefined'?require('./piano-listen.js'):root.PianoListen;return L?L.pitch(samples,rate):null;}
 function parseMidi(buffer){
  const data=new DataView(buffer);let pos=0;const need=n=>{if(pos+n>data.byteLength)throw Error('Truncated MIDI file.');};const u8=()=>{need(1);return data.getUint8(pos++);};const u16=()=>{need(2);const v=data.getUint16(pos);pos+=2;return v;};const u32=()=>{need(4);const v=data.getUint32(pos);pos+=4;return v;};const tag=()=>String.fromCharCode(u8(),u8(),u8(),u8());const vlq=()=>{let n=0;for(let i=0;i<4;i++){const b=u8();n=n*128+(b&127);if(!(b&128))return n;}throw Error('Invalid MIDI timing.');};
  if(tag()!=='MThd')throw Error('Choose a standard .mid file.');const size=u32();if(size<6)throw Error('Invalid MIDI header.');need(size);const format=u16(),tracks=u16(),division=u16();pos+=size-6;if(format>1||division&0x8000||!division||!tracks||tracks>128)throw Error('Use a format 0/1 MIDI file with beat-based timing.');
@@ -35,17 +30,27 @@ class Matcher{
  constructor(events){this.events=events;this.index=0;this.errors=0;this.held=new Set();this.releaseRequired=new Set();}
  input(midi,on){if(!on){this.held.delete(midi);this.releaseRequired.delete(midi);return 'release';}if(this.held.has(midi))return 'held';this.held.add(midi);if(this.index>=this.events.length)return 'complete';const expected=this.events[this.index].notes;if(!expected.includes(midi)){this.errors++;return 'wrong';}if(this.releaseRequired.has(midi))return 'release-first';if(expected.every(n=>this.held.has(n)&&!this.releaseRequired.has(n))){expected.forEach(n=>this.releaseRequired.add(n));this.index++;return this.index===this.events.length?'complete':'correct';}return 'partial';}
 }
+// Timing score for one note group: full marks within 50 ms of the beat, then less the further off,
+// down to nothing at the edge of the window (a note outside the window does not count at all).
+function timingScore(offset,window){const off=Math.abs(offset);return off<=.05?100:Math.max(0,Math.round(100*(1-(off-.05)/Math.max(.01,window-.05))));}
+// A sensible window: half a beat, but at least 0.2 s and at most 0.35 s.
+function timingWindow(bpm){return Math.max(.2,Math.min(.35,30/Math.max(1,bpm)));}
 class TimedMatcher {
- constructor(events,bpm=60,windowSeconds=.16,startBeat=null){this.events=events;this.startBeat=startBeat??events[0].beat;this.bpm=bpm;this.window=windowSeconds;this.hits=events.map(()=>new Set());this.states=events.map(()=> 'pending');this.errors=0;this.held=new Set();}
+ constructor(events,bpm=60,windowSeconds=.16,startBeat=null){this.events=events;this.startBeat=startBeat??events[0].beat;this.bpm=bpm;this.window=windowSeconds;this.hits=events.map(()=>new Set());this.offsets=events.map(()=>[]);this.states=events.map(()=> 'pending');this.errors=0;this.held=new Set();}
  due(i){return (this.events[i].beat-this.startBeat)*60/this.bpm;}
  advance(seconds){this.states.forEach((state,i)=>{if(state==='pending'&&seconds>this.due(i)+this.window)this.states[i]='missed';});}
- input(midi,on,seconds){if(!on){this.held.delete(midi);return 'release';}if(this.held.has(midi))return 'held';this.held.add(midi);this.advance(seconds);let best=-1,distance=Infinity;this.events.forEach((e,i)=>{const d=Math.abs(seconds-this.due(i));if(this.states[i]==='pending'&&e.notes.includes(midi)&&!this.hits[i].has(midi)&&d<=this.window&&d<distance){best=i;distance=d;}});if(best<0){this.errors++;return 'wrong';}this.hits[best].add(midi);if(this.events[best].notes.every(n=>this.hits[best].has(n)))this.states[best]='hit';return this.states[best]==='hit'?'correct':'partial';}
- result(){const hit=this.states.filter(s=>s==='hit').length,missed=this.states.filter(s=>s==='missed').length,total=this.events.length;return {hit,missed,total,errors:this.errors,accuracy:Math.floor(100*hit/(total+this.errors)),complete:hit+missed===total};}
+ // A note counts for the nearest group that wants it, if played within the window (early or late).
+ input(midi,on,seconds){if(!on){this.held.delete(midi);return 'release';}if(this.held.has(midi))return 'held';this.held.add(midi);this.advance(seconds);let best=-1,distance=Infinity;this.events.forEach((e,i)=>{const d=Math.abs(seconds-this.due(i));if(this.states[i]==='pending'&&e.notes.includes(midi)&&!this.hits[i].has(midi)&&d<=this.window&&d<distance){best=i;distance=d;}});if(best<0){this.errors++;return 'wrong';}this.hits[best].add(midi);this.offsets[best].push(seconds-this.due(best));if(this.events[best].notes.every(n=>this.hits[best].has(n)))this.states[best]='hit';return this.states[best]==='hit'?'correct':'partial';}
+ offset(i){const o=this.offsets[i];return o.length?o.reduce((a,b)=>a+b,0)/o.length:null;}
+ // accuracy: right notes (groups played in time, against groups plus wrong notes); timing: how close to the beat they were.
+ result(){const hit=this.states.filter(s=>s==='hit').length,missed=this.states.filter(s=>s==='missed').length,total=this.events.length;const hits=this.states.map((s,i)=>s==='hit'?this.offset(i):null).filter(o=>o!==null);
+  const timing=hits.length?Math.round(hits.reduce((a,o)=>a+timingScore(o,this.window),0)/hits.length):null,early=hits.filter(o=>o<-.08).length,late=hits.filter(o=>o>.08).length;
+  return {hit,missed,total,errors:this.errors,accuracy:Math.floor(100*hit/(total+this.errors)),timing,early,late,complete:hit+missed===total};}
 }
 // A guided clock can reach the next unplayed onset, but can never pass it.
 class GuidedClock {
  constructor(events,bpm,first,now=0){this.events=events;this.bpm=bpm;this.beat=first;this.last=now;}
  advance(now,index){const elapsed=Math.max(0,now-this.last);this.last=now;const target=this.events[index]?.beat??this.beat;this.beat=Math.min(target,this.beat+elapsed*this.bpm/60);return this.beat;}
 }
-const api={noteName,pitch,parseMidi,groups,editorialFingering,Matcher,TimedMatcher,GuidedClock};if(typeof module!=='undefined')module.exports=api;else root.PianoEngine=api;
+const api={noteName,pitch,parseMidi,groups,editorialFingering,Matcher,TimedMatcher,GuidedClock,timingScore,timingWindow};if(typeof module!=='undefined')module.exports=api;else root.PianoEngine=api;
 })(typeof window!=='undefined'?window:globalThis);

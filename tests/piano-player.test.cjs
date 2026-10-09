@@ -4,7 +4,7 @@ function setup({fullScore=false,library=false,fetcher=null}={}){
  const root=new Element('section'),tempo=new Element('input'),metronome=new Element('button');tempo.value='60';metronome.textContent='Start metronome';let audio,frame,signal=null,stopped=0;
  const input={id:'keyboard',name:'Test keyboard',state:'connected'},access={inputs:new Map([['keyboard',input]])};const storage=new Map();
  class AudioContext{constructor(){audio=this;this.sampleRate=48000;this.currentTime=0;}resume(){return Promise.resolve();}close(){return Promise.resolve();}createMediaStreamSource(){return {connect(){},disconnect(){}};}createAnalyser(){return {getFloatTimeDomainData(samples){for(let i=0;i<samples.length;i++)samples[i]=signal===null?0:.2*Math.sin(2*Math.PI*440*2**((signal-69)/12)*i/48000);}};}}
- const context={fetch:fetcher|| (async url=>({ok:true,json:async()=>JSON.parse(fs.readFileSync('site/'+url.split('?')[0],'utf8'))})),window:{PianoEngine:E,addEventListener(){}},document:{createElement:t=>new Element(t),createElementNS:(_,t)=>new Element(t),querySelector:s=>s==='#note-trainer'?root:s==='#tempo'?tempo:s==='#metronome'?metronome:null,addEventListener(){}},navigator:{requestMIDIAccess:async()=>access,mediaDevices:{getUserMedia:async()=>({getTracks:()=>[{stop(){stopped++;}}]})}},AudioContext,Float32Array,localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)},requestAnimationFrame:cb=>(frame=cb,1),cancelAnimationFrame:()=>{frame=null;},setTimeout,clearTimeout,console};
+ const context={fetch:fetcher|| (async url=>({ok:true,json:async()=>JSON.parse(fs.readFileSync('site/'+url.split('?')[0],'utf8'))})),window:{PianoEngine:E,PianoListen:require('../site/piano-listen.js'),addEventListener(){}},document:{createElement:t=>new Element(t),createElementNS:(_,t)=>new Element(t),querySelector:s=>s==='#note-trainer'?root:s==='#tempo'?tempo:s==='#metronome'?metronome:null,addEventListener(){}},navigator:{requestMIDIAccess:async()=>access,mediaDevices:{getUserMedia:async()=>({getTracks:()=>[{stop(){stopped++;}}]})}},AudioContext,Float32Array,localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)},requestAnimationFrame:cb=>(frame=cb,1),cancelAnimationFrame:()=>{frame=null;},setTimeout,clearTimeout,console};
  if(fullScore||library)vm.runInNewContext(fs.readFileSync('site/piano-repertoire.js','utf8'),context);
  if(library)vm.runInNewContext(fs.readFileSync('site/piano-library.js','utf8'),context);
  vm.runInNewContext(fs.readFileSync('site/piano-fingering.js','utf8'),context);
@@ -24,11 +24,11 @@ test('a complete library score loads locally and can pass both hands via MIDI',a
 test('a slower earlier score download cannot replace the latest selection',async()=>{let release;const ui=setup({library:true,fetcher:url=>url.includes('arabesque')?new Promise(r=>{release=r;}):Promise.resolve({ok:true,json:async()=>JSON.parse(fs.readFileSync('site/'+url.split('?')[0]))})}),song=ui.nodes.find(n=>n.id==='trainer-song');song.value='arabesque';song.onchange();song.value='twinkle';song.onchange();await new Promise(setImmediate);release({ok:true,json:async()=>JSON.parse(fs.readFileSync('site/scores/arabesque/practice.json'))});await new Promise(setImmediate);assert.equal(song.value,'twinkle');assert.ok(ui.nodes.some(n=>n.tag==='p'&&n.textContent.startsWith('Twinkle, Twinkle · learning arrangement ·')));});
 
 
-test('Start practice defaults to microphone and selects a playable melody from chords',async()=>{
+test('Start practice defaults to microphone and keeps both hands, chords included',async()=>{
  const ui=setup({fullScore:true});await ui.button('Practice').onclick();
  assert.match(ui.feedback(),/Listening/);
  const voice=ui.nodes.find(n=>n.tag==='select'&&n.options.some(o=>o.value==='rightHand'));
- assert.equal(voice.value,'melody');assert.ok(ui.nodes.some(n=>n.id==='practice-start'&&n.textContent==='Pause practice'));
+ assert.equal(voice.value,'all');assert.ok(ui.nodes.some(n=>n.id==='practice-start'&&n.textContent==='Pause practice'));
  ui.button('Stop input').onclick();assert.equal(ui.stopped,1);
 });
 
@@ -42,7 +42,7 @@ test('guided MIDI Start pauses on a wrong note, resumes on correct input, and Pa
  ui.input.onmidimessage({data:[128,64,0]});ui.button('Pause practice').onclick();assert.equal(Number(progress.value),1);
  await ui.button('Practice').onclick();ui.setTime(1);ui.tick(1000);
  ui.input.onmidimessage({data:[144,64,100]});assert.equal(Number(progress.value),2);
- assert.equal(ui.storage.size,0);ui.button('Pause practice').onclick();
+ assert.equal([...ui.storage.keys()].filter(k=>k!=='openpiano-input-v1').length,0,'no pass or log stored');ui.button('Pause practice').onclick();
 });
 
 test('seeking starts practice at the chosen note without awarding a full-piece pass',async()=>{
@@ -53,10 +53,10 @@ test('seeking starts practice at the chosen note without awarding a full-piece p
  ui.button('Restart').onclick();assert.equal(Number(position.value),0);
 });
 
-test('visible hand selector uses one left-hand line for microphone and complete hands for MIDI',()=>{
+test('visible hand selector uses complete hands for the microphone and for MIDI',()=>{
  const ui=setup({fullScore:true}),hands=ui.nodes.find(n=>n.id==='practice-hands'),input=ui.nodes.find(n=>n.id==='practice-input');
  const voice=ui.nodes.find(n=>n.tag==='select'&&n.options.some(o=>o.value==='rightHand'));
- hands.value='LH';hands.onchange();assert.equal(voice.value,'leftBass');
+ hands.value='LH';hands.onchange();assert.equal(voice.value,'leftHand');
  input.value='MIDI';input.onchange();assert.equal(voice.value,'leftHand');
  hands.value='RH';hands.onchange();assert.equal(voice.value,'rightHand');
  hands.value='BH';hands.onchange();assert.equal(voice.value,'all');assert.equal(input.value,'MIDI');
