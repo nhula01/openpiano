@@ -152,7 +152,7 @@ const origScroll = Element.prototype.scrollIntoView;
 Element.prototype.scrollIntoView = function (...args) {
   const id = this.id;
   if (id === 'piece-course') { history.replaceState(null, '', '#library/piece'); apply('library/piece', { noScroll: true }); window.scrollTo(0, 0); return; }
-  if (id === 'piece-library') { const lv = $('#piece-filter')?.value; history.replaceState(null, '', '#library/all'); apply('library/all', { noScroll: true }); const shelf = lv && document.getElementById('shelf-' + lv); if (shelf) return origScroll.call(shelf, { block: 'start' }); window.scrollTo(0, 0); return; }
+  if (id === 'piece-library') { const lv = $('#piece-filter')?.value; history.replaceState(null, '', '#library'); apply('library', { noScroll: true }); const shelf = lv && document.getElementById('shelf-' + lv); if (shelf) return origScroll.call(shelf, { block: 'start' }); window.scrollTo(0, 0); return; }
   const view = this.closest?.('.view');
   if (view && view.hidden) { history.replaceState(null, '', '#' + view.dataset.view); apply(view.dataset.view, { noScroll: true }); }
   return origScroll.apply(this, args);
@@ -237,6 +237,8 @@ function renderBrowse(filter = {}) {
   const words = term.split(/\s+/).filter(Boolean), fold = t => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   const match = p => { const hay = fold([p.full, p.composer, p.credit, p.skill, p.pattern, p.shelf].join(' ')); return words.every(w => hay.includes(fold(w))); };
   const composerRow = row.closest('section'); if (composerRow) composerRow.hidden = !!(filter.level || filter.shelf);
+  // The practice panel belongs to the library front page, not to search results or a See-all list.
+  const forYou = $('.for-you'); if (forYou) forYou.hidden = !!(filter.level || filter.shelf || term);
   for (const name of names) {
     const list = byComposer.get(name); if (term && !list.some(match) && !fold(name).includes(fold(term))) continue;
     const a = el('a', undefined, 'composer' + (isCollection(name) ? ' collection' : '')); a.href = '#library/composer/' + slug(name);
@@ -255,7 +257,7 @@ function renderBrowse(filter = {}) {
   if (filter.level || filter.shelf) {
     const g = GENRES.find(g => slug(g[0]) === filter.shelf);
     const list = filter.level ? pieces.filter(p => p.level === filter.level) : pieces.filter(p => g && p.shelf === g[0]);
-    const back = el('a', 'All pieces', 'back'); back.href = '#library/all';
+    const back = el('a', 'Library', 'back'); back.href = '#library';
     const name = filter.level ? levelName(filter.level) : { name: g?.[1] || 'Pieces', sub: g?.[2] || '' };
     const h = el('h2', undefined, 'shelf-title'); if (filter.level) h.append(el('span', String(filter.level), 'lvl-num')); h.append(document.createTextNode(name.name));
     const sec = el('section', undefined, 'shelf'); const head = el('div', undefined, 'shelf-head'); head.append(h, el('p', `${name.sub ? name.sub + ' · ' : ''}${list.length} pieces`, 'shelf-sub'));
@@ -303,7 +305,7 @@ function renderComposer(s) {
   page.append(back, hero, ol);
 }
 // ---------- Library home: continue learning, recommendations, your repertoire ----------
-const LIB_TABS = ['recommended', 'all', 'repertoire'], TAB_KEY = 'openpiano-library-tab', PASS_KEY = 'journey-note-passes-v1';
+const LIB_TABS = ['recommended', 'repertoire'], TAB_KEY = 'openpiano-library-tab', PASS_KEY = 'journey-note-passes-v1';
 const savedTab = () => { try { const t = localStorage.getItem(TAB_KEY); return LIB_TABS.includes(t) ? t : 'recommended'; } catch { return 'recommended'; } };
 function setTab(tab) {
   for (const b of document.querySelectorAll('[data-lib-tab]')) { const on = b.dataset.libTab === tab; b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; }
@@ -313,7 +315,7 @@ function setTab(tab) {
 function wireTabs() {
   const tabs = [...document.querySelectorAll('[data-lib-tab]')];
   for (const b of tabs) {
-    b.onclick = () => go('library/' + b.dataset.libTab);
+    b.onclick = () => { setTab(b.dataset.libTab); renderPicks(b.dataset.libTab); };
     b.onkeydown = e => {
       const i = tabs.indexOf(b), j = e.key === 'ArrowRight' ? (i + 1) % tabs.length : e.key === 'ArrowLeft' ? (i + tabs.length - 1) % tabs.length : e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : -1;
       if (j < 0) return; e.preventDefault(); tabs[j].focus(); tabs[j].click();
@@ -392,7 +394,6 @@ function continuePractice(p, next) {
 }
 
 const svgIcon = (d, cls) => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('aria-hidden', 'true'); if (cls) s.setAttribute('class', cls); s.innerHTML = d; return s; };
-const ICON_BOOK = '<path d="M3 5.5c3-1.3 6-1.3 9 .8 3-2.1 6-2.1 9-.8v13c-3-1.3-6-1.3-9 .8-3-2.1-6-2.1-9-.8z"/><path d="M12 6.3v13"/>';
 const ICON_NOTES = '<path d="M9 17.5V6l11-2v11.5"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="15.5" r="2.5"/>';
 const ICON_CHEVRON = '<path d="m9 5 7 7-7 7"/>';
 const ICON_ARROW = '<path d="M5 12h14M13 6l6 6-6 6"/>';
@@ -410,7 +411,7 @@ function renderContinue() {
   head.append(el('h2', inProgress ? 'Continue learning' : 'Start learning', undefined), el('span', inProgress ? 'In progress' : 'Start here', 'lib-status'));
   head.firstChild.id = 'continue-title';
   const row = el('div', undefined, 'lib-continue-row');
-  const icon = el('span', undefined, 'lib-icon'); icon.append(svgIcon(ICON_BOOK));
+  const icon = portrait(chosen.composer, 'round lib-portrait');
   const body = el('div', undefined, 'lib-continue-body');
   const focus = el('p', chosen.reference ? 'Open the lesson to begin' : 'Next focus: …', 'lib-focus');
   const bar = el('div', undefined, 'lib-progress'); bar.setAttribute('role', 'progressbar'); bar.setAttribute('aria-label', `${chosen.title} progress`); bar.setAttribute('aria-valuemin', '0'); bar.setAttribute('aria-valuemax', '100');
@@ -446,6 +447,7 @@ function pieceRow(p, extra) {
   b.onclick = () => openLesson(p.id);
   li.append(b); return li;
 }
+const renderPicks = tab => tab === 'repertoire' ? renderRepertoire() : renderRecommended();
 function renderRecommended() {
   const list = $('#rec-list'), note = $('#rec-note'); if (!list) return;
   const log = practiceLog(), current = continuePiece(log);
@@ -454,8 +456,8 @@ function renderRecommended() {
   const order = (a, b) => (rank(a.id) - rank(b.id)) || (!!a.collection - !!b.collection) || a.title.localeCompare(b.title);
   const here = pieces.filter(p => fresh(p) && p.level === level).sort(order);
   const up = pieces.filter(p => fresh(p) && p.level === level + 1).sort(order);
-  const picks = [...here.slice(0, 5), ...up.slice(0, 3)];
-  for (const p of [...here.slice(5), ...up.slice(3)]) { if (picks.length >= 8) break; picks.push(p); }
+  const picks = [...here.slice(0, 4), ...up.slice(0, 2)];
+  for (const p of [...here.slice(4), ...up.slice(2)]) { if (picks.length >= 6) break; picks.push(p); }
   const lv = levelName(level);
   note.textContent = `Picked for level ${level} · ${lv.name}${up.length ? ', with a step up' : ''}.`;
   list.replaceChildren(...picks.map(p => pieceRow(p)));
@@ -468,7 +470,7 @@ function renderRepertoire() {
     li.append(el('strong', 'Nothing here yet'), el('span', 'Pieces you practice or check off in a lesson appear here, most recent first.'));
     list.replaceChildren(li); return;
   }
-  list.replaceChildren(...started.map(p => {
+  list.replaceChildren(...started.slice(0, 6).map(p => {
     const blocks = Object.entries(log[p.id].sections).filter(([k, d]) => /^block-/.test(k) && d.BH).length;
     const extra = [ago(log[p.id].last), log[p.id].sections.full?.BH ? 'Full piece passed' : blocks ? `${blocks} ${blocks === 1 ? 'block' : 'blocks'} passed hands together` : ''].filter(Boolean).join(' · ');
     return pieceRow(p, extra || 'Lesson started');
@@ -479,12 +481,10 @@ function showLibrary(sub, arg) {
   const which = sub === 'composer' ? 'composer' : sub === 'piece' ? 'piece' : 'browse';
   for (const [k, n] of Object.entries(parts)) n.hidden = k !== which;
   if (which === 'browse') {
-    const tab = ['level', 'shelf', 'all'].includes(sub) ? 'all' : LIB_TABS.includes(sub) ? sub : savedTab();
-    setTab(tab); renderContinue();
+    const tab = LIB_TABS.includes(sub) ? sub : savedTab();
+    setTab(tab); renderContinue(); renderPicks(tab);
     if ((sub === 'level' || sub === 'shelf') && $('#lib-search')) $('#lib-search').value = '';
-    if (tab === 'all') renderBrowse(sub === 'level' ? { level: Number(arg) } : sub === 'shelf' ? { shelf: arg } : {});
-    if (tab === 'recommended') renderRecommended();
-    if (tab === 'repertoire') renderRepertoire();
+    renderBrowse(sub === 'level' ? { level: Number(arg) } : sub === 'shelf' ? { shelf: arg } : {});
   }
   if (which === 'composer') renderComposer(arg);
   if (which === 'piece') renderPieceArt();
