@@ -1,1 +1,1 @@
-{"name":"openpiano","private":true,"scripts":{"test:piano":"node --test tests/piano-*.test.cjs"},"devDependencies":{"jsdom":"27.0.1"}}
+{"name":"openpiano","private":true,"scripts":{"test:piano":"node --test tests/piano-*.test.cjs"},"devDependencies":{"jsdom":"27.0.1","pdfjs-dist":"6.4.299"}}

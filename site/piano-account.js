@@ -228,7 +228,7 @@ function render() {
   const body = section.querySelector('.mine-body'); body.replaceChildren();
   body.append(el('p', where(), 'mine-where'));
   const list = el('div', undefined, 'tiles wrap mine-list');
-  if (!songs.length) list.append(el('p', 'No songs yet. Add a MusicXML or MIDI file below and it appears here.', 'muted mine-empty'));
+  if (!songs.length) list.append(el('p', 'No songs yet. Add a MusicXML, MIDI or PDF score below and it appears here.', 'muted mine-empty'));
   for (const rec of songs) {
     const card = el('article', undefined, 'tile mine-tile');
     const art = el('button', undefined, 'tile-art mine-art'); art.type = 'button'; art.setAttribute('aria-label', 'Practice ' + rec.title);

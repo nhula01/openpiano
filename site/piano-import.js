@@ -1,6 +1,7 @@
 'use strict';
-// "Add a song" on the My songs page: choose a MusicXML or MIDI file, check it, correct a pitch or
-// the hands if needed, then save it to My songs (piano-account.js) or practice it right away.
+// "Add a song" on the My songs page: choose a MusicXML, MIDI or PDF file, check it, correct a pitch
+// or the hands if needed, then save it to My songs (piano-account.js) or practice it right away.
+// A PDF exported from notation software is read into MusicXML here (piano-pdf-reader.js).
 // Everything runs in this browser; a file only leaves it when the person saves to their account
 // or chooses the optional scanner.
 (() => {
@@ -13,9 +14,9 @@ const baseName = name => (name || 'score').replace(/\.[^.]+$/, '');
 const niceTitle = name => baseName(name).replace(/[_-]+/g, ' ').trim();
 
 // ---- 1 · Choose ----
-const pick = el('label', '1 · Choose a MusicXML or MIDI file', 'step-label'), input = el('input');
+const pick = el('label', '1 · Choose a MusicXML, MIDI or PDF file', 'step-label'), input = el('input');
 input.type = 'file'; input.id = 'self-service-file'; input.accept = '.musicxml,.xml,.mxl,.mid,.midi,.pdf,.png,.jpg,.jpeg'; pick.append(input);
-const formats = el('p', 'MusicXML (from MuseScore: File → Export → MusicXML) keeps the sheet music and printed fingering. MIDI keeps the notes and rhythm and shows them without sheet music.', 'muted');
+const formats = el('p', 'MusicXML (from MuseScore: File → Export → MusicXML) keeps the sheet music and printed fingering. A PDF saved from notation software (MuseScore, LilyPond, Dorico, Finale…) is read into sheet music right here in your browser; check it against the PDF. MIDI keeps the notes and rhythm and shows them without sheet music.', 'muted');
 const demo = el('button', 'Try an example score', 'secondary'); demo.type = 'button';
 demo.onclick = async () => {
   const token = ++revision;
@@ -24,8 +25,8 @@ demo.onclick = async () => {
 };
 
 const scan = el('details', undefined, 'fold'); scan.id = 'scan-help';
-scan.append(el('summary', 'Only have a PDF or photo?'));
-const scanIntro = el('p', 'Turn the printed sheet into MusicXML with a music scanner, then come back and choose the exported .musicxml or .mxl file. Compare the result with the original before practicing.');
+scan.append(el('summary', 'Only have a scan or photo?'));
+const scanIntro = el('p', 'A scanned page or photo holds a picture of the music rather than its notes. Turn it into MusicXML with a music scanner, then come back and choose the exported .musicxml or .mxl file. Compare the result with the original before practicing.');
 const steps = el('ol');
 for (const t of ['Open the PDF or photo in Audiveris, a free open-source scanner for your computer, and export MusicXML. A web scanner such as Soundslice also works; its own limits and pricing apply.',
   'Check the export in a notation editor such as MuseScore: both staves, every page, repeats, rests, ties and the last bar. Fix recognition mistakes there.',
@@ -82,8 +83,30 @@ async function loadXML(xml, name, token, file) {
   say('Reading every measure and engraving the sheet… (the first time, the engraver takes a moment to download)');
   const entry = await window.PianoScoreImport.fromXML(xml, { id: 'mine-draft', fileName: name });
   if (token !== revision) return;
-  current = { format: 'musicxml', name, file, xml, corrected: false, entry, title: current?.name === name ? current.title : null };
+  const same = current?.name === name;
+  current = { format: 'musicxml', name, file, xml, corrected: false, entry, title: same ? current.title : null, composer: same ? current.composer : null, fromPdf: same ? current.fromPdf : null };
   draw();
+}
+// A PDF from notation software: read its notes here, then check them like any MusicXML.
+async function loadPDF(file, token) {
+  attach(file);
+  say('Reading the music in your PDF… (the first time, the PDF reader takes a moment to download)');
+  let result;
+  try {
+    result = await window.PianoPdfReader.convert(await file.arrayBuffer(), { onProgress: (page, pages) => { if (token === revision && pages > 1) say(`Reading the music in your PDF… page ${page} of ${pages}`); } });
+  } catch (e) { if (e.code === 'scan' || e.code === 'none') scan.open = true; throw e; }
+  if (token !== revision) return;
+  const name = baseName(file.name) + '.musicxml';
+  current = { name, fromPdf: result, title: result.title, composer: result.composer };
+  try { await loadXML(result.xml, name, token, null); }
+  catch (e) {
+    if (token !== revision) return;
+    current = null;
+    const dl = el('a', 'Download what was read (MusicXML)', 'secondary'); dl.href = blobURL(new Blob([result.xml], { type: XML_TYPE })); dl.download = name;
+    review.replaceChildren(el('p', 'The notes read from this PDF did not pass the checks: ' + (e.message || e), 'note warn'),
+      el('p', 'Open the download in a notation editor such as MuseScore, fix the measure it names, and choose the corrected file here. Exporting MusicXML from the program that made the PDF gives the best result.', 'muted'), dl);
+    say('The PDF was read, but the result needs fixing before practice.', true);
+  }
 }
 async function loadMIDI(file, token, hands) {
   say('Reading the MIDI file…');
@@ -96,12 +119,13 @@ input.onchange = async () => {
   const file = input.files[0]; if (!file) return; input.value = '';
   const token = ++revision; current = null; review.replaceChildren();
   try {
-    if (/\.(pdf|png|jpe?g)$/i.test(file.name)) { attach(file); scan.open = true; say('Sheet attached. Scan it to MusicXML first (see “Only have a PDF or photo?”), then choose the MusicXML here.'); return; }
+    if (/\.pdf$/i.test(file.name)) { await loadPDF(file, token); return; }
+    if (/\.(png|jpe?g)$/i.test(file.name)) { attach(file); scan.open = true; say('Photo attached. Scan it to MusicXML first (see “Only have a scan or photo?”), then choose the MusicXML here.'); return; }
     if (/\.midi?$/i.test(file.name)) await loadMIDI(file, token);
     else if (/\.(musicxml|xml|mxl)$/i.test(file.name)) {
       if (file.size > 8_000_000) throw Error('Choose a file smaller than 8 MB.');
       await loadXML(await window.PianoScoreImport.readMusicXML(file), file.name, token, file);
-    } else throw Error('Choose a MusicXML (.mxl, .musicxml) or MIDI (.mid) file.');
+    } else throw Error('Choose a MusicXML (.mxl, .musicxml), MIDI (.mid) or PDF file.');
   } catch (e) { if (token === revision) { current = null; say(e.message || String(e), true); } }
 };
 
@@ -113,6 +137,7 @@ function draw() {
     facts.push(e.sourceFingering ? 'printed fingering kept' : 'no printed fingering in this file');
   }
   review.append(el('h3', '2 · Check it', 'step-label'), el('p', facts.join(' · '), 'import-facts'));
+  if (c.fromPdf) review.append(pdfNotes(c.fromPdf));
   if (c.format === 'musicxml') {
     if (r.repeatsAsWritten) review.append(el('p', `Repeats are played once, as printed, because they couldn’t be written out automatically (${r.problem}) Write them out in your notation editor if practice should follow them.`, 'note warn'));
     else if (r.problem) review.append(el('p', 'Check this before practicing: ' + r.problem, 'note warn'));
@@ -141,6 +166,22 @@ function draw() {
   say('Check the sheet and the ending against your source, then save it or practice it.');
 }
 
+// What the PDF reader was unsure of, so the person knows where to look.
+function pdfNotes(p) {
+  const box = el('div', undefined, 'import-pdf-notes');
+  box.append(el('p', `Read from your PDF: ${p.measures} measures on ${p.pages} ${p.pages === 1 ? 'page' : 'pages'}. Play it through or compare the sheet with your PDF before practicing; a misread note can be corrected below.`, 'note'));
+  for (const w of p.warnings) box.append(el('p', w, 'note warn'));
+  if (p.flagged.length) {
+    const list = el('details', undefined, 'fold'); list.open = p.flagged.length <= 5;
+    list.append(el('summary', p.flagged.length === 1 ? 'One measure to check' : `${p.flagged.length} measures to check`));
+    const ul = el('ul');
+    for (const f of p.flagged.slice(0, 40)) ul.append(el('li', `${f.measure ? 'Measure ' + f.measure : 'The opening pickup'}: ${f.why.join('; ')}.`));
+    if (p.flagged.length > 40) ul.append(el('li', `…and ${p.flagged.length - 40} more.`));
+    list.append(ul); box.append(list);
+  }
+  return box;
+}
+
 function corrections(records) {
   const box = el('details', undefined, 'fold');
   box.append(el('summary', 'Correct a wrong note'), el('p', 'Pick the note and type the right pitch; the sheet and practice update together. For rhythm, hands or repeats, fix the file in your notation editor and choose it again.', 'muted'));
@@ -155,8 +196,8 @@ function corrections(records) {
     apply.disabled = true; const c = current, token = ++revision;
     try {
       const fixed = window.PianoImportEngine.editPitch(c.xml, records[Number(select.value)].id, pitch.value);
-      const title = c.title; await loadXML(fixed, c.name, token, null);
-      if (current && token === revision) { current.corrected = true; current.title = title; draw(); say('Corrected. Check the sheet again, then save.'); }
+      await loadXML(fixed, c.name, token, null);
+      if (current && token === revision) { current.corrected = true; draw(); say('Corrected. Check the sheet again, then save.'); }
     } catch (err) { say(err.message, true); }
     finally { apply.disabled = false; }
   };

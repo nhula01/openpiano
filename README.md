@@ -2,19 +2,15 @@
 
 A free piano studio in the browser: complete public-domain repertoire by composer,
 skills by level, sight-reading, and practice with a MIDI keyboard or a microphone.
-Anyone can import their own MusicXML or MIDI scores and keep them private.
+Anyone can import their own MusicXML, MIDI or PDF scores and keep them private.
 
 - **Library** — about 525 complete pieces: piano classics from Bach to Rachmaninoff, symphony and
   opera themes for piano, carols, hymns, folk and children’s songs, ragtime — each with source, transcriber and
   license on every score. Printed fingerings only; none are generated.
-- **Practice** — a full-window practice room. See the music as one scrolling line, falling notes,
-  both, or full pages. Wait for me, Play in time or Listen; loop any bars or tap a part of the piece
-  (each part tracks right hand, left hand, both, and both in time); speed trainer; the other hand
-  plays while you practise one; click with count-in; mistakes shown per bar on the timeline. Swipe the
-  music or drag the playhead to move bar by bar. Microphone, MIDI, or tap / computer-key input.
+- **Practice** — Normal Sheet or Continuous Sheet. Practice waits for correct notes; Play follows the tempo; Listen previews from the yellow line. Move the position slider, click a note or drag the line to choose a start. Restart returns to the beginning. Microphone is the default, with MIDI for both hands.
 - **Skills** — 35 short units, key and chord lab, first-reading miniatures.
-- **My songs** — add MusicXML or MIDI, check it and fix wrong notes, then practice; private to your browser, or to
-  your account when signed in.
+- **My songs** — add MusicXML, MIDI or a PDF from notation software (read into sheet music in the browser), check it
+  and fix wrong notes, then practice; private to your browser, or to your account when signed in.
 - **Free** — donations are voluntary and never unlock features.
 
 ## Run locally
