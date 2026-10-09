@@ -75,7 +75,7 @@ function picker(){if(pickerDialog)return pickerDialog;const d=el('dialog',undefi
  pickerDialog={node:d,open(){input.value='';render();d.showModal();input.focus();}};return pickerDialog;}
 
 let helpDialog=null;
-const SHORTCUTS=[['Space','Start or pause'],['R','Restart from the beginning'],['← →','Previous or next bar'],['[ ]','Slower or faster by 5 BPM'],['L','Loop this bar and the next, or clear the loop'],['1 2 3','Left hand, right hand, both hands'],['M','Click on or off'],['/','Find a piece'],['?','Show these shortcuts'],['A W S E D F T G Y H U J K','Play notes with tap input']];
+const SHORTCUTS=[['Space','Start or pause'],['R','Restart from the beginning'],['← →','Previous or next bar'],['[ ]','Slower or faster by 5 BPM'],['L','Loop this bar and the next, or clear the loop (Shift+L while using tap input)'],['1 2 3','Left hand, right hand, both hands'],['M','Click on or off'],['/','Find a piece'],['?','Show these shortcuts'],['A W S E D F T G Y H U J K','Play notes with tap input']];
 function shortcuts(){if(helpDialog)return helpDialog;const d=el('dialog',undefined,'kit-help');d.setAttribute('aria-labelledby','kit-help-title');const h=el('h2','Keyboard shortcuts');h.id='kit-help-title';const dl=el('dl');for(const[k,v]of SHORTCUTS){const row=el('div');row.append(el('dt',k),el('dd',v));dl.append(row);}const close=button('Done',{cls:'kit-help-close'});close.onclick=()=>d.close();d.append(h,dl,close);d.addEventListener('click',e=>{if(e.target===d)d.close();});document.body.append(d);helpDialog={node:d,open(){d.showModal();}};return helpDialog;}
 
 // Take the engine's live elements (score, keyboard, status line, device picker) for a new layout.
