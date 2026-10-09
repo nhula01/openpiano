@@ -71,7 +71,7 @@ const cloud = {
     if (error) throw error; return data;
   },
   async add(file, meta) {
-    const id = crypto.randomUUID(), path = `${user.id}/${id}${extOf(file.name)}`, done = [];
+    const id = meta.id || crypto.randomUUID(), path = `${user.id}/${id}${extOf(file.name)}`, done = [];
     try {
       const up = await sb.storage.from('songs').upload(path, file, { upsert: false, contentType: 'application/octet-stream' }); if (up.error) throw up.error; done.push(path);
       let originalPath = null;
@@ -163,10 +163,10 @@ function signInForm() {
   const agree = el('span'); agree.append('I’m 13 or older and agree to the ');
   for (const [href, text, sep] of [['terms.html', 'Terms', ' and '], ['privacy.html', 'Privacy Policy', '.']]) { const a = el('a', text); a.href = href; a.target = '_blank'; agree.append(a, sep); }
   age.append(ok, agree);
-  const go = el('button', 'Email me a sign-in link'); go.type = 'submit';
-  if(cfg.googleEnabled){const google=el('button','Continue with Google');google.type='button';google.onclick=async()=>{if(!ok.checked){ok.reportValidity();return;}google.disabled=true;const {error}=await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname}});if(error){say('Google sign-in failed: '+error.message,true);google.disabled=false;}};form.append(google);}
-  form.append(el('h3', 'Keep your songs on every device', 'mine-h'), el('p', 'No password: you get a sign-in link by email. Accounts are for people 13 and older.', 'muted'), label, age, go);
-  if(cfg.publicEmailReady===false)form.append(el('p','Email sign-in is currently for project-team testing. Public sign-in is being set up.','muted'));
+  const go = el('button', 'Email me a sign-in link'); go.type = 'submit';go.disabled=!sb;let googleButton=null;
+  if(cfg.googleEnabled){const google=el('button','Continue with Google');google.type='button';google.disabled=!sb;google.onclick=async()=>{if(!ok.checked){ok.reportValidity();return;}sessionStorage.setItem('openpiano-oauth-consent',JSON.stringify({age_13_or_older:true,accepted_terms_at:new Date().toISOString()}));google.disabled=true;const {error}=await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname}});if(error){say('Google sign-in failed: '+error.message,true);google.disabled=false;sessionStorage.removeItem('openpiano-oauth-consent');}};googleButton=google;}
+  form.append(el('h3', 'Keep your songs on every device', 'mine-h'), el('p', cfg.googleEnabled?'Sign in with Google. Accounts are for people 13 and older.':'No password: you get a sign-in link by email. Accounts are for people 13 and older.', 'muted'));if(!cfg.googleEnabled)form.append(label);form.append(age);if(googleButton)form.append(googleButton);else form.append(go);
+  if(!cfg.googleEnabled&&cfg.publicEmailReady===false)form.append(el('p','Email sign-in is currently for project-team testing. Public sign-in is being set up.','muted'));
   form.onsubmit = async e => {
     e.preventDefault(); if (!ok.checked) return; go.disabled = true;
     const { error } = await sb.auth.signInWithOtp({ email: email.value.trim(), options: { emailRedirectTo: location.origin + location.pathname,
@@ -214,7 +214,7 @@ function moveBox() {
     try {
       for (const rec of inBrowser) {
         if (songs.length >= MAX_SONGS) throw new Error(`Your account has ${MAX_SONGS} songs; the rest stay in this browser.`);
-        songs.push(await cloud.add(await device.file(rec), { title: rec.title, composer: rec.composer || '', format: rec.format, settings: rec.settings || {}, original: await device.original(rec) }));
+        songs.push(await cloud.add(await device.file(rec), { id: rec.id, title: rec.title, composer: rec.composer || '', format: rec.format, settings: rec.settings || {}, original: await device.original(rec) }));
         await device.remove(rec);
       }
       say('Moved your songs into your account.');
@@ -303,6 +303,7 @@ async function init() {
         const next = session?.user || null; if ((next && next.id) === (user && user.id)) return;
         setTimeout(async()=>{clearTimeout(pushTimer);const changed=scopeProgress(next);user=next;renderAccount();await refresh();window.dispatchEvent(new Event('piano-songs-where'));if(user){try{await pullProgress();}catch(e){say('Progress sync failed: '+e.message,true);}}if(changed)location.reload();},0);
       });
+      if(user&&sessionStorage.getItem('openpiano-oauth-consent')){try{const consent=JSON.parse(sessionStorage.getItem('openpiano-oauth-consent'));const updated=await sb.auth.updateUser({data:consent});if(!updated.error)sessionStorage.removeItem('openpiano-oauth-consent');}catch{}}
       if (user){try{await pullProgress();}catch(e){say('Progress sync failed: '+e.message,true);}if(scoped){location.reload();return;}}
     } catch (e) { say(e.message, true); }
   }
