@@ -10,7 +10,7 @@ const el = (tag, text, cls) => { const n = document.createElement(tag); if (text
 const cfg = window.PianoCloudConfig || {};
 const CLOUD = !!(cfg.supabaseUrl && cfg.supabaseAnonKey);
 const SUPABASE_JS = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.js';
-const PROGRESS_KEYS = ['my-journey-piano-pathway-v2', 'journey-piano-skills-v1'];
+const PROGRESS_KEYS = ['my-journey-piano-pathway-v2', 'journey-piano-skills-v1', 'journey-note-passes-v1'];
 const MAX_SONGS = 100;
 
 // ---------- Device storage (IndexedDB) ----------
@@ -104,24 +104,42 @@ function loadScript(src) { return new Promise((res, rej) => { const s = document
 const readLocal = () => Object.fromEntries(PROGRESS_KEYS.map(k => { try { return [k, JSON.parse(localStorage.getItem(k)) || {}]; } catch { return [k, {}]; } }));
 function merge(a, b) {
   if (Array.isArray(a) || Array.isArray(b)) return [...new Set([...(a || []), ...(b || [])])];
+  if (a?.date && b?.date && typeof a.accuracy === 'number' && typeof b.accuracy === 'number') return a.date > b.date ? a : b;
   if (a && typeof a === 'object' && b && typeof b === 'object') { const out = { ...a }; for (const k of Object.keys(b)) out[k] = k in a ? merge(a[k], b[k]) : b[k]; return out; }
   if (typeof a === 'boolean' || typeof b === 'boolean') return a === true || b === true;
   return b ?? a;
 }
 let pushTimer = null;
 async function pullProgress() {
-  const { data } = await sb.from('progress').select('data').eq('owner', user.id).maybeSingle();
+  const owner = user.id;
+  const { data, error } = await sb.from('progress').select('data').eq('owner', owner).maybeSingle();
+  if (error) throw error; if (user?.id !== owner) return;
   const local = readLocal(), merged = merge(data?.data || {}, local);
   const changed = PROGRESS_KEYS.some(k => JSON.stringify(merged[k] || {}) !== JSON.stringify(local[k] || {}));
   for (const k of PROGRESS_KEYS) try { localStorage.setItem(k, JSON.stringify(merged[k] || {})); } catch {}
-  await sb.from('progress').upsert({ owner: user.id, data: merged, updated_at: new Date().toISOString() });
-  if (changed && !sessionStorage.getItem('piano-progress-merged')) { sessionStorage.setItem('piano-progress-merged', '1'); location.reload(); }
+  const saved = await sb.from('progress').upsert({ owner, data: merged, updated_at: new Date().toISOString() });
+  if (saved.error) throw saved.error;
+  if (changed) location.reload();
 }
 function schedulePush() {
   if (!user) return; clearTimeout(pushTimer);
-  pushTimer = setTimeout(() => sb.from('progress').upsert({ owner: user.id, data: readLocal(), updated_at: new Date().toISOString() }), 1500);
+  const owner = user.id;pushTimer = setTimeout(async () => { if(user?.id!==owner)return;const { error }=await sb.from('progress').upsert({ owner, data: readLocal(), updated_at: new Date().toISOString() });if(error)say('Progress is saved on this device; syncing failed. '+error.message,true); }, 1500);
 }
 
+// Keep local progress snapshots separate when people share a browser.
+function scopeProgress(next) {
+ const old=localStorage.getItem('openpiano-progress-owner')||'guest',id=next?.id||'guest';
+ if(old===id)return false;
+ const before=readLocal();localStorage.setItem('openpiano-progress-cache:'+old,JSON.stringify(before));
+ let snapshot;try{snapshot=JSON.parse(localStorage.getItem('openpiano-progress-cache:'+id));}catch{}
+ if(!snapshot)snapshot=old==='guest'&&next?before:{};
+ for(const k of PROGRESS_KEYS)localStorage.setItem(k,JSON.stringify(snapshot[k]||{}));
+ localStorage.setItem('openpiano-progress-owner',id);
+ return JSON.stringify(before)!==JSON.stringify(readLocal());
+}
+window.addEventListener('piano-progress-changed',schedulePush);
+window.addEventListener('online',schedulePush);
+window.addEventListener('storage',e=>{if(PROGRESS_KEYS.includes(e.key))schedulePush();});
 // ---------- UI ----------
 let section, statusLine, accountBox, songs = [], inBrowser = [];
 function say(msg, bad) { if (!statusLine) return; statusLine.textContent = msg; statusLine.classList.toggle('bad', !!bad); }
@@ -146,7 +164,9 @@ function signInForm() {
   for (const [href, text, sep] of [['terms.html', 'Terms', ' and '], ['privacy.html', 'Privacy Policy', '.']]) { const a = el('a', text); a.href = href; a.target = '_blank'; agree.append(a, sep); }
   age.append(ok, agree);
   const go = el('button', 'Email me a sign-in link'); go.type = 'submit';
+  if(cfg.googleEnabled){const google=el('button','Continue with Google');google.type='button';google.onclick=async()=>{if(!ok.checked){ok.reportValidity();return;}google.disabled=true;const {error}=await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname}});if(error){say('Google sign-in failed: '+error.message,true);google.disabled=false;}};form.append(google);}
   form.append(el('h3', 'Keep your songs on every device', 'mine-h'), el('p', 'No password: you get a sign-in link by email. Accounts are for people 13 and older.', 'muted'), label, age, go);
+  if(cfg.publicEmailReady===false)form.append(el('p','Email sign-in is currently for project-team testing. Public sign-in is being set up.','muted'));
   form.onsubmit = async e => {
     e.preventDefault(); if (!ok.checked) return; go.disabled = true;
     const { error } = await sb.auth.signInWithOtp({ email: email.value.trim(), options: { emailRedirectTo: location.origin + location.pathname,
@@ -212,7 +232,7 @@ function dangerZone() {
     if (!confirmDelete(btn, 'Tap again to delete everything')) return;
     try {
       for (const rec of await cloud.list()) await cloud.remove(rec);
-      await sb.from('progress').delete().eq('owner', user.id);
+      const removed=await sb.from('progress').delete().eq('owner', user.id);if(removed.error)throw removed.error;clearTimeout(pushTimer);for(const k of PROGRESS_KEYS)localStorage.removeItem(k);localStorage.removeItem('openpiano-progress-cache:'+user.id);
       const info = await fetch('piano-support.json').then(r => r.json()).catch(() => ({}));
       await refresh();
       say(`Deleted your songs and practice data. To remove your sign-in email as well, write to ${info.contactEmail || 'the site contact listed in the Privacy Policy'}.`);
@@ -278,12 +298,12 @@ async function init() {
     try {
       await loadScript(SUPABASE_JS);
       sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey, { auth: { persistSession: true, detectSessionInUrl: true, flowType: 'implicit' } });
-      const { data } = await sb.auth.getSession(); user = data.session?.user || null;
+      const { data } = await sb.auth.getSession(); const initial=data.session?.user||null;const scoped=scopeProgress(initial);user=initial;if(scoped&&!user){location.reload();return;}
       sb.auth.onAuthStateChange((event, session) => {
         const next = session?.user || null; if ((next && next.id) === (user && user.id)) return;
-        user = next; renderAccount(); refresh(); window.dispatchEvent(new Event('piano-songs-where')); if (user) pullProgress().catch(() => {});
+        setTimeout(async()=>{clearTimeout(pushTimer);const changed=scopeProgress(next);user=next;renderAccount();await refresh();window.dispatchEvent(new Event('piano-songs-where'));if(user){try{await pullProgress();}catch(e){say('Progress sync failed: '+e.message,true);}}if(changed)location.reload();},0);
       });
-      if (user) pullProgress().catch(() => {});
+      if (user){try{await pullProgress();}catch(e){say('Progress sync failed: '+e.message,true);}if(scoped){location.reload();return;}}
     } catch (e) { say(e.message, true); }
   }
   renderAccount(); refresh(); window.dispatchEvent(new Event('piano-songs-where'));

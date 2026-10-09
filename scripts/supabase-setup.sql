@@ -19,13 +19,12 @@ alter table public.songs enable row level security;
 drop policy if exists "songs: owner reads" on public.songs;
 drop policy if exists "songs: owner adds" on public.songs;
 drop policy if exists "songs: owner deletes" on public.songs;
-create policy "songs: owner reads" on public.songs for select using (auth.uid() = owner);
+create policy "songs: owner reads" on public.songs for select to authenticated using ((select auth.uid()) = owner);
 -- At most 100 songs per person; files must sit in the person's own folder.
-create policy "songs: owner adds" on public.songs for insert with check (
+create policy "songs: owner adds" on public.songs for insert to authenticated with check (
   auth.uid() = owner and path like auth.uid()::text || '/%'
-  and (original_path is null or original_path like auth.uid()::text || '/%')
-  and (select count(*) from public.songs s where s.owner = auth.uid()) < 100);
-create policy "songs: owner deletes" on public.songs for delete using (auth.uid() = owner);
+  and (original_path is null or original_path like auth.uid()::text || '/%'));
+create policy "songs: owner deletes" on public.songs for delete to authenticated using ((select auth.uid()) = owner);
 
 create table if not exists public.progress (
   owner uuid primary key default auth.uid() references auth.users(id) on delete cascade,
@@ -36,9 +35,9 @@ alter table public.progress enable row level security;
 drop policy if exists "progress: owner reads" on public.progress;
 drop policy if exists "progress: owner writes" on public.progress;
 drop policy if exists "progress: owner updates" on public.progress;
-create policy "progress: owner reads" on public.progress for select using (auth.uid() = owner);
-create policy "progress: owner writes" on public.progress for insert with check (auth.uid() = owner);
-create policy "progress: owner updates" on public.progress for update using (auth.uid() = owner) with check (auth.uid() = owner);
+create policy "progress: owner reads" on public.progress for select to authenticated using ((select auth.uid()) = owner);
+create policy "progress: owner writes" on public.progress for insert to authenticated with check (auth.uid() = owner);
+create policy "progress: owner updates" on public.progress for update to authenticated using ((select auth.uid()) = owner) with check ((select auth.uid()) = owner);
 
 -- Private file bucket: 15 MB per file (scores are at most 8 MB; attached PDFs/photos 15 MB),
 -- files live under a folder named after the owner's id.
@@ -48,9 +47,33 @@ on conflict (id) do update set public = false, file_size_limit = 15728640;
 drop policy if exists "song files: owner reads" on storage.objects;
 drop policy if exists "song files: owner adds" on storage.objects;
 drop policy if exists "song files: owner deletes" on storage.objects;
-create policy "song files: owner reads" on storage.objects for select
+create policy "song files: owner reads" on storage.objects for select to authenticated
   using (bucket_id = 'songs' and (storage.foldername(name))[1] = auth.uid()::text);
-create policy "song files: owner adds" on storage.objects for insert
+create policy "song files: owner adds" on storage.objects for insert to authenticated
   with check (bucket_id = 'songs' and (storage.foldername(name))[1] = auth.uid()::text);
-create policy "song files: owner deletes" on storage.objects for delete
+create policy "song files: owner deletes" on storage.objects for delete to authenticated
   using (bucket_id = 'songs' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- Explicit Data API grants: the new project does not expose tables automatically.
+revoke all on public.songs, public.progress from anon, authenticated;
+grant select, insert, delete on public.songs to authenticated;
+grant select, insert, update, delete on public.progress to authenticated;
+create index if not exists songs_owner_created_idx on public.songs(owner, created_at desc);
+drop policy if exists "progress: owner deletes" on public.progress;
+create policy "progress: owner deletes" on public.progress for delete to authenticated
+  using ((select auth.uid()) = owner);
+
+-- Enforce the quota outside RLS; querying songs inside its insert policy recurses.
+create or replace function public.openpiano_enforce_song_limit()
+returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+ perform pg_advisory_xact_lock(hashtextextended(new.owner::text, 0));
+ if (select count(*) from public.songs where owner = new.owner) >= 100 then
+  raise exception 'Your account already has 100 songs' using errcode = '23514';
+ end if;
+ return new;
+end $$;
+revoke all on function public.openpiano_enforce_song_limit() from public, anon, authenticated;
+drop trigger if exists openpiano_song_limit on public.songs;
+create trigger openpiano_song_limit before insert on public.songs
+for each row execute function public.openpiano_enforce_song_limit();
