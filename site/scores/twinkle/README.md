@@ -1,7 +1,7 @@
 # Twinkle, Twinkle · learning arrangement
 
 Composer: Traditional
-Typesetting: My Journey
+Typesetting: OpenPiano
 License: CC0 1.0
 Source: scores/twinkle/original.ly
 

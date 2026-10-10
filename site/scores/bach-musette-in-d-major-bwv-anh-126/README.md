@@ -1,6 +1,6 @@
-# Musette in D major, BWV Anh. 126
+# Musette in D major, BWV Anh. 126 (from the Notebook for Anna Magdalena Bach)
 
-Composer: Johann Sebastian Bach
+Composer: Notebook for Anna Magdalena Bach
 Transcription: mauvecat on MuseScore, released under CC0 1.0
 Source: https://musescore.com/user/28061167/scores/5519028 (via the PDMX public-domain MusicXML dataset, https://zenodo.org/records/15571083)
 

@@ -1,6 +1,6 @@
-# Air in F, BWV Anh. 131 (Anna Magdalena Notebook)
+# Air in F, BWV Anh. 131 (from the Notebook for Anna Magdalena Bach)
 
-Composer: Johann Sebastian Bach
+Composer: Notebook for Anna Magdalena Bach
 Typesetting: Anonymous
 License: Creative Commons Attribution-ShareAlike 2.5
 Source: https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=767

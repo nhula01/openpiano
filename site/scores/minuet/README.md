@@ -1,4 +1,4 @@
-# Minuet in G major, BWV Anh. 114
+# Minuet in G major, BWV Anh. 114 (from the Notebook for Anna Magdalena Bach)
 
 Composer: Christian Petzold
 Typesetting: Allen Garvin

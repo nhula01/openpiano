@@ -34,5 +34,5 @@
 % in order to correct a mistake in bar 17
 
 \version "2.24.3"
-\header { title="Frère Jacques · learning arrangement" composer="Traditional" subtitle="Simple two-hand arrangement by My Journey" maintainer="My Journey" copyright="CC0 1.0" }
+\header { title="Frère Jacques · learning arrangement" composer="Traditional" subtitle="Simple two-hand arrangement by OpenPiano" maintainer="OpenPiano" copyright="CC0 1.0" }
 \score { \new PianoStaff << \new Staff = "upper" { \clef treble \key c \major \time 4/4 \relative c' { c4 d e c | c d e c | e f g2 | e4 f g2 | g8 a g f e4 c | g8 a g f e4 c | c4 g c r | c g c r \bar "|." } } \new Staff = "lower" { \clef bass \key c \major \time 4/4 \relative c { c1 | c | c | c | c | c | g | c } } >> \layout {} \midi { \tempo 4=60 } }

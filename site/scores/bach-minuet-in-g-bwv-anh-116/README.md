@@ -1,6 +1,6 @@
-# Minuet in G, BWV Anh. 116 (Anna Magdalena Notebook)
+# Minuet in G, BWV Anh. 116 (from the Notebook for Anna Magdalena Bach)
 
-Composer: Johann Sebastian Bach
+Composer: Notebook for Anna Magdalena Bach
 Typesetting: Allen Garvin
 License: Public Domain
 Source: https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=77

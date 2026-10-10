@@ -1,6 +1,6 @@
-# Polonaise in F, BWV Anh. 117b (Anna Magdalena Notebook, plainer version)
+# Polonaise in F, BWV Anh. 117b (plainer version, from the Notebook for Anna Magdalena Bach)
 
-Composer: Johann Sebastian Bach
+Composer: Notebook for Anna Magdalena Bach
 Typesetting: Steven McDougall
 License: Public Domain
 Source: https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=1015

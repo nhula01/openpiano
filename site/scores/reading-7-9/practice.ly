@@ -34,5 +34,5 @@
 % in order to correct a mistake in bar 17
 
 \version "2.24.4"
-\header { title = "First-reading miniature 7.9" composer = "My Journey" license = "CC0 1.0" maintainer = "My Journey" subtitle = "Complete original eight-bar study" }
+\header { title = "First-reading miniature 7.9" composer = "OpenPiano" license = "CC0 1.0" maintainer = "OpenPiano" subtitle = "Complete original eight-bar study" }
 \score { \new PianoStaff << \new Staff = "upper" { \clef treble \key f \minor \time 6/8 { aes'4\mf( g'8 aes'4 c''8 | des''8 c''8 bes'8 des''8 f'4 | g'8 aes'8 bes'8 c''4. | g'4. g'4.) | aes'8( bes'8 aes'8 f'8 aes'4 | des''4 c''8 bes'4. | c''4. e''4. | f''2.) \bar "|." } } \new Staff = "lower" { \clef bass \key f \minor \time 6/8 { f,8 c8 f8 c8 f8 c8 | bes,8 f8 bes8 f8 bes8 f8 | c8 g8 c'8 g8 c'8 g8 | c8 g8 c'8 g8 c'8 g8 | f,8 c8 f8 c8 f8 c8 | bes,8 f8 bes8 f8 bes8 f8 | c8 g8 c'8 g8 c'8 g8 | <f, c>2. \bar "|." } } >> \layout {} \midi { \tempo 4=60 } }

@@ -1,7 +1,7 @@
 # Ode to Joy · theme arrangement
 
 Composer: Ludwig van Beethoven
-Typesetting: My Journey
+Typesetting: OpenPiano
 License: CC0 1.0
 Source: scores/ode/original.ly
 

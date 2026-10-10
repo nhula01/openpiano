@@ -1,6 +1,6 @@
-# Minuet in B-flat, BWV Anh. 118 (Anna Magdalena Notebook)
+# Minuet in B-flat, BWV Anh. 118 (from the Notebook for Anna Magdalena Bach)
 
-Composer: Johann Sebastian Bach
+Composer: Notebook for Anna Magdalena Bach
 Typesetting: Steven McDougall
 License: Public Domain
 Source: https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=1014

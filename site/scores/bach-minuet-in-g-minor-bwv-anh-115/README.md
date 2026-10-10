@@ -1,6 +1,6 @@
-# Minuet in G minor, BWV Anh. 115
+# Minuet in G minor, BWV Anh. 115 (from the Notebook for Anna Magdalena Bach)
 
-Composer: Johann Sebastian Bach
+Composer: Christian Petzold
 Transcription: DarioRoberto_H on MuseScore, released under CC0 1.0
 Source: https://musescore.com/darioroberto_h/scores/5836081 (via the PDMX public-domain MusicXML dataset, https://zenodo.org/records/15571083)
 

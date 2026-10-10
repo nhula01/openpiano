@@ -1,3 +1,3 @@
 \version "2.24.4"
-\header { title = "First-reading miniature 5.5" composer = "My Journey" license = "CC0 1.0" maintainer = "My Journey" subtitle = "Complete original eight-bar study" }
+\header { title = "First-reading miniature 5.5" composer = "OpenPiano" license = "CC0 1.0" maintainer = "OpenPiano" subtitle = "Complete original eight-bar study" }
 \score { \new PianoStaff << \new Staff = "upper" { \clef treble \key ees \major \time 6/8 { ees'4\p( f'8 g'16 aes'16 bes'8 aes'8 | g'4. c'4 ees'8 | f'8 g'8 aes'8 c''4 f'8 | f'2.) | g'8( aes'8 g'8 bes'4 ees''8 | c''4 d''8 c''8 ees''8 c''8 | d''8 ees''8 d''8 d''4. | ees''2.) \bar "|." } } \new Staff = "lower" { \clef bass \key ees \major \time 6/8 { ees8 bes8 g8 bes8 g8 bes8 | c8 g8 ees8 g8 ees8 g8 | f,8 c8 aes,8 c8 aes,8 c8 | bes,8 f8 d8 f8 d8 f8 | ees8 bes8 g8 bes8 g8 bes8 | aes,8 ees8 c8 ees8 c8 ees8 | bes,8 f8 d8 f8 d8 f8 | <ees bes>2. \bar "|." } } >> \layout {} \midi { \tempo 4=60 } }

@@ -12,7 +12,7 @@ const PATH_KEY = 'my-journey-piano-pathway-v2', SKILL_KEY = 'journey-piano-skill
 const W = 'https://thumb.wikimedia.org/wikipedia/commons/thumb/';
 const COMPOSERS = {
   'Johann Sebastian Bach': { years: '1685–1750', era: 'Baroque', img: W + '6/6a/Johann_Sebastian_Bach.jpg/500px-Johann_Sebastian_Bach.jpg' },
-  'Christian Petzold': { years: '1677–1733', era: 'Baroque' },
+  'Christian Petzold': { years: '1677–1733', era: 'Baroque' }, 'Notebook for Anna Magdalena Bach': { years: '1725', era: 'Baroque' },
   'Wolfgang Amadeus Mozart': { years: '1756–1791', era: 'Classical', img: W + 'a/ad/The_Mozart_Family_-_Wolfgang_Amadeus_Mozart_headshot.jpg/500px-The_Mozart_Family_-_Wolfgang_Amadeus_Mozart_headshot.jpg' },
   'Muzio Clementi': { years: '1752–1832', era: 'Classical', img: W + 'c/c9/Muzio_Clementi.jpeg/500px-Muzio_Clementi.jpeg' },
   'Ludwig van Beethoven': { years: '1770–1827', era: 'Classical to Romantic', img: W + "6/6e/Joseph_Karl_Stieler%27s_Beethoven_mit_dem_Manuskript_der_Missa_solemnis.jpg/500px-Joseph_Karl_Stieler%27s_Beethoven_mit_dem_Manuskript_der_Missa_solemnis.jpg" },

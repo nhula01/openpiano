@@ -34,5 +34,5 @@
 % in order to correct a mistake in bar 17
 
 \version "2.24.4"
-\header { title = "First-reading miniature 5.3" composer = "My Journey" license = "CC0 1.0" maintainer = "My Journey" subtitle = "Complete original eight-bar study" }
+\header { title = "First-reading miniature 5.3" composer = "OpenPiano" license = "CC0 1.0" maintainer = "OpenPiano" subtitle = "Complete original eight-bar study" }
 \score { \new PianoStaff << \new Staff = "upper" { \clef treble \key a \major \time 4/4 { cis'4\f( d'8 e'8 e'8 fis'8 e'8 d'8 | e'4 fis'16 gis'16 a'8 cis''8 b'8 cis''4 | e''8 fis''8 e''8 d''8 e''16 fis''16 gis''16 a''16 b''8 a''8 | gis''4. fis''8 e''2) | cis''8\mf( d''8 cis''8 b'8 a'16 gis'16 fis'8 gis'8 a'16 gis'16 | fis'8 gis'8 a'4 fis'8 a'8 b'16 cis''16 d''8 | e''4. gis'8 b'4. e''8 | cis''8 b'8 a'8 gis'8 a'2) \bar "|." } } \new Staff = "lower" { \clef bass \key a \major \time 4/4 { a,8 e8 cis8 e8 a,8 e8 cis8 e8 | a,8 e8 cis8 e8 a,8 e8 cis8 e8 | e,8 b,8 gis,8 b,8 e,8 b,8 gis,8 b,8 | e,8 b,8 gis,8 b,8 e,8 b,8 gis,8 b,8 | a,8 e8 cis8 e8 a,8 e8 cis8 e8 | d8 a8 fis8 a8 d8 a8 fis8 a8 | e,8 b,8 gis,8 b,8 e,8 b,8 gis,8 b,8 | <a, e>1 \bar "|." } } >> \layout {} \midi { \tempo 4=60 } }

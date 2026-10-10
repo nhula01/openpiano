@@ -44,7 +44,7 @@ def source(title,key,mode,rh,lh,time='4/4',subtitle='Complete original eight-bar
  mark=f'\\tempo "{tempo[0]}" 4 = {tempo[1]} ' if tempo else '';midi=' ' if tempo else ' \\tempo 4=60 '
  size='#(set-global-staff-size 24)\n' if tempo else ''  # larger notes for Level 0
  return f'''\\version "2.24.4"
-{size}\\header {{ title = "{title}" composer = "My Journey" license = "CC0 1.0" maintainer = "My Journey" subtitle = "{subtitle}" }}
+{size}\\header {{ title = "{title}" composer = "OpenPiano" license = "CC0 1.0" maintainer = "OpenPiano" subtitle = "{subtitle}" }}
 \\score {{ \\new PianoStaff << \\new Staff = "upper" {{ \\clef treble \\key {key} \\{mode} \\time {time} {mark}{{ {rh} \\bar "|." }} }} \\new Staff = "lower" {{ \\clef bass \\key {key} \\{mode} \\time {time} {{ {lh} \\bar "|." }} }} >> \\layout {{}} \\midi {{{midi}}} }}
 '''
 def create(id,title,key,mode,rh,lh,kind,level,time='4/4',literal=False,subtitle='Complete original eight-bar study',tempo=None,extra=None):
@@ -452,11 +452,11 @@ for id,info in data.items():
  info.update(details[id]);kind=details[id]['kind']
  if kind=='first':
   info['caption']=f"Complete original Level 0 piece · {details[id]['focus']}"
-  readme=f"Complete original Level 0 piece by My Journey, number {details[id]['studyOrder']} of the twenty First keys pieces. Released under CC0 1.0. Not an excerpt or an adaptation of any method book or Piano Marvel lesson. Original PDF and source, MIDI and tagged practice engraving are included. No fingerings are generated.\n"
+  readme=f"Complete original Level 0 piece by OpenPiano, number {details[id]['studyOrder']} of the twenty First keys pieces. Released under CC0 1.0. Not an excerpt or an adaptation of any method book or Piano Marvel lesson. Original PDF and source, MIDI and tagged practice engraving are included. No fingerings are generated.\n"
  else:
   info['caption']='Complete original eight-bar '+kind+' study · both hands'
-  readme=f"Complete original eight-bar {kind} study by My Journey. Released under CC0 1.0. Not an excerpt or an adaptation of a Piano Marvel lesson. Original PDF and source, both-hand MIDI and tagged practice engraving are included. No fingerings are generated.\n"
- info['attribution']='My Journey · original learning study · CC0 1.0'
+  readme=f"Complete original eight-bar {kind} study by OpenPiano. Released under CC0 1.0. Not an excerpt or an adaptation of a Piano Marvel lesson. Original PDF and source, both-hand MIDI and tagged practice engraving are included. No fingerings are generated.\n"
+ info['attribution']='OpenPiano · original learning study · CC0 1.0'
  folder=pathlib.Path('site')/info['folder'];j=folder/'practice.json';payload=json.loads(j.read_text());payload.update(info);j.write_text(json.dumps(payload,separators=(',',':')))
  info['dataURL']=f"{info['folder']}/practice.json?v={hashlib.sha256(j.read_bytes()).hexdigest()[:12]}"
  (folder/'README.md').write_text(f"# {info['title']}\n\n"+readme)

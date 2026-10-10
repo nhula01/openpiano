@@ -1,6 +1,6 @@
-# Minuet in F, BWV Anh. 113
+# Minuet in F, BWV Anh. 113 (from the Notebook for Anna Magdalena Bach)
 
-Composer: Johann Sebastian Bach
+Composer: Notebook for Anna Magdalena Bach
 Transcription: andrewdenehelbig on MuseScore, released under CC0 1.0
 Source: https://musescore.com/user/5928061/scores/5799384 (via the PDMX public-domain MusicXML dataset, https://zenodo.org/records/15571083)
 

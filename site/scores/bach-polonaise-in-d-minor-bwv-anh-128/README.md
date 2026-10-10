@@ -1,6 +1,6 @@
-# Polonaise in D minor, BWV Anh. 128 (Anna Magdalena Notebook)
+# Polonaise in D minor, BWV Anh. 128 (from the Notebook for Anna Magdalena Bach)
 
-Composer: Johann Sebastian Bach
+Composer: Notebook for Anna Magdalena Bach
 Typesetting: Steven McDougall
 License: Public Domain
 Source: https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=1615

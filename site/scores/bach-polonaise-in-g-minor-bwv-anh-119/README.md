@@ -1,6 +1,6 @@
-# Polonaise in G minor, BWV Anh. 119 (Anna Magdalena Notebook)
+# Polonaise in G minor, BWV Anh. 119 (from the Notebook for Anna Magdalena Bach)
 
-Composer: Johann Sebastian Bach
+Composer: Notebook for Anna Magdalena Bach
 Typesetting: Steven McDougall
 License: Public Domain
 Source: https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=1016

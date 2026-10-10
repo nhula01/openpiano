@@ -1,6 +1,6 @@
-# March in E-flat, BWV Anh. 127 (Anna Magdalena Notebook)
+# March in E-flat, BWV Anh. 127 (from the Notebook for Anna Magdalena Bach)
 
-Composer: Johann Sebastian Bach
+Composer: Notebook for Anna Magdalena Bach
 Typesetting: Steven McDougall
 License: Public Domain
 Source: https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=1614
