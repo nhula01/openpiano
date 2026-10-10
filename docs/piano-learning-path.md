@@ -177,11 +177,11 @@ ones every day. Pieces are original, CC0, and carry no fingering numbers.
   made again when it is selected, also after a reload (this script loads before the player). Opening
   uses the "Read something new" flow: the 30-second look-over, then In time, and the first complete
   In-time run moves the reading staircase like any reading piece.
-- **Level.** "Follow my reading level" (the default) takes the staircase level
-  (`PianoReadingGen.level()`, whole steps); without it, the repertoire level's reading level
-  (`FOR_REPERTOIRE`: 0→0, 1→1, 2→2, 3→2, 4→3, 5→4, 6→5, 7→6). The day's level is fixed once a piece of
-  the day's set is opened, so the ten do not change halfway through the day when the staircase moves.
-  The learner can choose any level instead.
+- **Level.** "Follow my level" (the default) is the learner's level on the path, the same number:
+  the level chosen in "Start the path at" (or by Find your level), moved on as levels are finished.
+  It changes as soon as the path level changes, also mid-day. The learner can pick another level in
+  the panel; choosing a new path level drops that pick, so the ten move to the new level at once.
+  (The reading staircase still moves with reading results but does not pick the ten.)
 - **Marks.** A complete run (not a loop) marks a piece read, keeping its best accuracy and whether it
   was In time (`openpiano-sight-reading-v1.marks[<date>][<id>]`, last 60 days, this browser).
   Today's plan offers the next unread piece ("3 of 10 read today"), and says when all ten are read.

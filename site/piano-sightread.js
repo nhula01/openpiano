@@ -830,28 +830,28 @@ function settings() {
   return { level, features: Array.isArray(s.features) ? s.features.filter(f => FEATURE[f]) : null, featuresLevel: Number.isInteger(s.featuresLevel) ? s.featuresLevel : null };
 }
 function setSettings(change) { const s = read(STORE); Object.assign(s, change); write(STORE, s); changed(); }
-// the level that follows the learner: their reading level (the staircase in piano-reading-gen.js, which
-// moves with their reading results), else the one that goes with their repertoire level
+// The level that follows the learner is their level on the learning path: the one chosen in "Start the
+// path at" (or by Find your level), moved on as levels are finished. Choosing a new path level also
+// drops a level picked in the Sight-reading panel, so the ten change to the new level at once.
+const PATH_KEY = 'my-journey-piano-pathway-v2';
 function followLevel(repertoireLevel) {
-  try { const l = window.PianoReadingGen?.level?.(); if (Number.isFinite(l)) return Math.max(0, Math.min(7, Math.floor(l))); } catch {}
-  let rep = repertoireLevel; if (rep == null) try { rep = window.PianoPath?.learnerLevel?.(); } catch {}
-  return FOR_REPERTOIRE[rep ?? 0] ?? 0;
+  let l = repertoireLevel; if (l == null) try { l = window.PianoPath?.learnerLevel?.(); } catch {}
+  if (!Number.isFinite(l)) { const start = read(PATH_KEY).startLevel; l = Number.isInteger(start) ? start : 0; }
+  return Math.max(0, Math.min(7, Math.floor(l)));
 }
-// Today's level is fixed once a piece of the day's set is opened, so the ten do not change halfway
-// through the day when the reading level moves; choosing a level changes it at once.
-function levelFor(repertoireLevel, date = localDate()) {
+function syncPath() {
+  const start = read(PATH_KEY).startLevel, s = read(STORE);
+  if (!Number.isInteger(start) || s.pathStart === start) return;
+  const first = s.pathStart === undefined; s.pathStart = start;
+  if (!first) { delete s.level; delete s.features; delete s.featuresLevel; }
+  write(STORE, s);
+}
+function levelFor(repertoireLevel) {
+  syncPath();
   const chosen = settings().level;
-  if (chosen !== null) return chosen;
-  const pinned = (read(STORE).days || {})[date]?.level;
-  return Number.isInteger(pinned) ? pinned : followLevel(repertoireLevel);
+  return chosen !== null ? chosen : followLevel(repertoireLevel);
 }
-function pin(date, level) {
-  if (settings().level !== null) return;
-  const s = read(STORE); s.days = s.days || {};
-  if (Number.isInteger(s.days[date]?.level)) return;
-  s.days[date] = { ...(s.days[date] || {}), level }; prune(s); write(STORE, s);
-}
-function prune(s) { for (const k of ['days', 'marks']) { const keys = Object.keys(s[k] || {}).sort(); while (keys.length > 60) delete s[k][keys.shift()]; } }
+function prune(s) { for (const k of ['marks']) { const keys = Object.keys(s[k] || {}).sort(); while (keys.length > 60) delete s[k][keys.shift()]; } }
 const featuresFor = level => { const s = settings(); return s.features && s.featuresLevel === level ? s.features : null; };
 
 // a piece of a set, registered in the player's score list; its music is written the first time it is asked for
@@ -911,7 +911,7 @@ function record(r) {
 }
 // today's set for a level (the learner's by default)
 function daySet(opts = {}) {
-  const date = opts.date || localDate(), level = Number.isInteger(opts.level) ? opts.level : levelFor(opts.repertoireLevel, date);
+  const date = opts.date || localDate(), level = Number.isInteger(opts.level) ? opts.level : levelFor(opts.repertoireLevel);
   const features = opts.features !== undefined ? opts.features : featuresFor(level);
   if (features && !isDefault(level, features)) { const s = read(STORE); s.mixes = s.mixes || {}; const h = mixHash(features); if (!s.mixes[h]) { s.mixes[h] = [...features]; write(STORE, s); } }
   const items = Array.from({ length: SET_SIZE }, (_, i) => { const id = idFor(date, level, i + 1, features); return { n: i + 1, id, mark: mark(id) }; });
@@ -933,7 +933,7 @@ function reset(opts = {}) {
 // open one piece of today's set: a 30-second look-over, then one run In time (piano-reading-gen.js)
 function open(opts = {}) {
   const set = daySet(opts), it = opts.n ? set.items[opts.n - 1] : set.next || set.items[0];
-  ensure(it.id); pin(set.date, set.level);
+  ensure(it.id);
   window.dispatchEvent(new CustomEvent('piano-select-score', { detail: { id: it.id, reading: true } }));
   return { id: it.id, set };
 }
@@ -995,7 +995,7 @@ function mount() {
   function render() {
     const s = settings(), set = daySet(), auto = followLevel();
     levelSel.replaceChildren();
-    const follow = el('option', `Follow my reading level (Level ${auto} · ${LEVELS[auto].name})`); follow.value = 'auto'; levelSel.append(follow);
+    const follow = el('option', `Follow my level (Level ${auto} · ${LEVELS[auto].name})`); follow.value = 'auto'; levelSel.append(follow);
     for (const L of LEVELS) { const o = el('option', `Level ${L.id} · ${L.name}`); o.value = String(L.id); levelSel.append(o); }
     levelSel.value = s.level === null ? 'auto' : String(s.level);
     summary.textContent = `Level ${set.level} · ${set.name}. ${set.summary}`;
@@ -1039,8 +1039,7 @@ function mount() {
 // Re-create a piece of a set when the player is asked for it (after a reload, or from a link). This script
 // loads before the reading generator and the player, so the piece exists when they look.
 if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('piano-select-score', e => {
-  const id = typeof e.detail === 'string' ? e.detail : e.detail?.id, m = ID.exec(id || '');
-  if (ensure(id) && m && m[1] === localDate()) pin(m[1], Number(m[2]));
+  ensure(typeof e.detail === 'string' ? e.detail : e.detail?.id);
 });
 function attach() {
   const P = typeof window !== 'undefined' && window.PianoPractice; if (!P || attach.done) return; attach.done = true;

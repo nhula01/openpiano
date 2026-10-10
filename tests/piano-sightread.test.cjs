@@ -129,7 +129,8 @@ test('ingredients can be switched off or added, and the music follows', () => {
 function app({ learner = 4, staircase } = {}) {
   const store = new Map(), listeners = {};
   const ls = { getItem: k => store.get(k) ?? null, setItem: (k, v) => store.set(k, String(v)), removeItem: k => store.delete(k) };
-  const w = { PianoRepertoire: {}, PianoCurriculum: { levels: Array.from({ length: learner + 1 }, (_, id) => ({ id })), pieces: [] },  // no pieces: the learner stays at the chosen level
+  const levels = [0, 1, 2, 3, 4, 5, 6, 7];  // one unlearned piece per level: the learner stays at the chosen level
+  const w = { PianoRepertoire: Object.fromEntries(levels.map(l => ['p' + l, { id: 'p' + l }])), PianoCurriculum: { levels: levels.map(id => ({ id })), pieces: levels.map(l => ({ id: 'p' + l, level: l })) },
     localStorage: ls, addEventListener: (t, f) => (listeners[t] = listeners[t] || []).push(f), dispatchEvent: e => { for (const f of listeners[e.type] || []) f(e); return true; },
     Event: class { constructor(t) { this.type = t; } }, CustomEvent: class { constructor(t, o) { this.type = t; this.detail = o?.detail; } } };
   if (staircase !== undefined) w.PianoReadingGen = { level: () => staircase, TEMPO: { 0: 60, 1: 60, 2: 56, 3: 54, 4: 52, 5: 50, 6: 48, 7: 46 } };
@@ -174,24 +175,27 @@ test('a piece is a reading piece the player can open: notes and bars before engr
   assert.equal(JSON.stringify(w.PianoRepertoire[id].notes), JSON.stringify(e.notes));
 });
 
-test('the level follows the reading staircase and stays fixed for the day; a chosen level wins', () => {
-  let r = app({ learner: 5, staircase: 2.5 });
-  assert.equal(r.SR.daySet().level, 2, 'the reading level (staircase), whole steps');
-  r.w.PianoReadingGen.level = () => 3;
-  assert.equal(r.SR.daySet().level, 3, 'before anything is opened, the level follows the staircase');
+test('the ten follow the learner’s level; choosing a new path level moves them there at once, even over a level picked in the panel', () => {
+  const r = app({ learner: 5, staircase: 2.5 });
+  assert.equal(r.SR.daySet().level, 5, 'the path level itself, not the reading staircase');
   r.SR.open();
-  r.w.PianoReadingGen.level = () => 4;
-  assert.equal(r.SR.daySet().level, 3, 'once a piece is opened, the day’s ten stay the same when the level moves');
+  r.P.setStartLevel(2);
+  assert.equal(r.SR.daySet().level, 2, 'a new path level changes today’s ten, also after one was opened');
+  assert.equal(r.P.today().items.find(i => i.kind === 'reading').id, `sight-${r.SR.localDate()}-l2-1`);
   r.SR.setSettings({ level: 6 });
-  assert.equal(r.SR.daySet().level, 6);
-  r = app({ learner: 4 });
-  assert.equal(r.SR.daySet().level, 3, 'without the staircase: one level behind repertoire at Level 4');
+  assert.equal(r.SR.daySet().level, 6, 'a level picked in the panel wins');
+  r.P.setStartLevel(4);
+  assert.equal(r.SR.daySet().level, 4, 'until the path level is changed again');
+  assert.equal(r.SR.settings().level, null, 'back to following the path');
+  const fresh = app({ learner: 3 });
+  fresh.SR.setSettings({ level: 7 });
+  assert.equal(fresh.SR.daySet().level, 7, 'the first look at the path level does not drop a choice');
 });
 
 test('reading marks a piece; Today offers the next unread one, then says all ten are read; Reset clears today’s marks', () => {
   const { SR, P, store } = app({ learner: 4 }), set = SR.daySet(), today = SR.localDate();
   let item = P.today().items.find(i => i.kind === 'reading');
-  assert.equal(item.id, `sight-${today}-l3-1`); assert.ok(/0 of 10/.test(item.note)); assert.equal(item.label, 'Read');
+  assert.equal(item.id, `sight-${today}-l4-1`); assert.ok(/0 of 10/.test(item.note)); assert.equal(item.label, 'Read');
   assert.ok(SR.ensure(item.id) && P.today() && true);
   assert.equal(finish(SR, set.items[0].id, 72).accuracy, 72);
   finish(SR, set.items[0].id, 64);
@@ -221,9 +225,9 @@ test('the Sight-reading panel shows today’s ten, the level, the ingredients an
   const box = w.document.getElementById('sight-daily');
   assert.ok(box, 'the panel is there');
   assert.ok(box.compareDocumentPosition(w.document.querySelector('.trainer-controls')) & w.Node.DOCUMENT_POSITION_FOLLOWING, 'above the fixed miniatures');
-  assert.match(w.document.getElementById('sight-level').options[0].textContent, /Follow my reading level \(Level 2/);
+  assert.match(w.document.getElementById('sight-level').options[0].textContent, /Follow my level \(Level 3/);
   assert.equal(box.querySelectorAll('.sight-tile').length, 10);
-  assert.match(box.querySelector('.sight-shared').textContent, /Everyone reading Level 2 today has the same ten/);
+  assert.match(box.querySelector('.sight-shared').textContent, /Everyone reading Level 3 today has the same ten/);
   assert.ok(w.document.getElementById('sight-reset').disabled, 'nothing to reset yet');
   const S2 = w.PianoSightReading, set = S2.daySet();
   finish(S2, set.items[0].id, 88); w.dispatchEvent(new w.Event('piano-sightread-changed'));
@@ -232,8 +236,8 @@ test('the Sight-reading panel shows today’s ten, the level, the ingredients an
   assert.match(w.document.getElementById('sight-read').textContent, /No\. 2/);
   w.document.getElementById('sight-reset').click();
   assert.match(box.querySelector('.sight-status').textContent, /0 of 10 read today/);
-  const challenge = [...box.querySelectorAll('.sight-chip input')].find(c => c.value === 'inversions');
-  assert.ok(challenge && !challenge.checked, 'Level 3 ingredients are offered as challenges at Level 2');
+  const challenge = [...box.querySelectorAll('.sight-chip input')].find(c => c.value === 'sixteenths');
+  assert.ok(challenge && !challenge.checked, 'Level 4 ingredients are offered as challenges at Level 3');
   challenge.checked = true; challenge.dispatchEvent(new w.Event('change'));
   assert.match(box.querySelector('.sight-shared').textContent, /Your own ten/);
   assert.match(w.PianoSightReading.daySet().items[0].id, /-[a-z0-9]+$/);
