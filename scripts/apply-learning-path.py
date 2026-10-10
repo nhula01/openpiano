@@ -4,6 +4,8 @@
   removed (incomplete or misidentified scores) and corrected titles.
 - Level 0 "First keys": the stage before Level 1, and its 20 original pieces (first-01 … first-20,
   built by scripts/build-piano-studies.py) with their own guidance.
+- scripts/difficulty.json (from scripts/difficulty.py), if present: each piece's `difficulty` and its
+  `order` inside its level (apply_difficulty below).
 
 Run after any script that rewrites site/piano-curriculum.js (gen-collection-guidance.py,
 add-famous-curriculum.py, add-pdmx-curriculum.py). Idempotent.
@@ -150,12 +152,51 @@ def main():
     data['pieces'] = first + data['pieces']
     # within each level: original order kept, levels ascending
     data['pieces'].sort(key=lambda p: p['level'])
+    apply_difficulty(data)
     write_curriculum(data, prefix)
     counts = {}
     for p in data['pieces']: counts[p['level']] = counts.get(p['level'], 0) + 1
     print('level changes', changed, '· pieces per level', dict(sorted(counts.items())))
     for x in problems: print('WARNING', x)
     return 1 if problems else 0
+
+# ---- difficulty: order inside each level ---------------------------------------------------------
+
+def apply_difficulty(data):
+    """Set `difficulty` (0-100) and an explicit `order` on every piece from scripts/difficulty.json
+    (written by scripts/difficulty.py), and sort the pieces by level, then order.
+
+    Inside a level: original pieces (`original: true`, e.g. First keys) first, in their authored
+    `order`; then every other piece by difficulty, easiest first. Pieces of one teaching collection
+    (Czerny, Burgmüller Op. 100, Schumann Op. 68, Bach's Inventions …) keep their printed sequence: they
+    take the places their difficulties give them, in number order. Pieces missing from
+    difficulty.json go last, in their current order. Without difficulty.json nothing changes."""
+    path = ROOT / 'scripts' / 'difficulty.json'
+    if not path.exists(): return
+    scores = {k: v for k, v in json.loads(path.read_text()).items() if not k.startswith('_')}
+    missing = []
+    for level in sorted({p['level'] for p in data['pieces']}):
+        pieces = [p for p in data['pieces'] if p['level'] == level]
+        authored = sorted((p for p in pieces if p.get('original') and p.get('order') is not None), key=lambda p: p['order'])
+        scored = [p for p in pieces if p not in authored and p['id'] in scores]
+        rest = [p for p in pieces if p not in authored and p['id'] not in scores]
+        missing += [p['id'] for p in rest if not p.get('reference')]
+        scored.sort(key=lambda p: (scores[p['id']]['score'], p['id']))
+        # teaching collections: same places, printed sequence
+        sets = {}
+        for i, p in enumerate(scored):
+            name = scores[p['id']].get('set')
+            if name: sets.setdefault(name, []).append(i)
+        for places in sets.values():
+            members = sorted((scored[i] for i in places), key=lambda p: scores[p['id']]['setNo'])
+            for i, p in zip(places, members): scored[i] = p
+        for n, p in enumerate(authored + scored + rest, 1):
+            p['order'] = n
+            if p['id'] in scores: p['difficulty'] = int(scores[p['id']]['score'] + .5)  # half up, like Math.round
+            else: p.pop('difficulty', None)
+    data['pieces'].sort(key=lambda p: (p['level'], p['order']))
+    if missing: print(f'WARNING {len(missing)} pieces have no difficulty score (run python3 scripts/difficulty.py):', ', '.join(missing[:10]))
+
 
 if __name__ == '__main__':
     sys.exit(main())
