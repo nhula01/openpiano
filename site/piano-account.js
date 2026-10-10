@@ -10,7 +10,9 @@ const el = (tag, text, cls) => { const n = document.createElement(tag); if (text
 const cfg = window.PianoCloudConfig || {};
 const CLOUD = !!(cfg.supabaseUrl && cfg.supabaseAnonKey);
 const SUPABASE_JS = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.js';
-const PROGRESS_KEYS = ['my-journey-piano-pathway-v2', 'journey-piano-skills-v1', 'journey-note-passes-v1', 'openpiano-community-plans-v1'];
+const PROGRESS_KEYS = ['my-journey-piano-pathway-v2', 'journey-piano-skills-v1', 'journey-note-passes-v1', 'openpiano-community-plans-v1', 'openpiano-progress-v1', 'openpiano-practice-log-v1', 'openpiano-stage-parts-v1'];
+// Numbers in the practice log (seconds per day and per piece, attempts, best) only grow: sync keeps the larger.
+const MAX_KEYS = new Set(['openpiano-practice-log-v1']);
 const MAX_SONGS = 100;
 
 // ---------- Device storage (IndexedDB) ----------
@@ -173,21 +175,25 @@ function loadScript(src) { return new Promise((res, rej) => { const s = document
 
 // ---------- Practice-check sync ----------
 const readLocal = () => Object.fromEntries(PROGRESS_KEYS.map(k => { try { return [k, JSON.parse(localStorage.getItem(k)) || {}]; } catch { return [k, {}]; } }));
-function merge(a, b) {
+function merge(a, b, max = false) {
+  if (max && typeof a === 'number' && typeof b === 'number') return Math.max(a, b);
   if (Array.isArray(a) || Array.isArray(b)) return [...new Set([...(a || []), ...(b || [])])];
   if (a?.date && b?.date && ('fingers' in a || 'removed' in a) && ('fingers' in b || 'removed' in b)) return a.date > b.date ? a : b;
   if (a?.date && b?.date && typeof a.accuracy === 'number' && typeof b.accuracy === 'number') return a.date > b.date ? a : b;
-  if (a && typeof a === 'object' && b && typeof b === 'object') { const out = { ...a }; for (const k of Object.keys(b)) out[k] = k in a ? merge(a[k], b[k]) : b[k]; return out; }
+  if (a && typeof a === 'object' && b && typeof b === 'object') { const out = { ...a }; for (const k of Object.keys(b)) out[k] = k in a ? merge(a[k], b[k], max || MAX_KEYS.has(k)) : b[k]; return out; }
   if (typeof a === 'boolean' || typeof b === 'boolean') return a === true || b === true;
   return b ?? a;
 }
+const canonical = v => JSON.stringify(v, (_, x) => x && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) : x);
 let pushTimer = null;
 async function pullProgress() {
   const owner = user.id;
   const { data, error } = await sb.from('progress').select('data').eq('owner', owner).maybeSingle();
   if (error) throw error; if (user?.id !== owner) return;
   const local = readLocal(), merged = merge(data?.data || {}, local);
-  const changed = PROGRESS_KEYS.some(k => JSON.stringify(merged[k] || {}) !== JSON.stringify(local[k] || {}));
+  // Compared without regard to key order, so a store rewritten with its keys in another order (the
+  // player's practice log) cannot set off a reload loop.
+  const changed = PROGRESS_KEYS.some(k => canonical(merged[k] || {}) !== canonical(local[k] || {}));
   for (const k of PROGRESS_KEYS) try { localStorage.setItem(k, JSON.stringify(merged[k] || {})); } catch {}
   const saved = await sb.from('progress').upsert({ owner, data: merged, updated_at: new Date().toISOString() });
   if (saved.error) throw saved.error;

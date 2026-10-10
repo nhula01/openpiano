@@ -35,6 +35,8 @@ const APP_SHELL = [
   './piano-pdf-reader.js',
   './piano-scan-reader.js',
   './piano-click.js',
+  './piano-tempos.js',
+  './piano-progress.js',
   './piano-player.js',
   './piano-practice-kit.js',
   './piano-course.js',

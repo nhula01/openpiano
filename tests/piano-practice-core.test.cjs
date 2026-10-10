@@ -25,17 +25,17 @@ test('a bar loop repeats without stopping and never stores a piece pass',async()
  ui.api.clearLoop();assert.equal(ui.api.events.length,15);assert.equal(ui.api.loop,null);
 });
 
-test('the speed trainer raises tempo after each clean loop until the target',async()=>{
- const ui=setup();ui.api.setTempo(60);ui.api.setSpeedTrainer({on:true,step:4,target:66});ui.api.loopBars(0,0);
+test('the tempo staircase raises tempo 5% after each clean loop until the target',async()=>{
+ const ui=setup();ui.api.setTempo(60);ui.api.setSpeedTrainer({on:true,target:66});ui.api.loopBars(0,0);
  await ui.button('Connect MIDI').onclick();
- ui.play(ode.slice(0,4));assert.equal(ui.api.tempo,64);
+ ui.play(ode.slice(0,4));assert.equal(ui.api.tempo,63);
  ui.play(ode.slice(0,4));assert.equal(ui.api.tempo,66);
  ui.play(ode.slice(0,4));assert.equal(ui.api.tempo,66,'stops at the target');
  assert.equal(ui.tempo.value,'66','sidebar metronome follows');
 });
 
 test('a loop below 90% does not speed up, and wrong notes are counted on their bar',async()=>{
- const ui=setup();ui.api.setTempo(60);ui.api.setSpeedTrainer({on:true,step:4,target:80});ui.api.loopBars(1,1);
+ const ui=setup();ui.api.setTempo(60);ui.api.setSpeedTrainer({on:true,target:80});ui.api.loopBars(1,1);
  await ui.button('Connect MIDI').onclick();
  ui.play([50]);ui.play(ode.slice(4,8));
  assert.equal(ui.api.tempo,60);assert.equal(JSON.stringify(ui.api.mistakes),'{"1":1}');assert.equal(ui.api.results[0].accuracy,80);

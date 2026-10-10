@@ -9,11 +9,14 @@ test('the path starts at First keys, moves Up next on as pieces are learned, and
   const store = new Map(), w = context();
   Object.assign(w, { localStorage: { getItem: k => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) }, dispatchEvent() {}, Event: class { constructor(t) { this.type = t; } } });
   const c = { window: w, localStorage: w.localStorage, Event: w.Event, Date, JSON, Math, Number, Object };
-  vm.runInNewContext(fs.readFileSync('site/piano-path.js', 'utf8'), Object.assign(c, w));
+  Object.assign(c, w);
+  vm.runInNewContext(fs.readFileSync('site/piano-progress.js', 'utf8'), c);
+  vm.runInNewContext(fs.readFileSync('site/piano-path.js', 'utf8'), c);
   const P = c.window.PianoPath;
   assert.equal(P.learnerLevel(), 0);
   assert.equal(P.upNext().id, 'first-01');
-  const pass = (id, days = 0) => { const s = JSON.parse(store.get('journey-note-passes-v1') || '{}'); s[id + ':all:full'] = { accuracy: 95, date: new Date(Date.now() - days * 864e5).toISOString() }; store.set('journey-note-passes-v1', JSON.stringify(s)); };
+  // a Secure play: the whole piece In time, both hands, above 60% of the marked tempo
+  const pass = (id, days = 0) => c.window.PianoProgress.record({ score: id, kind: 'play', accuracy: 95, timing: 90, bpm: 100, hands: 'BH', complete: true, time: Date.now() - days * 864e5 });
   pass('first-01', 5);
   assert.equal(P.upNext().id, 'first-02', 'a learned piece moves Up next on');
   const plan = P.today();

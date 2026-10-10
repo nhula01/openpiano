@@ -173,13 +173,17 @@ function renderHome() {
   body.append(el('p', 'Up next', 'kicker'), el('h2', p.title), el('p', [p.composer === 'Folk songs' ? 'Traditional' : p.composer, p.note].filter(Boolean).join(', '), 'up-next-sub'));
   const meta = el('p', undefined, 'pill-row'); meta.append(el('span', 'Level ' + p.level, 'pill'), el('span', lv.name, 'pill quiet')); body.append(meta);
   if (plan) body.append(el('p', plan.next.why, 'muted up-next-why'));
+  const stage = stageLine(p.id); if (stage) body.append(stage);
   const actions = el('div', undefined, 'actions');
   const play = el('button', p.reference ? 'Open lesson' : 'Practice now'); play.onclick = () => p.reference ? openLesson(p.id) : practicePiece(p.id);
   const lesson = el('button', 'Lesson steps', 'secondary'); lesson.onclick = () => openLesson(p.id);
   actions.append(play); if (!p.reference) actions.append(lesson);
+  // the always-visible way to move on: a skipped piece no longer holds up the level
+  if (plan && window.PianoPath.skip) { const skip = el('button', 'Skip this piece', 'link-button'); skip.type = 'button'; skip.title = 'Move on to the next piece. It stays in the library.'; skip.onclick = () => window.PianoPath.skip(p.id); actions.append(skip); }
   body.append(actions);
   card.append(art, body);
   if (plan) card.append(todayPanel(plan));
+  if (plan && window.PianoProgress) card.append(practicePanel());
   renderRange();
 }
 // Today: a short plan worked out from what the learner has played (piano-path.js): a warm-up, the
@@ -190,12 +194,13 @@ function todayPanel(plan) {
   head.append(el('h3', 'Today'), el('p', `Level ${plan.level} · ${name.name}: ${st.learned} of ${st.exit} pieces learned to finish this level${st.total > st.exit ? ` (${st.total} to choose from)` : ''}.`, 'muted'));
   const bar = el('span', undefined, 'today-bar'), fill = el('span'); fill.style.width = Math.min(100, Math.round(100 * st.learned / Math.max(1, st.exit))) + '%'; bar.append(fill); head.append(bar);
   box.append(head);
-  const list = el('ol', undefined, 'today-list'), LABEL = { warmup: 'Warm up', piece: 'Your piece', reading: 'Read something new', review: 'Play again' };
+  const list = el('ol', undefined, 'today-list'), LABEL = { warmup: 'Warm up', piece: 'Your piece', reading: 'Read something new', review: 'Play again, cold', chords: 'Play by chords' };
   for (const it of plan.items) {
     const li = el('li', undefined, 'today-item today-' + it.kind), text = el('div');
-    text.append(el('span', LABEL[it.kind], 'today-kind'), el('strong', it.title), el('span', it.note, 'today-note'));
-    const b = el('button', it.kind === 'reading' ? 'Read' : 'Play', 'secondary small'); b.type = 'button';
-    b.onclick = () => it.kind === 'piece' || it.kind === 'review' ? practicePiece(it.id) : window.dispatchEvent(new CustomEvent('piano-select-score', { detail: it.kind === 'reading' ? { id: it.id, reading: true } : it.id }));
+    const kind = el('span', LABEL[it.kind] || it.kind, 'today-kind'); if (it.stage && it.stage !== 'new') kind.append(el('span', window.PianoProgress?.LABEL[it.stage] || it.stage, 'stage-tag stage-' + it.stage));
+    text.append(kind, el('strong', it.title), el('span', it.note, 'today-note'));
+    const b = el('button', it.label || (it.kind === 'reading' ? 'Read' : 'Play'), 'secondary small'); b.type = 'button';
+    b.onclick = () => it.action ? it.action() : it.kind === 'piece' || it.kind === 'review' ? practicePiece(it.id) : window.dispatchEvent(new CustomEvent('piano-select-score', { detail: it.kind === 'reading' ? { id: it.id, reading: true } : it.id }));
     li.append(text, b); list.append(li);
   }
   box.append(list);
@@ -205,6 +210,38 @@ function todayPanel(plan) {
   const chosen = read(PATH_KEY).startLevel; sel.value = String(Number.isInteger(chosen) ? chosen : levels[0]?.id ?? 0);
   sel.onchange = () => { window.PianoPath.setStartLevel(Number(sel.value)); const s = read(PATH_KEY); delete s.selected; try { localStorage.setItem(PATH_KEY, JSON.stringify(s)); } catch {} renderHome(); };
   start.append(sel); box.append(start);
+  return box;
+}
+// The stage of a piece in plain words, with the exact next requirement (piano-progress.js).
+function stageLine(id) {
+  const P = window.PianoProgress; if (!P || !P.started(id)) return null;
+  const d = P.detail(id), box = el('p', undefined, 'stage-line');
+  box.append(el('span', d.label, 'stage-tag stage-' + d.stage), el('span', ' Next: ' + d.next));
+  return box;
+}
+// Your practice: measured numbers from this device only, and a weekly goal of practice days
+// (missing a day never breaks anything, unlike a streak).
+function practicePanel() {
+  const P = window.PianoProgress, s = P.summary(), box = el('details', undefined, 'my-practice');
+  let open = true; try { open = localStorage.getItem('openpiano-practice-panel') !== 'closed'; } catch {}
+  box.open = open; box.addEventListener('toggle', () => { try { localStorage.setItem('openpiano-practice-panel', box.open ? 'open' : 'closed'); } catch {} });
+  box.append(el('summary', 'Your practice'));
+  const stats = el('dl', undefined, 'practice-stats');
+  const stat = (value, label, hint) => { const d = el('div'); if (hint) d.title = hint; d.append(el('dt', label), el('dd', value)); stats.append(d); };
+  stat(String(s.learned), 'pieces learned', 'Pieces at the Secure stage or above');
+  stat(s.readingLevel ? 'Level ' + s.readingLevel : '—', 'reading level', 'The highest first-reading level you have played through at 90% or better');
+  stat(s.coldTiming == null ? '—' : s.coldTiming + '%', 'timing on cold plays', s.coldPlays ? `Median over ${s.coldPlays} cold play${s.coldPlays === 1 ? '' : 's'} In time` : 'Cold plays are first tries of the day');
+  stat(s.reviews.total ? Math.round(100 * s.reviews.share) + '%' : '—', 'reviews passed', s.reviews.total ? `${s.reviews.passed} of ${s.reviews.total} cold reviews` : 'No cold reviews yet');
+  stat(String(s.minutesThisWeek), 'minutes this week');
+  box.append(stats);
+  const goal = el('div', undefined, 'week-goal'), days = el('span', undefined, 'week-days');
+  for (const [i, d] of s.week.entries()) { const dot = el('span', 'MTWTFSS'[i], d.practised ? 'on' : d.future ? 'later' : ''); dot.title = d.day + (d.practised ? ': practised' : ''); if (d.today) dot.classList.add('is-today'); days.append(dot); }
+  const pick = el('select'); pick.setAttribute('aria-label', 'Weekly goal: days to practise');
+  for (let n = 1; n <= 7; n++) { const o = el('option', n + (n === 1 ? ' day' : ' days')); o.value = n; pick.append(o); }
+  pick.value = String(s.goal); pick.onchange = () => P.setWeeklyGoal(Number(pick.value));
+  const label = el('label', undefined, 'week-label'); label.append(el('span', `${s.daysThisWeek} of `), pick, el('span', ' this week' + (s.daysThisWeek >= s.goal ? ' · goal met' : '')));
+  goal.append(days, label); box.append(goal);
+  if (s.multiplier !== 2.2) box.append(el('p', s.multiplier > 2.2 ? 'You pass most cold reviews, so pieces come back less often.' : 'Cold reviews have been hard lately, so pieces come back sooner.', 'muted'));
   return box;
 }
 function levelProgress(id) {
@@ -245,6 +282,8 @@ function pieceCard(p) {
   const card = el('article', undefined, 'tile');
   const art = el('button', undefined, 'tile-art'); art.type = 'button'; art.setAttribute('aria-label', `Open lesson: ${p.full}`); art.append(portrait(p.composer, 'cover'), el('span', 'Level ' + p.level, 'pill on-art'));
   art.onclick = () => openLesson(p.id);
+  const stage = window.PianoProgress?.started(p.id) && window.PianoProgress.stage(p.id);
+  if (stage && stage !== 'new') { const tag = el('span', window.PianoProgress.LABEL[stage], 'stage-tag on-art stage-' + stage); tag.title = window.PianoProgress.MEANING[stage]; art.append(tag); }
   const body = el('div', undefined, 'tile-body');
   body.append(el('h3', p.title), el('p', creditLine(p), 'tile-sub'));
   if (p.note) body.append(el('p', p.note, 'tile-note-line'));

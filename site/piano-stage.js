@@ -42,7 +42,7 @@ function waterfall(canvas){
 // Parts: the piece's practice blocks, or even chunks of 4, 8 or 16 bars.
 const PARTS_KEY='openpiano-stage-parts-v1';
 const STEPS=[['R','Right hand'],['L','Left hand'],['B','Both hands'],['T','Both hands in time']];
-function partsOf(p){const blocks=(p.sections||[]).filter(s=>/^block-/.test(s.id));const m=p.meter,bars=p.barCount;
+function partsOf(p){if(window.PianoProgress)return window.PianoProgress.parts(p);const blocks=(p.sections||[]).filter(s=>/^block-/.test(s.id));const m=p.meter,bars=p.barCount;
  if(blocks.length>1)return blocks.map(b=>({start:b.start,end:b.end}));const size=bars<=24?4:bars<=64?8:16,out=[];for(let b=0;b<bars;b+=size)out.push({start:b*m,end:Math.min(bars,b+size)*m});return out;}
 function readParts(){try{return JSON.parse(localStorage.getItem(PARTS_KEY))||{};}catch{return {};}}
 function stepOf(r){if(r.kind==='play')return r.hands==='BH'?'T':r.hands==='LH'?'L':'R';return r.hands==='BH'?'B':r.hands==='LH'?'L':'R';}
@@ -77,7 +77,7 @@ function build(){const p=P();if(!p)return;document.body.dataset.shell='stage';co
  const loopB=button('Loop',{icon:'loop',cls:'sg-tog',title:'Loop this bar and the next ( L ), or drag across the timeline'});loopB.onclick=()=>{if(p.loop)p.clearLoop();else{const b=p.barOf(p.position);p.loopBars(b,b+1);}};
  const clickT=toggle('Click','click',v=>p.setClick(v),'sg-tog');const otherT=toggle('Other hand','accompany',v=>p.setAccompany(v),'sg-tog');
  const more=el('details',undefined,'sg-more');const moreSum=el('summary');moreSum.append(icon('settings'),el('span','Settings','sr'));moreSum.title='Input and sheet settings';more.append(moreSum);
- const morePanel=el('div',undefined,'sg-more-panel');const inSeg=segmented('Listen with',INPUTS.map(([v,l,ic])=>[v,l,ic]),v=>{p.setInput(v);sync();},'sg-list');const typeSeg=segmented('Sheet',[['sheet','Pages'],['guide','One scrolling line']],v=>p.setType(v),'sg-list');const fingerT=toggle('Printed fingering','hands',v=>p.setFingering(v),'sg-tog wide');const speedT=toggle('Speed up after clean loops','loop',v=>p.setSpeedTrainer({on:v,step:4,target:Math.min(200,p.tempo+20)}),'sg-tog wide');const keysHelp=button('Keyboard shortcuts',{icon:'keys',cls:'sg-tog wide'});keysHelp.onclick=()=>K.shortcuts().open();
+ const morePanel=el('div',undefined,'sg-more-panel');const inSeg=segmented('Listen with',INPUTS.map(([v,l,ic])=>[v,l,ic]),v=>{p.setInput(v);sync();},'sg-list');const typeSeg=segmented('Sheet',[['sheet','Pages'],['guide','One scrolling line']],v=>p.setType(v),'sg-list');const fingerT=toggle('Printed fingering','hands',v=>p.setFingering(v),'sg-tog wide');const speedT=toggle('Tempo steps after each loop','loop',v=>p.setSpeedTrainer({on:v,target:p.targetTempo||0}),'sg-tog wide');speedT.node.title='After a loop: 5% faster at 95% right notes and 80% timing, the same at 85–95%, 10% slower after two loops below 85%. Never above the marked tempo.';const keysHelp=button('Keyboard shortcuts',{icon:'keys',cls:'sg-tog wide'});keysHelp.onclick=()=>K.shortcuts().open();
  morePanel.append(el('p','Practice','sg-more-label'),fingerT.node,speedT.node,keysHelp);more.append(morePanel);
  document.addEventListener('click',e=>{if(more.open&&!more.contains(e.target))more.open=false;});
  // Input chooser: MIDI keyboard, microphone or tap, always one click away, with what each can do right now.
@@ -108,7 +108,7 @@ function build(){const p=P();if(!p)return;document.body.dataset.shell='stage';co
  stage.append(deck);
 
  // Summary after a run
- const sum=el('dialog',undefined,'sg-summary');const sScores=el('div',undefined,'sg-sum-scores');const sBig=el('p',undefined,'sg-sum-big');const sTime=el('p',undefined,'sg-sum-big sg-sum-time');const sLine=el('p',undefined,'sg-sum-line');const sHeat=el('div',undefined,'sg-sum-heat');const sActs=el('div',undefined,'sg-sum-acts');const accCol=el('div');accCol.append(sBig,el('span','accuracy · right notes','sg-sum-cap'));const timeCol=el('div');timeCol.append(sTime,el('span','timing · on the beat','sg-sum-cap'));sScores.append(accCol,timeCol);sum.append(sScores,sLine,sHeat,sActs);document.body.append(sum);sum.addEventListener('click',e=>{if(e.target===sum)sum.close();});
+ const sum=el('dialog',undefined,'sg-summary');const sScores=el('div',undefined,'sg-sum-scores');const sBig=el('p',undefined,'sg-sum-big');const sTime=el('p',undefined,'sg-sum-big sg-sum-time');const sLine=el('p',undefined,'sg-sum-line');const sHeat=el('div',undefined,'sg-sum-heat');const sActs=el('div',undefined,'sg-sum-acts');const sStage=el('div',undefined,'sg-sum-stage');const accCol=el('div');accCol.append(sBig,el('span','accuracy · right notes','sg-sum-cap'));const timeCol=el('div');timeCol.append(sTime,el('span','timing · on the beat','sg-sum-cap'));sScores.append(accCol,timeCol);sum.append(sScores,sLine,sHeat,sStage,sActs);document.body.append(sum);sum.addEventListener('click',e=>{if(e.target===sum)sum.close();});
  const toast=el('p',undefined,'sg-toast');toast.setAttribute('role','status');stage.append(toast);let toastTimer;
 
  if(parts.more){const s=parts.more.querySelector('summary');if(s)s.textContent='Sources and original sheet';if(parts.original)parts.more.append(parts.original);}
@@ -133,14 +133,21 @@ function build(){const p=P();if(!p)return;document.body.dataset.shell='stage';co
  p.on('state',()=>{if(p.state==='idle'&&lastResult&&Date.now()-lastResult.time<1500){showSummary(lastResult);lastResult=null;}});
  function showSummary(r){clearTimeout(toastTimer);toast.classList.remove('show');sBig.textContent=r.accuracy+'%';sTime.textContent=r.timing==null?'':r.timing+'%';sTime.parentElement.hidden=r.timing==null;sLine.textContent=`${r.correct} right · ${r.wrong} wrong${r.kind==='play'?` · ${r.missed} missed`:''} · ${K.handsName[r.hands]} · ${r.bpm} BPM${r.range?` · ${r.range.title}`:''}`;
   sHeat.replaceChildren();const m=p.mistakes,from=r.range?p.barOf(r.range.start):0,to=r.range?p.barOf(r.range.end-.001):p.barCount-1;for(let b=from;b<=to;b++){const c=el('span');const n=m[b]||0;c.dataset.heat=n===0?0:n===1?1:n<=3?2:3;c.title=`Bar ${b+1}: ${n} mistake${n===1?'':'s'}`;sHeat.append(c);}
-  sActs.replaceChildren();const spots=K.troubleSpots(1);if(spots.length){const s=spots[0];const b=button(s.from===s.to?`Loop bar ${s.from+1}`:`Loop bars ${s.from+1}–${s.to+1}`,{icon:'loop',cls:'sg-primary'});b.onclick=()=>{sum.close();p.loopBars(s.from,s.to);};sActs.append(b);}
-  const again=button('Again',{icon:'restart',cls:spots.length?'sg-secondary':'sg-primary'});again.onclick=()=>{sum.close();p.restart();p.start(r.kind==='play'?'play':'wait');};const close=button('Close',{cls:'sg-secondary'});close.onclick=()=>sum.close();sActs.append(again);if(window.PianoSocial&&r.kind!=='listen'){const share=button('Share',{icon:'share',cls:'sg-secondary'});share.title='Post this result to the community';share.onclick=()=>{sum.close();window.PianoSocial.shareResult(r);};sActs.append(share);}sActs.append(close);sum.showModal();sActs.querySelector('button')?.focus();}
+  renderStage(r);
+  // Fix bar N: the bar that collected the most mistakes in this run becomes the first thing to do.
+  sActs.replaceChildren();const worst=Object.entries(r.barMistakes||{}).sort((a,b)=>b[1]-a[1]||a[0]-b[0])[0];if(worst){const bar=Number(worst[0]);const b=button(`Fix bar ${bar+1}`,{icon:'loop',cls:'sg-primary'});b.title=`Loop bar ${bar+1} and the move into the next, in Wait mode and 20% slower, until you play it clean three times in a row`;b.onclick=()=>{sum.close();p.fixBar(bar);};sActs.append(b);}
+  const again=button('Again',{icon:'restart',cls:worst?'sg-secondary':'sg-primary'});again.onclick=()=>{sum.close();p.restart();p.start(r.kind==='play'?'play':'wait');};const close=button('Close',{cls:'sg-secondary'});close.onclick=()=>sum.close();sActs.append(again);if(window.PianoSocial&&r.kind!=='listen'){const share=button('Share',{icon:'share',cls:'sg-secondary'});share.title='Post this result to the community';share.onclick=()=>{sum.close();window.PianoSocial.shareResult(r);};sActs.append(share);}sActs.append(close);sum.showModal();sActs.querySelector('button')?.focus();}
  p.on('load',()=>fitRange(parts.keyboard));fitRange(parts.keyboard);for(const t of ['state','load','tempo'])p.on(t,sync);let q=false;p.on('tick',()=>{if(q)return;q=true;requestAnimationFrame(()=>{q=false;liveSync();});});p.on('load',()=>{streak=0;runN.textContent='0';});
+ // The piece's stage and the exact next requirement, under the scores.
+ function renderStage(r){sStage.replaceChildren();const P=window.PianoProgress;if(!P||!p.score?.id||r.kind==='listen')return;const d=P.detail(p.score.id,p),g=r.progress;
+  const head=el('p',undefined,'sg-sum-stage-head');if(g?.promoted){head.append(el('strong','New stage: '+d.label),document.createTextNode(' · '+d.meaning));sStage.dataset.promoted='1';}else{head.append(el('strong',d.label),document.createTextNode(' · '+d.meaning));delete sStage.dataset.promoted;}
+  sStage.append(head,el('p','Next: '+d.next,'sg-sum-stage-next'));}
+ p.on('fix',f=>{if(f.done){lastResult=null;toastNow(`Bar ${f.bar+1} fixed: three clean passes in a row`);}else if(f.clean)toastNow(`Bar ${f.bar+1} · ${f.clean} of 3 clean`);});
  // ---------- Parts ----------
- function renderParts(){if(!p.score)return;const list=partsOf(p),total=p.barCount*p.meter||1,done=readParts()[p.score.id]||{},loop=p.loop;
+ function renderParts(){if(!p.score)return;const list=partsOf(p),total=p.barCount*p.meter||1,done=readParts()[p.score.id]||{},loop=p.loop,learned=window.PianoProgress?.blocks(p.score.id,list,{hands:p.handsAvailable});
   ruler.replaceChildren(...list.map((part,i)=>{const b=el('button',undefined,'sg-part');b.type='button';b.style.flexGrow=String(part.end-part.start);b.style.flexBasis='0';
    const on=!!loop&&Math.abs(loop.start-part.start)<.001&&Math.abs(loop.end-part.end)<.001;b.setAttribute('aria-pressed',String(on));
-   const bars=(p.barOf(part.start)+1)+'–'+(p.barOf(part.end-.001)+1),got=done[part.start+'-'+part.end]||[];
+   const bars=(p.barOf(part.start)+1)+'–'+(p.barOf(part.end-.001)+1),st=learned?.[i]?.steps,got=st?STEPS.map(([k])=>k).filter(k=>k==='T'?st.T:st[k]>=3):done[part.start+'-'+part.end]||[];
    b.setAttribute('aria-label',`Part ${i+1}, bars ${bars}. ${got.length?'Passed: '+STEPS.filter(([k])=>got.includes(k)).map(([,n])=>n.toLowerCase()).join(', ')+'.':'Not passed yet.'} ${on?'Looping; tap to play the whole piece.':'Tap to loop.'}`);b.title=`Part ${i+1} · bars ${bars}`;
    const dots=el('span',undefined,'sg-part-dots');for(const[k,n]of STEPS){const d=el('span',undefined,got.includes(k)?'on':'');d.dataset.step=k;d.title=n;dots.append(d);}
    b.append(el('strong',String(i+1)),el('span',bars,'sg-part-bars'),dots);b.classList.toggle('has-progress',got.length>0);
@@ -148,7 +155,7 @@ function build(){const p=P();if(!p)return;document.body.dataset.shell='stage';co
   ruler.dataset.many=list.length>8?'1':'';}
  function toastNow(text){clearTimeout(toastTimer);toast.textContent=text;toast.classList.add('show');toastTimer=setTimeout(()=>toast.classList.remove('show'),1600);}
  p.on('result',r=>{if(r.complete===false||r.accuracy<90||!r.range||!p.score)return;const part=partsOf(p).find(x=>Math.abs(x.start-r.range.start)<.001&&Math.abs(x.end-r.range.end)<.001);if(!part)return;const all=readParts(),mine=all[p.score.id]||(all[p.score.id]={}),k=part.start+'-'+part.end,got=mine[k]||(mine[k]=[]),st=stepOf(r);if(!got.includes(st)){got.push(st);try{localStorage.setItem(PARTS_KEY,JSON.stringify(all));}catch{}renderParts();}});
- for(const t of ['load','state'])p.on(t,renderParts);
+ for(const t of ['load','state','result'])p.on(t,renderParts);
 
  // ---------- Swipe the music to move bar by bar ----------
  // Horizontal: drag left to go forward. On the falling notes, dragging down also goes forward.

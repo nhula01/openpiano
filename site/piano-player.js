@@ -8,7 +8,7 @@ const builtins={
  prelude:{title:'Prelude in C major',caption:'Opening broken-chord figure · one hand · 8 notes',sequence:[[60,.25],[64,.25],[67,.25],[72,.25],[76,.25],[67,.25],[72,.25],[76,.25]]}
 };
 let scoreView=null,timedMatcher=null,run=null,transportFrame,transportBeat=null,liveVoices=new Map();
-let loop=null,loopRepeat=true,accompany=true,clickOn=false,speed={on:false,step:4,target:0},otherEvents=[],accompanyNodes=[],barMistakes={},mistakeScore=null,results=[],lastKind='wait',shortcutsOn=true,deferred=new Set();
+let loop=null,loopRepeat=true,accompany=true,clickOn=false,speed={on:false,step:4,target:0},otherEvents=[],accompanyNodes=[],barMistakes={},mistakeMark={},fix=null,mistakeScore=null,results=[],lastKind='wait',shortcutsOn=true,deferred=new Set();
 const listeners={};function emit(type,detail){for(const f of listeners[type]||[])try{f(detail);}catch(e){console.error(e);}}
 let hintsRight=[],hintsLeft=[],imported,score,events=[],matcher,mode=null,midiAccess,selectedInput,stream,context,analyser,raf,source,active=false,generation=0,detected=null,candidate=null,stable=0,silent=0,lastFrame=0,previewTimer,previewNodes=[];
 const root=$('#note-trainer');root.append(el('p','PLAY THE NOTES / LIVE PRACTICE','eyebrow'),el('h2','Read it. Play it. Move forward.'));
@@ -48,10 +48,10 @@ function meter(){return score?.beatsPerMeasure||4;}
 function barOf(beat){return Math.max(0,Math.floor((beat+1e-6)/meter()));}
 function tempoNow(){return Math.max(30,Math.min(200,Number(practiceTempo.value)||60));}
 function configureSections(){section.replaceChildren();const full=el('option','Full piece / all repeats');full.value='full';section.append(full);for(const part of score.sections||[]){const o=el('option',part.title+(score.id==='entertainer'?` · performed measures ${part.start/2+1}–${part.end/2}`:''));o.value=part.id;section.append(o);}sectionLabel.hidden=!score.sections;}
-function load(s,newSelection=false){stop();if(newSelection)loop=null;movingStart.disabled=preview.disabled=false;score=s;if(scoreView){scoreView.setScore(s);for(const option of practiceType.options)if(['scroll','guide'].includes(option.value))option.disabled=!scoreView.available;if(!scoreView.available)practiceType.value='sheet';scoreView.setMode(practiceType.value==='guide'?'scroll':practiceType.value);movingStart.hidden=practiceType.value!=='scroll';previousPage.hidden=nextPage.hidden=practiceType.value!=='sheet';}transportBeat=null;timedMatcher=null;if(newSelection||!section.options.length)configureSections();
+function load(s,newSelection=false){stop();if(newSelection){loop=null;fix=null;}movingStart.disabled=preview.disabled=false;score=s;if(scoreView){scoreView.setScore(s);for(const option of practiceType.options)if(['scroll','guide'].includes(option.value))option.disabled=!scoreView.available;if(!scoreView.available)practiceType.value='sheet';scoreView.setMode(practiceType.value==='guide'?'scroll':practiceType.value);movingStart.hidden=practiceType.value!=='scroll';previousPage.hidden=nextPage.hidden=practiceType.value!=='sheet';}transportBeat=null;timedMatcher=null;if(newSelection||!section.options.length)configureSections();
  const hasHands=s.notes.some(n=>n.hand);hands.disabled=!hasHands;hands.value=voice.value.startsWith('left')||voice.value==='bass'?'LH':voice.value.startsWith('right')||voice.value==='melody'?'RH':'BH';for(const option of voice.options)option.disabled=/^(right|left)/.test(option.value)&&!hasHands;if(!hasHands&&/^(right|left)/.test(voice.value))voice.value='melody';
  const part=currentPart();const selected=part?s.notes.filter(n=>n.beat>=part.start&&n.beat<part.end):s.notes;events=E.groups(selected,voice.value);if(!events.length){if(loop){loop=null;load(s);return;}setFeedback('No notes in this part. Choose another part.');return;}
- const own=voice.value.startsWith('right')?'right':voice.value.startsWith('left')?'left':null;otherEvents=own?E.groups(selected.filter(n=>n.hand&&n.hand!==own),'all'):[];if(mistakeScore!==s.id){mistakeScore=s.id;barMistakes={};results=[];}
+ const own=voice.value.startsWith('right')?'right':voice.value.startsWith('left')?'left':null;otherEvents=own?E.groups(selected.filter(n=>n.hand&&n.hand!==own),'all'):[];if(mistakeScore!==s.id){mistakeScore=s.id;barMistakes={};mistakeMark={};results=[];}
  const source=window.PianoFingering?.[s.id];hintsRight=E.editorialFingering(events,'right',source,s.sections);hintsLeft=E.editorialFingering(events,'left',source,s.sections);
  caption.textContent=s.title+' · '+s.caption+(part?' · '+part.title:'')+' · '+events.length+' note groups'+(s.pdf?' · practice notation (see original PDF for full engraving)':'');
  provenance.replaceChildren();if(!s.pdf&&s.sourceFile&&!s.imported){const xml=el('a','Download the MusicXML');xml.href=s.sourceFile;xml.download=s.id+'.mxl';const midi=el('a','Download matching MIDI');midi.href=s.midi;midi.download=s.id+'.midi';const credit=el('a',s.attribution);credit.href=s.sourceURL;credit.target='_blank';credit.rel='noopener';provenance.append(xml,midi,credit);}if(s.pdf){const link=el('a','Open complete sheet music ↗');link.href=s.pdf;link.target='_blank';link.rel='noopener';provenance.append(link);const midi=el('a','Download matching MIDI');midi.href=s.midi;midi.download=s.id+'.midi';provenance.append(midi);const credit=el('a',s.attribution);credit.href=s.sourceURL;credit.target='_blank';credit.rel='noopener';provenance.append(credit);if(s.id==='entertainer')provenance.append(el('p','Original 1902 score. Practice follows the matching MIDI with repeats unfolded; the second B pass follows the MIDI rather than adding the printed “Repeat 8va” octave shift. Full chords require MIDI; microphone parts reduce each hand to one note at each onset.','muted'));}
@@ -163,7 +163,7 @@ async function begin(timed=false){
  if(inputChoice.value==='microphone'){
   if($('#metronome').textContent==='Stop metronome')$('#metronome').click();
  }
- startButton.disabled=true;
+ startButton.disabled=true;mistakeMark={...barMistakes};
  lastKind=timed?'play':'wait';
  try{await (inputChoice.value==='MIDI'?midiButton.onclick():inputChoice.value==='keys'?keysStart():micButton.onclick());
   if(active){if(timed)startClock('practice');else if(context)startGuided();}
@@ -187,19 +187,39 @@ function schedule(kind,first,bpm){if(!run||!context)return;const horizon=context
  while(run.otherIndex<otherEvents.length&&timeOf(otherEvents[run.otherIndex].beat)<horizon){const e=otherEvents[run.otherIndex++];if(!sound||e.beat>=run.end||timeOf(e.beat)<context.currentTime-.05)continue;for(const n of e.notes){const m=e.members.find(x=>x.midi===n);try{track(window.PianoGrand.play(context,n,Math.max(context.currentTime,timeOf(e.beat)),(m?.duration??e.duration)*60/bpm,kind==='demo'?80:68));}catch{}}}
  // The click never sounds with the microphone, which would hear it.
  if(clickOn&&mode!=='microphone'){while(run.nextClick<run.end-.001&&timeOf(run.nextClick)<horizon){const b=run.nextClick++;if(timeOf(b)<context.currentTime-.02)continue;clickAt(timeOf(b),((b%meter())+meter())%meter()<.001);}}else while(run.nextClick<run.end&&timeOf(run.nextClick)<horizon)run.nextClick++;}
-function recordResult(r){const part=currentPart();const entry={...r,time:Date.now(),bpm:tempoNow(),hands:hands.value,input:mode||inputChoice.value,loop:!!loop,range:part?{start:part.start,end:part.end,title:part.title}:null,score:score?.id,title:score?.title};results.push(entry);if(results.length>200)results.shift();const log=readLog(),p=log.pieces[score.id]||(log.pieces[score.id]={seconds:0,attempts:0,best:0});p.attempts++;p.best=Math.max(p.best||0,r.accuracy||0);p.last=Date.now();p.title=score.title;writeLog();emit('result',entry);return entry;}
+// A result entry for every finished run or loop. barMistakes counts mistakes per bar for the whole
+// session; the entry carries only this attempt's, the difference since the run started or the last result.
+function attemptMistakes(){const out={};for(const [bar,n] of Object.entries(barMistakes)){const d=n-(mistakeMark[bar]||0);if(d>0)out[bar]=d;}mistakeMark={...barMistakes};return out;}
+function recordResult(r){const part=currentPart();const entry={...r,time:Date.now(),bpm:tempoNow(),target:api.targetTempo,hands:hands.value,input:mode||inputChoice.value,loop:!!loop,range:part?{start:part.start,end:part.end,title:part.title}:null,score:score?.id,title:score?.title,barMistakes:attemptMistakes()};results.push(entry);if(results.length>200)results.shift();const log=readLog(),p=log.pieces[score.id]||(log.pieces[score.id]={seconds:0,attempts:0,best:0});p.attempts++;p.best=Math.max(p.best||0,r.accuracy||0);p.last=Date.now();p.title=score.title;writeLog();const progress=window.PianoProgress?.record(entry);if(progress)entry.progress=progress;emit('result',entry);return entry;}
 function recordTimed(){const r=timedMatcher.result();timedMatcher.states.forEach((state,i)=>{if(state==='missed')addMistake(timedMatcher.events[i].beat);});recordResult({kind:'play',accuracy:r.accuracy,timing:r.timing,early:r.early,late:r.late,correct:r.hit,wrong:r.errors,missed:r.missed,total:r.total,complete:startIndex===0});return r;}
 // Timing score for Follow me: the mean over the groups played so far (null without a moving line).
 function guidedTiming(){const o=run?.kind==='guide'?run.offsets||[]:[];return o.length?Math.round(o.reduce((a,x)=>a+E.timingScore(x,E.timingWindow(tempoNow())),0)/o.length):null;}
-function speedUp(accuracy){if(!speed.on||accuracy<90)return;const now=tempoNow(),target=speed.target||now;if(now>=target)return;const next=Math.min(target,now+speed.step);practiceTempo.value=String(next);const t=$('#tempo');if(t)t.value=String(next);emit('tempo',next);setFeedback(`Clean loop · tempo up to ${next} BPM.`);}
-function loopAgainWait(accuracy){const n=loopsOfThisRange();speedUp(accuracy);matcher=newMatcher();startIndex=0;if(run?.kind==='guide'&&context){run.offsets=[];run.groupOffset=null;run.reachedIndex=null;run.clock=new E.GuidedClock(events,tempoNow(),events[0].beat,context.currentTime);transportBeat=events[0].beat;}else transportBeat=null;viewPage=null;renderScore();setFeedback(`Loop ${n} · ${accuracy}%${speed.on&&accuracy>=90?' · '+tempoNow()+' BPM':''}. Again from bar ${barOf(events[0].beat)+1}: ${events[0].notes.map(E.noteName).join(' + ')}.`);emit('state');}
+// Tempo staircase, after each loop: +5% at 95% notes or better with 80% timing or better (timing only
+// counts when there was a moving line), hold at 85–95%, −10% after two loops in a row below 85%.
+// Never above the target (the marked tempo) or below 30 BPM. Off while fixing a bar.
+function staircase(accuracy,timing){if(!speed.on||fix)return;const now=tempoNow(),cap=Math.max(30,Math.min(200,speed.target||api.targetTempo||200));let next=now;
+ if(accuracy>=95&&(timing==null||timing>=80)){speed.low=0;if(now<cap)next=Math.min(cap,Math.max(now+1,Math.round(now*1.05)));}
+ else if(accuracy<85){speed.low=(speed.low||0)+1;if(speed.low>=2){speed.low=0;next=Math.max(30,Math.round(now*.9));}}
+ else speed.low=0;
+ if(next===now)return;practiceTempo.value=String(next);const t=$('#tempo');if(t)t.value=String(next);emit('tempo',next);}
+// Fix bar N: loop the bar and the first beat of the next in Wait mode, 20% slower, until three clean
+// passes (100%) in a row; then the previous tempo and loop come back.
+function fixBar(bar){if(!score)return null;const m=meter(),last=api.barCount-1;bar=Math.max(0,Math.min(last,Math.floor(bar)||0));const restore={tempo:tempoNow(),loop:loop?{...loop}:null};
+ api.setLoop(bar*m,(bar+1)*m+(bar<last?Math.min(1,m):0));if(!loop)return null;loopRepeat=true;practiceTempo.value=String(Math.max(30,Math.round(restore.tempo*.8)));const t=$('#tempo');if(t)t.value=practiceTempo.value;emit('tempo',tempoNow());
+ fix={bar,clean:0,restore};setFeedback(`Fixing bar ${bar+1} at ${tempoNow()} BPM: three clean passes in a row, then back to the piece.`);emit('fix',{bar,clean:0,done:false});emit('state');return api.start('wait');}
+function fixPass(accuracy){fix.clean=accuracy>=100?fix.clean+1:0;const f=fix;emit('fix',{bar:f.bar,clean:f.clean,done:f.clean>=3});if(f.clean<3)return false;
+ fix=null;stop();loop=f.restore.loop;practiceTempo.value=String(f.restore.tempo);const t=$('#tempo');if(t)t.value=practiceTempo.value;load(score);emit('tempo',tempoNow());
+ setFeedback(`Bar ${f.bar+1} is fixed: three clean passes in a row. Back to ${f.restore.loop?currentPart().title:'the whole piece'} at ${f.restore.tempo} BPM.`);return true;}
+function loopAgainWait(accuracy){if(fix&&fixPass(accuracy))return;const n=loopsOfThisRange();staircase(accuracy,guidedTiming());matcher=newMatcher();startIndex=0;if(run?.kind==='guide'&&context){run.offsets=[];run.groupOffset=null;run.reachedIndex=null;run.clock=new E.GuidedClock(events,tempoNow(),events[0].beat,context.currentTime);transportBeat=events[0].beat;}else transportBeat=null;viewPage=null;renderScore();setFeedback(`${fix?`Fixing bar ${fix.bar+1} · ${fix.clean} of 3 clean · `:`Loop ${n} · `}${accuracy}%${speed.on||fix?' · '+tempoNow()+' BPM':''}. Again from bar ${barOf(events[0].beat)+1}: ${events[0].notes.map(E.noteName).join(' + ')}.`);emit('state');}
 function loopsOfThisRange(){return results.filter(r=>r.loop&&r.score===score.id&&r.range?.start===loop?.start&&r.range?.end===loop?.end).length;}
-function loopAgainTimed(next){const r=recordTimed();speedUp(r.accuracy);timedMatcher=null;transportBeat=null;matcher=newMatcher();startIndex=0;startClock('practice',false,next);setFeedback(`Loop ${loopsOfThisRange()} · ${r.accuracy}% · now ${tempoNow()} BPM. Keep going.`);}
+function loopAgainTimed(next){const r=recordTimed();staircase(r.accuracy,r.timing);timedMatcher=null;transportBeat=null;matcher=newMatcher();startIndex=0;startClock('practice',false,next);setFeedback(`Loop ${loopsOfThisRange()} · ${r.accuracy}% · now ${tempoNow()} BPM. Keep going.`);}
 
 // Practice log: minutes per day and per piece; attempts and best accuracy. Stays in this browser.
 const LOG_KEY='openpiano-practice-log-v1';let logCache=null;
 function readLog(){if(logCache)return logCache;try{logCache=JSON.parse(localStorage.getItem(LOG_KEY))||{};}catch{logCache={};}logCache.days=logCache.days||{};logCache.pieces=logCache.pieces||{};return logCache;}
-function writeLog(){try{localStorage.setItem(LOG_KEY,JSON.stringify(readLog()));}catch{}}
+// Writes keep the larger number of anything already stored (the account sync may have merged in
+// another device's minutes since this page read the log), so an old copy never overwrites a newer one.
+function writeLog(){const log=readLog();try{const stored=JSON.parse(localStorage.getItem(LOG_KEY))||{};for(const [d,n] of Object.entries(stored.days||{}))if(typeof n==='number')log.days[d]=Math.max(log.days[d]||0,n);for(const [id,q] of Object.entries(stored.pieces||{})){const p=log.pieces[id]||(log.pieces[id]={});for(const [k,v] of Object.entries(q||{}))p[k]=typeof v==='number'?Math.max(typeof p[k]==='number'?p[k]:0,v):p[k]??v;}localStorage.setItem(LOG_KEY,JSON.stringify(log));}catch{}}
 window.addEventListener('pagehide',writeLog);window.addEventListener('storage',e=>{if(e.key===LOG_KEY)logCache=null;});document.addEventListener('visibilitychange',()=>{if(document.hidden)writeLog();});
 function today(d=new Date()){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 if(typeof setInterval!=='undefined'){let ticks=0;setInterval(()=>{if(!(active||run)||document.hidden||!score)return;const log=readLog(),day=today();log.days[day]=(log.days[day]||0)+1;const p=log.pieces[score.id]||(log.pieces[score.id]={seconds:0,attempts:0,best:0});p.seconds++;p.last=Date.now();p.title=score.title;if(++ticks%5===0)writeLog();emit('time',log.days[day]);},1000);}
@@ -238,7 +258,7 @@ const api={
  get state(){return run?(run.kind==='demo'?'listen':run.kind==='practice'?'play':'wait'):active?'wait':'idle';},get connecting(){return startButton.disabled;},
  get mode(){return mode;},get input(){return inputChoice.value;},get hands(){return hands.value;},get handsAvailable(){return !hands.disabled;},get tempo(){return tempoNow();},get type(){return practiceType.value;},
  get loop(){return loop?{...loop,title:currentPart().title}:null;},get part(){return currentPart();},get sections(){return score?.sections||[];},get section(){return section.value;},
- get accompany(){return accompany;},get click(){return clickOn;},get speedTrainer(){return {...speed};},get fingering(){return fingers.checked&&!fingers.disabled;},get fingeringAvailable(){return !fingers.disabled;},
+ get accompany(){return accompany;},get click(){return clickOn;},get speedTrainer(){return {...speed};},get fixing(){return fix?{bar:fix.bar,clean:fix.clean}:null;},get targetTempo(){return score?window.PianoProgress?.markedTempo(score.id)??(score.tempo||window.PianoTempos?.[score.id]||null):null;},fixBar,get fingering(){return fingers.checked&&!fingers.disabled;},get fingeringAvailable(){return !fingers.disabled;},
  get mistakes(){return {...barMistakes};},get results(){return results.slice();},get feedback(){return feedback.textContent;},get lastKind(){return lastKind;},
  get meter(){return meter();},barOf,get totalBeats(){return score?.totalBeats??Math.max(0,...(score?.notes||[]).map(n=>n.beat+n.duration));},get barCount(){return Math.max(1,Math.ceil(api.totalBeats/meter()));},
  get stats(){if(timedMatcher){const r=timedMatcher.result();return {done:r.hit+r.missed,total:r.total,errors:r.errors,accuracy:r.accuracy,timing:r.timing,timed:true};}const total=events.length-startIndex,done=(matcher?.index??0)-startIndex;return {done,total,errors:matcher?.errors??0,accuracy:done?Math.floor(100*done/Math.max(1,done+matcher.errors)):null,timing:guidedTiming(),timed:false};},
@@ -249,10 +269,10 @@ const api={
  restart(){retry.onclick();},
  seek(beat){seekToBeat(beat);},seekBars,
  select(id){window.dispatchEvent(new CustomEvent('piano-select-score',{detail:id}));},
- setLoop(start,end){if(!score)return;stop();loop=end>start?{start,end}:null;load(score);},
+ setLoop(start,end){if(!score)return;stop();fix=null;loop=end>start?{start,end}:null;load(score);},
  loopBars(a,b){const lo=Math.min(a,b),hi=Math.max(a,b);api.setLoop(lo*meter(),(hi+1)*meter());},
- clearLoop(){loop=null;if(score)load(score);},
- setSection(id){if(!score)return;loop=null;section.value=id;load(score);},
+ clearLoop(){loop=null;fix=null;if(score)load(score);},
+ setSection(id){if(!score)return;loop=null;fix=null;section.value=id;load(score);},
  setRepeat(v){loopRepeat=!!v;},
  setTempo(bpm){bpm=Math.max(30,Math.min(200,Math.round(Number(bpm)||60)));practiceTempo.value=String(bpm);const t=$('#tempo');if(t)t.value=String(bpm);if(run?.kind==='guide')run.clock.bpm=bpm;else if(run?.kind==='demo'){const at=transportBeat;stop();if(at!=null){transportBeat=at;}preview.onclick();}else if(run?.kind==='practice')setFeedback(`Tempo ${bpm} BPM from the next start or loop.`);emit('tempo',bpm);emit('state');},
  setHands(h){if(!score||hands.disabled||hands.value===h)return;hands.value=h;hands.onchange();emit('state');},
@@ -267,7 +287,7 @@ const api={
  setMarks(marks){scoreView?.setAddonMarks?.(marks);},
  setAnnotate(on){if(scoreBox?.dataset)scoreBox.dataset.annotate=on?'1':'';emit('state');},get annotating(){return scoreBox?.dataset?.annotate==='1';},
  setClick(v){clickOn=!!v;if(run&&context){const first=run.first;run.nextClick=Math.ceil(transportBeat??first);}emit('state');},
- setSpeedTrainer(o){speed={...speed,...o};emit('state');},
+ setSpeedTrainer(o){speed={...speed,...o,low:0};emit('state');},
  noteOn(m,v){return virtualNote(m,true,v);},noteOff(m){return virtualNote(m,false);},
  pages:{prev:()=>previousPage.onclick(),next:()=>nextPage.onclick(),get status(){return pageStatus.textContent;},get hasPrev(){return !previousPage.disabled&&!previousPage.hidden;},get hasNext(){return !nextPage.disabled&&!nextPage.hidden;}},
  elements:{root,score:scoreBox,keyboard:scoreView?.keyboard,original:scoreView?.details,provenance,fingeringNote,device:deviceLabel,monitor:monitorLabel,soundCredit,section:sectionLabel}

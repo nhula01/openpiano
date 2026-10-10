@@ -706,3 +706,39 @@ html.se-open,html.se-open body{overflow:hidden}
 .today-start{display:flex;align-items:center;gap:10px;margin:12px 0 0;font-size:13px}
 .today-start select{width:auto;margin:0;padding:6px 32px 6px 10px}
 @media(max-width:600px){.today-item{flex-direction:column;align-items:stretch}.today-start{flex-direction:column;align-items:stretch}}
+
+/* ---------- Stages, Fix bar and Your practice (piano-progress.js; roadmap phases 2–4 and 10) ---------- */
+.stage-tag{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:999px;font:700 11px/1 var(--body);letter-spacing:.02em;text-transform:none;background:var(--bg);color:var(--ink);border:1px solid var(--line-strong);white-space:nowrap}
+.stage-tag.stage-learning{background:var(--brass-soft);border-color:#ecd19c}
+.stage-tag.stage-secure{background:#e4f1e8;border-color:#b9d9c3;color:#1f5a35}
+.stage-tag.stage-fluent{background:#e3ecf8;border-color:#b8cdea;color:#1d4a85}
+.stage-tag.stage-performance{background:var(--felt);border-color:var(--felt);color:#fff}
+.today-kind .stage-tag{margin-left:8px;vertical-align:1px}
+.stage-tag.on-art{position:absolute;left:10px;bottom:10px;height:24px;font-size:12px;box-shadow:0 1px 3px rgb(0 0 0 / .18)}
+.stage-line{display:flex;gap:8px;align-items:baseline;margin:-6px 0 14px;font-size:14px;line-height:1.5;color:var(--muted)}
+.stage-line .stage-tag{flex:none}
+.link-button,.link-button:hover{background:none;border-color:transparent;color:var(--muted);font-weight:700;font-size:14px;padding:9px 6px;text-decoration:underline;text-underline-offset:3px}
+.link-button:hover{color:var(--ink)}
+.up-next .my-practice{grid-column:1/-1;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.my-practice summary{cursor:pointer;font:700 18px/1.3 var(--display);padding:4px 0}
+.practice-stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:10px 0 12px}
+.practice-stats>div{padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);display:flex;flex-direction:column-reverse;justify-content:flex-end;gap:2px}
+.practice-stats dt{font-size:12px;line-height:1.3;color:var(--muted)}
+.practice-stats dd{margin:0;font:700 22px/1.1 var(--display);font-variant-numeric:tabular-nums}
+.week-goal{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.week-days{display:flex;gap:5px}
+.week-days span{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;font:700 11px/1 var(--body);background:var(--bg);color:var(--muted);border:1px solid var(--line)}
+.week-days span.on{background:var(--felt);border-color:var(--felt);color:#fff}
+.week-days span.later{opacity:.5}
+.week-days span.is-today{box-shadow:0 0 0 2px var(--brass)}
+.week-label{display:flex;align-items:center;gap:6px;margin:0;font-weight:400;font-size:14px}
+.week-label select{width:auto;margin:0;padding:5px 30px 5px 10px}
+.my-practice>.muted{margin:10px 0 0}
+@media(max-width:700px){.practice-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.practice-stats>div:last-child{grid-column:1/-1}}
+/* results sheet on the practice stage */
+.sg-sum-stage{margin:0 0 16px;padding:12px 14px;border-radius:12px;background:var(--sg-raised,#2d3142);text-align:left;font-size:14px;line-height:1.5}
+.sg-sum-stage:empty{display:none}
+.sg-sum-stage p{margin:0}
+.sg-sum-stage-head strong{color:var(--sg-lamp,#f0b35a)}
+.sg-sum-stage[data-promoted] .sg-sum-stage-head strong{font-size:16px}
+.sg-sum-stage-next{color:var(--sg-muted,#9a9fb2);margin-top:4px!important}
