@@ -53,10 +53,16 @@ class TimedMatcher {
   const timing=hits.length?Math.round(hits.reduce((a,o)=>a+timingScore(o,this.window),0)/hits.length):null,early=hits.filter(o=>o<-.08).length,late=hits.filter(o=>o>.08).length;
   return {hit,missed,total,errors:this.errors,accuracy:Math.floor(100*hit/(total+this.errors)),timing,early,late,complete:hit+missed===total};}
 }
-// A guided clock can reach the next unplayed onset, but can never pass it.
+// The line of Wait mode: it moves at the tempo like Listen, reaches the next unplayed note and
+// waits there until it is played (it can never pass it). A note played before the line reached
+// it counts, and the line glides up to it four times as fast instead of jumping.
 class GuidedClock {
- constructor(events,bpm,first,now=0){this.events=events;this.bpm=bpm;this.beat=first;this.last=now;}
- advance(now,index){const elapsed=Math.max(0,now-this.last);this.last=now;const target=this.events[index]?.beat??this.beat;this.beat=Math.min(target,this.beat+elapsed*this.bpm/60);return this.beat;}
+ constructor(events,bpm,first,now=0){this.events=events;this.bpm=bpm;this.beat=first;this.last=now;this.catchUp=4;}
+ advance(now,index){
+  let elapsed=Math.max(0,now-this.last);this.last=now;const rate=this.bpm/60,target=this.events[index]?.beat??this.beat;
+  const played=index>0?this.events[index-1]?.beat??this.beat:this.beat;
+  if(this.beat<played){const fast=rate*this.catchUp,need=(played-this.beat)/fast;if(elapsed<=need){this.beat+=elapsed*fast;elapsed=0;}else{this.beat=played;elapsed-=need;}}
+  if(this.beat<target)this.beat=Math.min(target,this.beat+elapsed*rate);return this.beat;}
 }
 const api={noteName,pitch,parseMidi,groups,editorialFingering,isGrace,Matcher,TimedMatcher,GuidedClock,timingScore,timingWindow};if(typeof module!=='undefined')module.exports=api;else root.PianoEngine=api;
 })(typeof window!=='undefined'?window:globalThis);

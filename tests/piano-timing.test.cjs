@@ -17,12 +17,19 @@ test('in-time practice reports accuracy and timing, and slightly late playing st
  for(let t=0;t<9;t+=.02){ui.setTime(+t.toFixed(3));while(h<hits.length&&hits[h].t<=t+1e-9){ui.note(hits[h].n,true);ui.note(hits[h].n,false);h++;}ui.tick();}
  const r=ui.api.results[0];assert.equal(r.accuracy,100,'all four count');assert.ok(r.timing<100&&r.timing>50,`timing ${r.timing}`);assert.equal(r.late,2);
 });
-test('Follow me lets a note played just before the line count and keeps a timing score',async()=>{
- const ui=setup();ui.api.setTempo(60);ui.api.setType('guide');ui.api.loopBars(0,0);ui.api.setInput('MIDI');await ui.api.start('wait');
- ui.setTime(0);ui.tick();
- ui.setTime(.1);ui.tick();ui.note(64,true);ui.note(64,false);assert.equal(ui.api.index,1,'first note, on the line');
- ui.setTime(.5);ui.tick();ui.note(64,true);ui.note(64,false);assert.equal(ui.api.index,1,'half a second early is too early');assert.match(ui.feedback(),/A little early/);
- ui.setTime(.85);ui.tick();ui.note(64,true);ui.note(64,false);assert.equal(ui.api.index,2,'0.25 s before the line counts');
- ui.setTime(2.3);ui.tick();ui.note(65,true);ui.note(65,false);assert.equal(ui.api.index,3,'late: the line waited');
- const t=ui.api.stats.timing;assert.equal(t,Math.round((E.timingScore(.1,.35)+E.timingScore(-.25,.35)+E.timingScore(.2,.35))/3),`timing ${t}`);
+test('Wait mode moves the line at the tempo like Listen, stops at a note until it is played, and never jumps',async()=>{
+ const ui=setup();ui.api.setTempo(60);ui.api.loopBars(0,0);ui.api.setInput('MIDI');await ui.api.start('wait'); // the normal page view
+ const at=t=>{ui.setTime(t);ui.tick();return ui.api.position;};
+ assert.equal(at(0),0,'the line waits at the first note');
+ ui.setTime(.1);ui.note(64,true);ui.note(64,false);assert.equal(ui.api.index,1,'first note, on the line');
+ assert.ok(Math.abs(at(.6)-.5)<1e-9,'then it moves at the tempo');
+ assert.equal(at(1.5),1,'and stops at the next note, which has not been played');
+ assert.equal(at(2.5),1,'it keeps waiting there');
+ ui.note(64,true);ui.note(64,false);assert.equal(ui.api.index,2,'played late: counted');
+ assert.ok(Math.abs(at(2.75)-1.25)<1e-9,'it moves on from the note, at the tempo, without a jump');
+ ui.note(65,true);ui.note(65,false);assert.equal(ui.api.index,3,'a note played before the line reached it counts');
+ const p=at(2.85);assert.ok(p>1.3&&p<2,`the line glides up to it (at ${p}), it does not jump`);
+ assert.ok(Math.abs(at(3.2)-(2+(3.2-2.75-.75/4)))<1e-9,'then it is back at the tempo');
+ assert.equal(ui.api.state,'wait');
+ const t=ui.api.stats.timing;assert.equal(t,Math.round((E.timingScore(.1,.35)+E.timingScore(1.5,.35)+E.timingScore(-.75,.35))/3),`timing ${t}`);
 });

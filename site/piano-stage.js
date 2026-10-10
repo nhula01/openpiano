@@ -68,7 +68,7 @@ function build(){const p=P();if(!p)return;document.body.dataset.shell='stage';co
  // Floating transport
  const deck=el('div',undefined,'sg-deck');deck.setAttribute('role','toolbar');deck.setAttribute('aria-label','Practice controls');
  let mode='wait';const modes=segmented('How to practise',[['wait','Wait'],['play','In time'],['listen','Listen']],v=>{mode=v;if(p.state!=='idle')p.pause();sync();},'sg-seg');
- modes.buttons[0].title='The music waits on each note until you play it';modes.buttons[1].title='The music keeps moving; notes count if you play them on time';modes.buttons[2].title='Hear the grand piano play';
+ modes.buttons[0].title='The line moves at your tempo, like Listen, and stops at a note until you play it right';modes.buttons[1].title='The music keeps moving; notes count if you play them on time';modes.buttons[2].title='Hear the grand piano play';
  const back=button('Back to start',{icon:'restart',cls:'sg-icon',iconOnly:true,title:'Back to start ( R )'});back.onclick=()=>p.restart();
  const prevBar=button('Previous bar',{icon:'prev',cls:'sg-icon',iconOnly:true,title:'Previous bar ( ← )'});prevBar.onclick=()=>p.seekBars(-1);const nextBar=button('Next bar',{icon:'next',cls:'sg-icon',iconOnly:true,title:'Next bar ( → )'});nextBar.onclick=()=>p.seekBars(1);
  const go=el('button',undefined,'sg-go');go.type='button';go.onclick=()=>{if(p.state==='idle')p.start(mode);else p.pause();};
