@@ -197,7 +197,7 @@ function todayPanel(plan) {
   box.append(head);
   const list = el('ol', undefined, 'today-list'), LABEL = { warmup: 'Warm up', piece: 'Your piece', reading: 'Read something new', review: 'Play again, cold', chords: 'Play by chords' };
   for (const it of window.PianoChords?.planItems ? window.PianoChords.planItems(plan) : plan.items) {
-    const li = el('li', undefined, 'today-item today-' + it.kind), text = el('div');
+    const li = el('li', undefined, 'today-item today-' + it.kind + (it.done ? ' today-done' : '')), text = el('div');
     const kind = el('span', LABEL[it.kind] || it.kind, 'today-kind'); if (it.stage && it.stage !== 'new') kind.append(el('span', window.PianoProgress?.LABEL[it.stage] || it.stage, 'stage-tag stage-' + it.stage));
     text.append(kind, el('strong', it.title), el('span', it.note, 'today-note'));
     const b = el('button', it.label || (it.kind === 'reading' ? 'Read' : 'Play'), 'secondary small'); b.type = 'button';

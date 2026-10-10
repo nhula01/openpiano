@@ -106,7 +106,10 @@ function today() {
   for (const r of reviews(next.id)) items.push({ kind: 'review', id: r.id, title: shortTitle(r.id), stage: r.stage, note: 'First try of the day, no warm-up: play it In time from the start.' + (r.overdueDays > 1 ? ` Due ${r.overdueDays} days ago.` : '') });
   const w = warmUp(level); if (w) items.push({ kind: 'warmup', id: w.id, title: w.title.split(' · ')[0] + ' · warm-up', note: 'Scale fragments and a cadence in today’s key: play it once in Wait mode, once In time.' });
   items.push({ kind: 'piece', id: next.id, title: shortTitle(next.id), stage: progress()?.stage(next.id), note: next.why + ' Wait mode first, then In time; fix the bars that trip you up.' });
-  const r = reading(level); if (r) items.push({ kind: 'reading', id: r.id, title: r.title, note: 'Read it once, cold: look it over for 30 seconds, then play it In time without stopping.' });
+  // Reading: the next of today's ten sight-reading pieces (piano-sightread.js); without it, a first-reading piece not seen yet
+  let daily = null; try { daily = window.PianoSightReading?.todayItem?.(level) || null; } catch (e) { console.error(e); }
+  if (daily) items.push({ kind: 'reading', ...daily });
+  else { const r = reading(level); if (r) items.push({ kind: 'reading', id: r.id, title: r.title, note: 'Read it once, cold: look it over for 30 seconds, then play it In time without stopping.' }); }
   // the "Play by chords" route adds its own item: { kind, id?, title, note, action?, label? }
   if (read(PATH_KEY).route === 'chords' && window.PianoChords?.todayItem) {
     try { const c = window.PianoChords.todayItem(level); if (c) items.push(c); } catch (e) { console.error(e); }

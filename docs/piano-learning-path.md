@@ -44,10 +44,11 @@ Everything is read from what the player already records in the browser; nothing 
      (`PianoProgress.reviewsDue()`). They come first because a cold play has no warm-up.
   2. Warm-up: a key study for the level, a different key each day (from Level 2).
   3. Up next: the piece, with its stage, Wait mode first, then In time.
-  4. Reading: `PianoReadingGen.next()` when the reading generator is loaded: an unseen generated
-     piece at the learner's reading level (the reading staircase, which starts at `READING[level]`,
-     a level behind repertoire); otherwise a built first-reading piece not opened yet, at
-     `READING[level]`. Opening a score marks it seen (`piano-score-viewed`).
+  4. Reading: the next unread piece of today's ten (`PianoSightReading.todayItem()`, see "Daily sight
+     reading" below), at the learner's reading level. Without that script, `PianoReadingGen.next()`:
+     an unseen generated piece at the reading level (the reading staircase, which starts at
+     `READING[level]`, a level behind repertoire); otherwise a built first-reading piece not opened
+     yet, at `READING[level]`. Opening a score marks it seen (`piano-score-viewed`).
   5. On the "Play by chords" route (`my-journey-piano-pathway-v2.route === 'chords'`),
      `PianoChords.todayItem(level)`: `{ kind, id?, title, note, action?, label? }`. Home renders
      `action`/`label` as the button when given.
@@ -160,6 +161,73 @@ weekly goal of practice days (a day counts with at least a minute; default 4, st
   in one sentence; "Start at Level N" sets the path's start level and the reading level, "Choose
   myself" goes back to the select. Without an input (or with "I can't play right now") it suggests
   from the answer alone, a step lower (1 or 3). Placement pieces do not move the staircase.
+
+## Daily sight reading: today's ten (`site/piano-sightread.js`)
+
+Every day each level has a set of **ten** new complete pieces, written in the browser. Everyone
+reading a level with its own ingredients gets the same ten that day (the seed is the date, the level,
+the piece number and the ingredient mix); different levels have different tens, and there are ten new
+ones every day. Pieces are original, CC0, and carry no fingering numbers.
+
+- **Ids and opening.** `sight-<date>-l<level>-<n>` (n = 1–10; a different ingredient mix adds a short
+  hash and is a set of the learner's own, remembered in `openpiano-sight-reading-v1.mixes`). A piece
+  is registered in `PianoRepertoire` as a reading piece (kind `reading`, `studyLevel`, the reading
+  `TEMPO` of piano-reading-gen.js): its notes are written the first time they are needed, its
+  engraving on first open (`entry.prepare()` → `PianoScoreImport.fromXML`), and any `sight-*` id is
+  made again when it is selected, also after a reload (this script loads before the player). Opening
+  uses the "Read something new" flow: the 30-second look-over, then In time, and the first complete
+  In-time run moves the reading staircase like any reading piece.
+- **Level.** "Follow my reading level" (the default) takes the staircase level
+  (`PianoReadingGen.level()`, whole steps); without it, the repertoire level's reading level
+  (`FOR_REPERTOIRE`: 0→0, 1→1, 2→2, 3→2, 4→3, 5→4, 6→5, 7→6). The day's level is fixed once a piece of
+  the day's set is opened, so the ten do not change halfway through the day when the staircase moves.
+  The learner can choose any level instead.
+- **Marks.** A complete run (not a loop) marks a piece read, keeping its best accuracy and whether it
+  was In time (`openpiano-sight-reading-v1.marks[<date>][<id>]`, last 60 days, this browser).
+  Today's plan offers the next unread piece ("3 of 10 read today"), and says when all ten are read.
+- **Reset** ("Reset today's ten", after a confirmation) clears the marks on today's ten and the
+  player's saved passes for them (`journey-note-passes-v1`), so the set can be read again. The reading
+  level and the day streak (`played`) are kept.
+- **Panel** (Learn → Sight-reading, above the fixed miniatures): the level, "N of 10 read today" and
+  the day streak, ten tiles (number, mark, key and meter), Read the next one, Reset, and the
+  ingredients.
+
+**The ladder.** Each level keeps everything below it and adds:
+
+| Level | Bars | Keys | Meters | New ingredients | Left hand |
+|---|---|---|---|---|---|
+| 0 First keys | 8 | C | 4/4 | quarters, halves, whole notes; steps and skips in C position; the melody passes between the hands | (melody) |
+| 1 Five-finger positions | 8 | + G, F | + 3/4 | hands together; dotted halves; skips up to a fourth | held notes, five-finger bass |
+| 2 Triads and minor keys | 8 | + A, D, E minor | + 2/4 | eighth notes, rests, dynamics, slurs and staccato; ii and vi | blocked triads |
+| 3 Inversions and 6/8 | 8 | + D, B♭; B, G minor | + 6/8 | dotted rhythms, scale runs (up to eight notes one way) | broken chords; chords in inversions by voice leading (root position at cadences) |
+| 4 Sixteenths and Alberti | 8 | + A, E♭; F♯, C minor | | sixteenths, V7, thirds and sixths in the right hand, ledger lines | Alberti, bass and chord, bass–chord jumps (oom-pah, waltz) |
+| 5 Key changes | 16 | + E, A♭; C♯, F minor | | triplets, syncopation, V/V, right-hand chords, a key change: the third phrase moves to the dominant (major) or relative major (minor) and comes back | arpeggios over an octave |
+| 6 Chromatic and stride | 16 | + B, D♭; G♯, B♭ minor | + 9/8, 12/8 | dotted eighth–sixteenth, chromatic lower neighbours, sixths and octaves in the melody | stride (low bass octave, chord in the middle) |
+| 7 Concert reading | 16 | + F♯, G♭; D♯, E♭ minor | | octaves in both hands | bass octaves, wide arpeggios |
+
+**Ingredients.** Every ingredient in the table is a switch (`FEATURES`): the learner can switch any of
+their level's off to make the music easier, or add the next level's as a challenge.
+
+**How a piece is written.** Key, meter and left-hand pattern are drawn first (newest ones more
+often), then phrases of four bars: an open phrase ending on V, a closed one ending on I (a parallel
+period, often restating the opening bars), and for 16 bars a contrasting third phrase and a return.
+One chord per bar from a small set of progressions. The melody is found by a constrained search with
+the rules of the first-reading generator in `scripts/build-piano-studies.py`: chord tones on strong
+beats and long notes; other notes approached and left by step; no augmented or diminished leaps or
+sevenths; a leap turns back; at most five moves one way (scale runs excepted); no parallel fifths or
+octaves with the bass onto a strong beat; the half cadence on a chord tone of V and the end on the
+tonic by step; the right hand above the left. Among the valid pieces the one with the smoothest line,
+a single high point, a compact range near the middle of the level's register and the fewest parallels
+is kept. Writing a piece averages under 0.1 s at Levels 0–2 and a few hundred ms at Levels 3–7 on a
+desktop; the panel fills in the ten tiles' keys one at a time so the page stays quick. The printed
+tempo mark is the piece's character; the reading run itself uses the slower reading tempo.
+
+Tests: `tests/piano-sightread.test.cjs` reads the MusicXML independently and checks every level over
+many days (full bars, the level's keys, meters and note values, accidentals exactly where needed,
+chords within an octave, hands apart at Level 0, right hand above left, a tonic ending, the level's
+new ingredients present), determinism, the ingredient switches, the set of ten (shared, per level,
+per day), re-creating a piece by id, the day's level, marks, Today, Reset and the panel, and sends one
+piece per level through the real import and Verovio.
 
 ## Levels of library pieces
 
