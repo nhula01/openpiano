@@ -181,6 +181,16 @@ def main():
 
 # ---- difficulty: order inside each level ---------------------------------------------------------
 
+def set_number(scores):
+    """Sort key for a piece's place in its printed set: the model's number, else the number in its id."""
+    def key(p):
+        n = scores[p['id']].get('setNo')
+        if n is None:
+            m = re.search(r'(?:no|anh|bwv)-(\d+)', p['id'])
+            n = int(m[1]) if m else 0
+        return (n, p['id'])
+    return key
+
 def apply_difficulty(data):
     """Set `difficulty` (0-100) and an explicit `order` on every piece from scripts/difficulty.json
     (written by scripts/difficulty.py), and sort the pieces by level, then order.
@@ -204,10 +214,10 @@ def apply_difficulty(data):
         # teaching collections: same places, printed sequence
         sets = {}
         for i, p in enumerate(scored):
-            name = scores[p['id']].get('set')
+            name = scores[p['id']].get('set') or p.get('set')  # method-book pieces carry their set
             if name: sets.setdefault(name, []).append(i)
         for places in sets.values():
-            members = sorted((scored[i] for i in places), key=lambda p: scores[p['id']]['setNo'])
+            members = sorted((scored[i] for i in places), key=set_number(scores))
             for i, p in zip(places, members): scored[i] = p
         for n, p in enumerate(authored + scored + rest, 1):
             p['order'] = n

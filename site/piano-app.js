@@ -233,7 +233,9 @@ function practicePanel() {
   const stats = el('dl', undefined, 'practice-stats');
   const stat = (value, label, hint) => { const d = el('div'); if (hint) d.title = hint; d.append(el('dt', label), el('dd', value)); stats.append(d); };
   stat(String(s.learned), 'pieces learned', 'Pieces at the Secure stage or above');
-  stat(s.readingLevel ? 'Level ' + s.readingLevel : '—', 'reading level', 'The highest first-reading level you have played through at 90% or better');
+  const rl = window.PianoReadingGen?.level?.();
+  if (rl != null) stat('Level ' + Math.floor(rl) + (rl % 1 ? '+' : ''), 'reading level', 'Your first-reading level: it goes up after a piece read cleanly at first sight and down a little after a miss');
+  else stat(s.readingLevel ? 'Level ' + s.readingLevel : '—', 'reading level', 'The highest first-reading level you have played through at 90% or better');
   stat(s.coldTiming == null ? '—' : s.coldTiming + '%', 'timing on cold plays', s.coldPlays ? `Median over ${s.coldPlays} cold play${s.coldPlays === 1 ? '' : 's'} In time` : 'Cold plays are first tries of the day');
   stat(s.reviews.total ? Math.round(100 * s.reviews.share) + '%' : '—', 'reviews passed', s.reviews.total ? `${s.reviews.passed} of ${s.reviews.total} cold reviews` : 'No cold reviews yet');
   stat(String(s.minutesThisWeek), 'minutes this week');

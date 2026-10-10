@@ -222,7 +222,7 @@ test('the path: learned means Secure, skipping a piece moves on, and Today holds
   assert.equal(plan.items[0].kind, 'review'); assert.equal(plan.items[0].id, 'first-01');
   assert.match(plan.items[0].note, /^First try of the day, no warm-up/);
   assert.ok(plan.items.some(i => i.kind === 'reading' && /^reading-1-/.test(i.id)), 'the built reading pieces without the generator');
-  w.PianoReadingGen = { next: level => (level === 0 ? generated : null) };
+  w.PianoReadingGen = { next: level => (level === undefined ? generated : null) }; // the generator uses its own reading level
   w.PianoChords = { todayItem: () => ({ kind: 'chords', title: 'C, F and G', note: 'Play the chords', label: 'Open', action() {} }) };
   plan = Path.today();
   assert.ok(plan.items.some(i => i.kind === 'reading' && i.id === 'reading-gen-1'), 'the generator picks the reading piece');

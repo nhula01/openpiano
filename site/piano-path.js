@@ -82,10 +82,11 @@ function warmUp(level) {
   if (level < 2 || !list.length) return null;
   return list[Math.floor(Date.now() / DAY) % list.length];
 }
-// a first-reading piece not opened yet, at the reading level for this repertoire level. When the
-// reading generator is loaded it picks (and registers) the piece; otherwise one of the built pieces.
+// a first-reading piece not opened yet. When the reading generator is loaded it picks (and registers)
+// the piece at the learner's reading level, which moves with their reading results (a staircase that
+// starts a little behind the repertoire level); otherwise one of the built pieces at that level.
 function reading(level) {
-  try { const generated = window.PianoReadingGen?.next?.(level); if (generated) return generated; } catch (e) { console.error(e); }
+  try { const generated = window.PianoReadingGen?.next?.(); if (generated) return generated; } catch (e) { console.error(e); }
   const seen = new Set(read(SKILL_KEY).seen || []), R = repertoire(), want = READING[level] ?? 1;
   for (const lv of [want, want - 1, want + 1]) {
     const pick = Object.values(R).filter(s => s.kind === 'reading' && s.studyLevel === lv && !seen.has(s.id)).sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }))[0];

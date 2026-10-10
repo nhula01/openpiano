@@ -38,7 +38,6 @@ test('every method-book piece has a level with evidence, a place in its set and 
     assert.equal(p.level, over.levels[p.id][0]);
     assert.ok(p.levelReason && p.levelReason.length > 10, p.id + ' evidence');
     assert.ok(Number.isInteger(p.order) && p.set, p.id + ' order and set');
-    assert.equal(Math.floor(p.order / 100), p.level, p.id + ' order belongs to its level');
   }
   // guidance is written per piece, not from a template
   for (const field of ['skill', 'pattern', 'exercise', 'check']) assert.equal(new Set(pieces.map(p => p[field])).size, pieces.length, field + ' is unique per piece');

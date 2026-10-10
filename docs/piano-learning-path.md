@@ -44,9 +44,10 @@ Everything is read from what the player already records in the browser; nothing 
      (`PianoProgress.reviewsDue()`). They come first because a cold play has no warm-up.
   2. Warm-up: a key study for the level, a different key each day (from Level 2).
   3. Up next: the piece, with its stage, Wait mode first, then In time.
-  4. Reading: `PianoReadingGen.next(level)` when the reading generator is loaded (it returns a
-     repertoire entry or null); otherwise a first-reading piece not opened yet, at `READING[level]`
-     (reading runs a level behind repertoire). Opening a score marks it seen (`piano-score-viewed`).
+  4. Reading: `PianoReadingGen.next()` when the reading generator is loaded: an unseen generated
+     piece at the learner's reading level (the reading staircase, which starts at `READING[level]`,
+     a level behind repertoire); otherwise a built first-reading piece not opened yet, at
+     `READING[level]`. Opening a score marks it seen (`piano-score-viewed`).
   5. On the "Play by chords" route (`my-journey-piano-pathway-v2.route === 'chords'`),
      `PianoChords.todayItem(level)`: `{ kind, id?, title, note, action?, label? }`. Home renders
      `action`/`label` as the button when given.

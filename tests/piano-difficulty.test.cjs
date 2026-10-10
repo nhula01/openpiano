@@ -44,7 +44,7 @@ test('inside a level, pieces go from easiest to hardest; teaching collections ke
   for (const level of levels) {
     const list = C.pieces.filter(p => p.level === level && !p.original && D[p.id]);
     // outside the teaching collections, difficulty never goes down
-    const loose = list.filter(p => !D[p.id].set).map(p => D[p.id].score);
+    const loose = list.filter(p => !D[p.id].set && !p.set).map(p => D[p.id].score);
     for (let i = 1; i < loose.length; i++) assert.ok(loose[i] >= loose[i - 1], `level ${level}: ${loose[i - 1]} then ${loose[i]}`);
     // each collection's pieces in number order
     const sets = {};
