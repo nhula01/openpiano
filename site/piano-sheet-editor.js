@@ -96,7 +96,8 @@ async function open(host, xml, options = {}) {
   const sheet = el('div', undefined, 'se-sheet'); sheet.tabIndex = 0; sheet.setAttribute('aria-label', 'Score. Click a note to select it.');
   const pages = el('div', undefined, 'se-pages'), overlay = el('div', undefined, 'se-overlay');
   const cursorBox = el('div', undefined, 'se-cursor'), shadow = el('div', undefined, 'se-shadow'), shadowLabel = el('div', undefined, 'se-shadow-label');
-  overlay.append(cursorBox, shadow, shadowLabel); sheet.append(pages, overlay); sheetWrap.append(sheet);
+  const textIn = el('input', undefined, 'se-textin'); textIn.hidden = true; textIn.autocomplete = 'off'; textIn.spellcheck = false;
+  overlay.append(cursorBox, shadow, shadowLabel, textIn); sheet.append(pages, overlay); sheetWrap.append(sheet);
   const side = el('aside', undefined, 'se-side'); side.setAttribute('aria-label', 'Palettes');
   body.append(sheetWrap, side);
   const piano = el('div', undefined, 'se-piano'); piano.hidden = !coarse; piano.setAttribute('aria-label', 'Piano keyboard');
@@ -159,6 +160,10 @@ async function open(host, xml, options = {}) {
   palette('Articulations', true, box => { for (const [n, t, g] of [['staccato', 'Staccato', '·'], ['staccatissimo', 'Staccatissimo', '▾'], ['tenuto', 'Tenuto', '–'], ['accent', 'Accent', '>'], ['strong-accent', 'Marcato', '^'], ['fermata', 'Fermata', '𝄐']]) box.append(chip(g, t, () => forNotes(n2 => ops.articulation(doc, n2, n), true), 'se-glyph')); });
   palette('Dynamics', true, box => { for (const d of model.DYNAMICS) box.append(chip(d, 'Dynamic ' + d, () => act(n => ops.dynamic(doc, n, d)), 'se-dyn')); box.append(chip('none', 'Remove the dynamic here', () => act(n => ops.dynamic(doc, n, null)))); });
   palette('Fingering', true, box => { for (const f of ['1', '2', '3', '4', '5']) box.append(chip(f, 'Finger ' + f, () => act(n => ops.fingering(doc, n, f)), 'se-fing')); box.append(chip('none', 'Remove the finger number', () => act(n => ops.fingering(doc, n, null)))); });
+  palette('Lyrics and chord symbols', true, box => {
+    box.append(chip('Lyrics', 'Type lyrics under the notes (Ctrl+L): Space goes to the next note, - to the next syllable', () => textEntry('lyric')), chip('Chord symbol', 'Type a chord symbol above the music (Ctrl+K), such as Am7 or C/E: Space goes to the next beat', () => textEntry('chord')));
+    box.append(chip('Remove lyric', 'Remove the lyric under the selected notes', () => forNotes(n => ops.lyric(doc, n, ''))), chip('Remove chord symbol', 'Remove the chord symbol here', () => act(n => ops.chordSymbol(doc, n, null))));
+  });
   palette('Clefs', false, box => { for (const [s, l, t] of [['G', 2, 'Treble'], ['F', 4, 'Bass'], ['C', 3, 'Alto'], ['C', 4, 'Tenor']]) box.append(chip(t, t + ' clef from this note on', () => act(n => ops.clef(doc, n, s, l)))); });
   palette('Key signatures', false, box => { for (const [f, t] of KEYS) box.append(chip(f ? `${Math.abs(f)}${f > 0 ? '♯' : '♭'}` : '0', t + ' from this bar on', () => act(n => ops.key(doc, n, f)), 'se-key')); });
   palette('Time signatures', false, box => {
@@ -213,7 +218,7 @@ async function open(host, xml, options = {}) {
     const rows = [['Write notes / stop', 'N, Esc'], ['Lengths', '2 32nd · 3 16th · 4 eighth · 5 quarter · 6 half · 7 whole · . dot'], ['Notes', 'A–G (a rest becomes a note) · 0 rest · Shift+A–G add to chord · Alt+1–9 add an interval'],
       ['Pitch', '↑ ↓ semitone · Alt+Shift+↑ ↓ step in the key · Ctrl+↑ ↓ octave · J respell · drag a note'], ['Move', '← → previous / next · Ctrl+← → bar · Alt+↑ ↓ note in chord (writing: the other hand’s staff) · Shift+← → extend selection'],
       ['Change', 'T tie · S slur · X flip stem · H other hand · Ctrl+3 triplet · Ctrl+Alt+1–4 voice · Alt+← → swap with neighbour'], ['Edit', 'Ctrl+C copy · Ctrl+X cut · Ctrl+V paste · R repeat · Del delete · Ctrl+A select all'],
-      ['Bars', 'Ins insert a bar before · Ctrl+Del delete the selected bars'], ['Play and view', 'Space play / stop · P piano · Ctrl++ / Ctrl+− zoom'], ['History', 'Ctrl+Z undo · Ctrl+Y or Ctrl+Shift+Z redo · Backspace (writing) undo the last note']];
+      ['Text', 'Ctrl+L lyrics (Space next note · - next syllable · Shift+Space back · Enter done) · Ctrl+K chord symbol (Space next beat)'], ['Bars', 'Ins insert a bar before · Ctrl+Del delete the selected bars'], ['Play and view', 'Space play / stop · P piano · Ctrl++ / Ctrl+− zoom'], ['History', 'Ctrl+Z undo · Ctrl+Y or Ctrl+Shift+Z redo · Backspace (writing) undo the last note']];
     const t = el('table'); for (const [a, b] of rows) { const tr = el('tr'); tr.append(el('th', a), el('td', b)); t.append(tr); }
     card.append(t, close); helpBox.append(card); root.append(helpBox);
   }
@@ -242,12 +247,13 @@ async function open(host, xml, options = {}) {
   // Run a change; a refused change leaves the score as it was and says why.
   function change(fn, { quiet } = {}) {
     stopPlay();
-    const before = snapshot(); S.v++;
-    try { const r = fn(); S.v++; commit(before); schedule(); return r ?? true; }
+    const before = snapshot(); S.v++; doc.notice = null; S.pending = null;
+    try { const r = fn(); S.v++; commit(before); if (doc.notice) { S.flash = doc.notice; doc.notice = null; } schedule(); return r ?? true; }
     catch (e) {
       rollback(before); S.v++; S.sel = before.sel; S.last = before.last;
       if (!(e instanceof model.EditError)) console.error(e);
-      if (!quiet) say(e instanceof model.EditError ? e.message : 'That change could not be made: ' + e.message, true);
+      const msg = e instanceof model.EditError ? e.message : 'That change could not be made: ' + e.message;
+      if (!quiet) { say(msg, true); S.pending = msg; } // kept if the sheet is redrawn just after
       return null;
     }
   }
@@ -337,19 +343,11 @@ async function open(host, xml, options = {}) {
       const last = model.byId(doc, S.last), e = last && model.eventOf(last); if (!e || e.rest) return;
       const pitches = e.notes.map(model.pitchOf), from = S.last;
       const len = S.dur * (S.dotted ? 1.5 : 1); S.cursor.part = part0();
-      const r = change(() => { const out = ops.enter(doc, S.cursor, len, { pitches }); const a = model.byId(doc, from); if (a && out.note) { const ea = model.eventOf(a), eb = model.eventOf(out.note); if (ea && eb) for (const n of ea.notes) { const t = eb.notes.find(x => model.midiOf(model.pitchOf(x)) === model.midiOf(model.pitchOf(n))); if (t && !n.querySelector('tie[type="start"]')) { addTieBoth(n, t); } } } return out; });
+      const r = change(() => { const out = ops.enter(doc, S.cursor, len, { pitches }); const a = model.byId(doc, from); if (a) for (const n of model.eventOf(a).notes) if (!n.querySelector(':scope > tie[type="start"]')) ops.tie(doc, n); return out; });
       if (r) { S.cursor = r.next; S.last = r.note?.getAttribute('id') || null; schedule(true); }
       return;
     }
     act(n => ops.tie(doc, n));
-  }
-  function addTieBoth(a, b) {
-    for (const [n, type] of [[a, 'start'], [b, 'stop']]) {
-      const t = doc.createElement('tie'); t.setAttribute('type', type);
-      const after = [...n.children].find(c => ['instrument', 'footnote', 'level', 'voice', 'type', 'dot', 'accidental', 'time-modification', 'stem', 'notehead', 'staff', 'beam', 'notations'].includes(c.tagName)); n.insertBefore(t, after || null);
-      let nt = n.querySelector(':scope > notations'); if (!nt) { nt = doc.createElement('notations'); n.append(nt); }
-      const td = doc.createElement('tied'); td.setAttribute('type', type); nt.append(td);
-    }
   }
   function tupletAction(k) {
     if (S.mode === 'input') {
@@ -423,6 +421,72 @@ async function open(host, xml, options = {}) {
   }
 
   // ---------------------------------------------------------------------------------------------
+  // Lyrics and chord symbols typed on the sheet (as in MuseScore)
+  // ---------------------------------------------------------------------------------------------
+  function textEntry(kind) {
+    let n = target(); if (!n) { say('Click the note where the ' + (kind === 'lyric' ? 'lyrics start.' : 'chord symbol goes.'), true); return; }
+    let e = model.eventOf(n);
+    if (kind === 'lyric' && (e.rest || e.grace)) { const next = textNext(e, 1, true); if (!next) { say('Lyrics go under notes. Click a note first.', true); return; } n = next.head; e = next; }
+    if (S.mode === 'input') setMode('select');
+    S.sel = { kind: 'note', id: e.head.getAttribute('id') };
+    const prev = kind === 'lyric' ? textNext(e, -1, true) : null, pl = prev && model.lyricOf(prev.head);
+    S.text = { kind, id: e.head.getAttribute('id'), hyphen: !!pl && (pl.syllabic === 'begin' || pl.syllabic === 'middle') };
+    textIn.value = kind === 'lyric' ? (model.lyricOf(e.head)?.text || '') : (model.chordOf(e.head) || '');
+    textIn.placeholder = kind === 'lyric' ? 'lyric' : 'e.g. Am7';
+    textIn.className = 'se-textin se-text-' + kind; textIn.hidden = false;
+    schedule(true); setTimeout(() => { textIn.focus(); textIn.select(); }, 0);
+    S.textHint = (kind === 'lyric' ? 'Type the syllable. Space: next note · -: next syllable · Shift+Space: back · Enter: done.' : 'Type a chord symbol (C, F#m7, Bbmaj7, G7sus4, C/E). Space: next beat · Shift+Space: back · Enter: done.');
+  }
+  // the next (or previous) note of the same staff and voice for lyrics; any note or rest of the staff for chords
+  function textNext(e, dir, notesOnly) {
+    const list = timedAll().filter(x => x.staff === e.staff && !x.grace && (notesOnly ? !x.rest && x.voice === e.voice : x.voice === e.voice || !x.rest)).sort((a, b) => a.q - b.q);
+    const q = model.timeOf(e), seen = new Set(), times = list.filter(x => { const k = x.q.toFixed(6); if (seen.has(k)) return false; seen.add(k); return true; });
+    return dir > 0 ? times.find(x => x.q > q + 1e-6) || null : [...times].reverse().find(x => x.q < q - 1e-6) || null;
+  }
+  function textCommit(how) {
+    const T = S.text; if (!T) return;
+    const n = model.byId(doc, T.id), value = textIn.value;
+    if (n) {
+      if (T.kind === 'lyric') {
+        const syl = how === 'hyphen' ? (T.hyphen ? 'middle' : 'begin') : (T.hyphen ? 'end' : 'single');
+        const had = model.lyricOf(n);
+        if ((value.trim() || had) && !(had && had.text === value.trim() && had.syllabic === syl)) change(() => ops.lyric(doc, n, value, syl));
+        if (value.trim()) T.hyphen = how === 'hyphen';
+      } else if (value.trim() !== (model.chordOf(n) || '')) {
+        const r = change(() => ops.chordSymbol(doc, n, value));
+        if (!r) { textIn.focus(); textIn.select(); return false; }
+      }
+    }
+    return true;
+  }
+  function textMove(dir) {
+    const T = S.text, n = model.byId(doc, T.id), e = n && model.eventOf(n), next = e && textNext(e, dir, T.kind === 'lyric');
+    if (!next) { textClose(); say(dir > 0 ? 'That was the last note.' : 'That was the first note.'); return; }
+    T.id = next.head.getAttribute('id'); S.sel = { kind: 'note', id: T.id };
+    if (dir < 0 && T.kind === 'lyric') { const p = textNext(next, -1, true), pl = p && model.lyricOf(p.head); T.hyphen = !!pl && (pl.syllabic === 'begin' || pl.syllabic === 'middle'); }
+    textIn.value = T.kind === 'lyric' ? (model.lyricOf(next.head)?.text || '') : (model.chordOf(next.head) || '');
+    schedule(true); textIn.focus(); textIn.select();
+  }
+  function textClose() { S.text = null; textIn.hidden = true; schedule(); sheet.focus({ preventScroll: true }); }
+  function placeText() {
+    const T = S.text; if (!T || !S.geo) return;
+    const st = S.geo.staves.find(s => s.items.some(i => i.id === T.id)), it = st?.items.find(i => i.id === T.id);
+    if (!it) { textIn.hidden = true; return; }
+    const y = T.kind === 'lyric' ? st.bottom + st.sp * 1.6 : st.top - st.sp * 4.6;
+    Object.assign(textIn.style, { left: it.x - st.sp * 1.5 + 'px', top: y + 'px', fontSize: Math.max(12, st.sp * 1.25) + 'px' });
+    textIn.hidden = false;
+  }
+  textIn.addEventListener('keydown', ev => {
+    const k = ev.key, stop = () => { ev.preventDefault(); ev.stopPropagation(); };
+    if (k === 'Enter') { stop(); if (textCommit('space') !== false) textClose(); return; }
+    if (k === 'Escape') { stop(); if (textCommit('space') === false) S.pending = null; textClose(); return; } // a symbol that cannot be read is dropped
+    if (k === ' ' || k === 'Tab') { stop(); const back = ev.shiftKey; if (textCommit(back ? 'stay' : 'space') !== false) textMove(back ? -1 : 1); return; }
+    if (k === '-' && S.text?.kind === 'lyric') { stop(); if (textCommit('hyphen') !== false) textMove(1); return; }
+    if ((ev.ctrlKey || ev.metaKey) && (k === 'z' || k === 'Z')) { stop(); textClose(); restore(S.undo, S.redo); }
+  });
+  textIn.addEventListener('blur', () => { setTimeout(() => { if (S.text && document.activeElement !== textIn) { textCommit('space'); textClose(); } }, 120); });
+
+  // ---------------------------------------------------------------------------------------------
   // Undo
   // ---------------------------------------------------------------------------------------------
   function restore(from, to) {
@@ -453,17 +517,34 @@ async function open(host, xml, options = {}) {
   function hearRange() { const evs = rangeNotes().slice(0, 6); hearMidi(evs.map(n => model.pitchOf(n)).filter(Boolean).map(model.midiOf)); }
 
   async function togglePlay() { if (S.playing) { stopPlay(); return; } play(); }
+  // the notes as practice plays them: repeats and endings followed (the practice engine unfolds
+  // them), each tied back to its note on the sheet; as written when the engine cannot
+  function performed() {
+    const bpm = model.sound(doc).bpm, E = window.PianoImportEngine;
+    if (E) try {
+      const r = E.parse(model.serialize(doc)), ids = new Map();
+      for (const m of r.xml.matchAll(/<note\b([^>]*)>/g)) { const id = m[1].match(/ id="(e\d+)"/)?.[1], imp = m[1].match(/data-import-id="(\d+)"/)?.[1]; if (id && imp != null) ids.set(Number(imp), id); }
+      return { notes: r.notes.map(n => ({ q: n.beat, len: n.duration, midi: n.midi, ids: [ids.get(n.id)].filter(Boolean) })).sort((a, b) => a.q - b.q), bpm, unfolded: r.performedMeasures !== r.writtenMeasures };
+    } catch {}
+    return { ...model.sound(doc), unfolded: false };
+  }
   async function play() {
-    const snd = model.sound(doc); if (!snd.notes.length) { say('There are no notes to play yet.'); return; }
-    let from = 0; const n = target(), e = n && model.eventOf(n);
-    if (S.sel?.kind === 'range') from = S.sel.range.from; else if (e) from = model.timeOf(e); else if (S.mode === 'input' && S.cursor) from = S.cursor.q;
+    const snd = performed(); if (!snd.notes.length) { say('There are no notes to play yet.'); return; }
+    // start at the first time the selected note (or the next note after the selection) is played
+    let startId = null; const n = target();
+    const firstNoteFrom = q => timedAll().filter(x => !x.rest && x.q >= q - 1e-6).sort((a, b) => a.q - b.q)[0]?.head.getAttribute('id');
+    if (S.sel?.kind === 'range') startId = firstNoteFrom(S.sel.range.from);
+    else if (n) { const e = model.eventOf(n); startId = e && !e.rest ? e.head.getAttribute('id') : e ? firstNoteFrom(model.timeOf(e)) : null; }
+    else if (S.mode === 'input' && S.cursor) startId = firstNoteFrom(S.cursor.q);
+    const hit = startId && snd.notes.find(x => x.ids.includes(startId));
+    const from = hit ? hit.q : 0, startBar = hit ? model.byId(doc, hit.ids[0])?.parentNode.getAttribute('number') : '1';
     const notes = snd.notes.filter(x => x.q >= from - 1e-6), spb = 60 / snd.bpm;
     say('Loading the piano sound…');
     let a; try { a = await audioReady([...new Set(notes.map(x => x.midi))]); } catch (err) { say(err.message, true); return; }
     if (!a) { say('Sound is not available here.', true); return; }
     const t0 = a.currentTime + 0.15, token = {}; S.playing = token;
     for (const x of notes) window.PianoGrand.play(a, x.midi, t0 + (x.q - from) * spb, Math.max(0.1, x.len * spb), 80);
-    playB.replaceChildren(icon('stop')); playB.title = 'Stop (Space)'; say(`Playing from bar ${barAt(from)} at ♩ = ${snd.bpm}…`);
+    playB.replaceChildren(icon('stop')); playB.title = 'Stop (Space)'; say(`Playing from bar ${startBar} at ♩ = ${snd.bpm}${snd.unfolded ? ', with the repeats' : ''}… (Space stops)`);
     const lit = new Set();
     const tick = () => {
       if (S.playing !== token) return;
@@ -623,15 +704,19 @@ async function open(host, xml, options = {}) {
       const e = model.eventOf(n), vi = Math.max(0, voicesOf(e.staff).indexOf(e.voice)) + 1;
       for (const x of e.notes) find(x.getAttribute('id'))?.classList.add(x === n ? 'se-sel' : 'se-chord', 'se-v' + vi);
       for (const x of e.notes) { const p = model.pitchOf(x); if (p) keyEls.get(model.midiOf(p))?.classList.add('on'); }
-      if (S.mode === 'select') say(describe(n));
+      if (S.mode === 'select') say(S.flash || describe(n));
     } else if (S.sel?.kind === 'range') {
       const notes = rangeNotes(); for (const x of notes) find(x.getAttribute('id'))?.classList.add('se-range');
       const st = startsAll(), a = st.findIndex(s => S.sel.range.from < s.t + s.len - 1e-9), b = st.findIndex(s => S.sel.range.to - 1e-9 <= s.t + s.len);
       const bars = a === b || b < 0 ? `Bar ${st[a]?.m.getAttribute('number')}` : `Bars ${st[a]?.m.getAttribute('number')}–${st[b].m.getAttribute('number')}`;
       const hands = S.sel.range.staves.length > 1 ? 'both hands' : S.sel.range.staves[0] === '1' ? 'right hand' : 'left hand';
       const count = notes.filter(x => model.pitchOf(x)).length;
-      if (S.mode === 'select') say(`${bars} · ${hands} · ${count === 1 ? '1 note' : count + ' notes'} selected. Copy, delete, transpose with ↑ ↓, or choose a palette item.`);
-    } else if (S.mode === 'select') say(coarse ? 'Tap a note or rest to select it, or tap ✎ Write notes.' : 'Click a note or rest to select it, or press N to write notes.');
+      if (S.mode === 'select') say(S.flash || `${bars} · ${hands} · ${count === 1 ? '1 note' : count + ' notes'} selected. Copy, delete, transpose with ↑ ↓, or choose a palette item.`);
+    } else if (S.mode === 'select') say(S.flash || (coarse ? 'Tap a note or rest to select it, or tap ✎ Write notes.' : 'Click a note or rest to select it, or press N to write notes.'));
+    if (S.mode === 'select') S.flash = null;
+    if (S.text && S.mode === 'select') say(S.textHint);
+    if (S.pending) { say(S.pending, true); S.pending = null; }
+    placeText();
     if (S.mode === 'input') {
       const last = S.last && model.byId(doc, S.last); if (last) { const e = model.eventOf(last); for (const x of e?.notes || []) find(x.getAttribute('id'))?.classList.add('se-chord', 'se-v' + (S.voice + 1)); }
       placeCursor();
@@ -674,6 +759,8 @@ async function open(host, xml, options = {}) {
     if (!n) { box.append(el('p', S.sel?.kind === 'range' ? 'Several notes selected: palette items apply to all of them.' : 'Nothing selected.', 'se-muted')); return box; }
     const e = model.eventOf(n); if (!e) return box;
     box.append(el('p', describe(n), 'se-props-what'));
+    const ly = model.lyricOf(n), ch = model.chordOf(n);
+    if (ly || ch) box.append(el('p', [ch ? 'Chord symbol ' + ch : '', ly ? `Lyric “${ly.text}${ly.syllabic === 'begin' || ly.syllabic === 'middle' ? '-' : ''}”` : ''].filter(Boolean).join(' · '), 'se-muted'));
     if (!e.rest) {
       const row = el('div', undefined, 'se-row'); row.append(el('span', 'Finger', 'se-muted'));
       const cur = n.querySelector('notations technical fingering')?.textContent;
@@ -824,6 +911,7 @@ async function open(host, xml, options = {}) {
   }
   root.addEventListener('keydown', ev => {
     const tgt = ev.target, k = ev.key, mod = ev.ctrlKey || ev.metaKey, typing = tgt.matches('input, textarea, select');
+    if (tgt === textIn) return; // the lyric / chord box has its own keys
     if (typing) { if (k === 'Escape' || k === 'Enter') { tgt.blur(); sheet.focus(); } return; }
     if (!helpBox.hidden) { if (k === 'Escape') { ev.preventDefault(); help(false); } return; }
     const go = f => { ev.preventDefault(); ev.stopPropagation(); f(); };
@@ -837,6 +925,8 @@ async function open(host, xml, options = {}) {
     if (mod && (k === '=' || k === '+')) return go(() => zoom(1));
     if (mod && k === '-') return go(() => zoom(-1));
     if (mod && k === '3') return go(() => tupletAction(3));
+    if (mod && (k === 'l' || k === 'L')) return go(() => textEntry('lyric'));
+    if (mod && (k === 'k' || k === 'K')) return go(() => textEntry('chord'));
     if (mod && k === 'Delete') return go(() => deleteBars());
     if (mod && ev.altKey && /^Digit[1-4]$/.test(ev.code)) return go(() => voiceAction(Number(ev.code.slice(5)) - 1));
     if (k === 'Escape') return go(() => { if (S.playing) stopPlay(); else if (S.mode === 'input') setMode('select'); else { S.sel = null; S.anchor = null; schedule(); } });

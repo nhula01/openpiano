@@ -625,6 +625,8 @@ html.se-open,html.se-open body{overflow:hidden}
 .se-shadow{position:absolute;border-radius:50%;background:rgba(26,111,216,.55);transform:rotate(-20deg)}
 .se-shadow.se-cv2{background:rgba(22,136,58,.55)}.se-shadow.se-cv3{background:rgba(217,105,11,.55)}.se-shadow.se-cv4{background:rgba(146,48,176,.55)}
 .se-shadow.ledger{box-shadow:0 0 0 0 transparent}
+.se .se-textin{position:absolute;z-index:2;width:auto;min-width:5em;max-width:12em;margin:0;padding:1px 5px;border:1.5px solid var(--sel);border-radius:5px;background:#fff;color:#111;font-family:Georgia,'Times New Roman',serif;pointer-events:auto;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.se .se-text-chord{font-weight:700}
 .se-shadow-label{position:absolute;padding:1px 6px;border-radius:5px;background:#24212b;color:#fff;font:700 12px/1.5 var(--body);white-space:nowrap}
 .se-side{min-height:0;overflow:auto;background:var(--surface);border-left:1px solid var(--line);padding:0 12px 16px;display:none}
 .se.se-side-open .se-side{display:block}

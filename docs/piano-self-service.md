@@ -45,12 +45,21 @@ real destinations exist.
      key signatures (pitches stay, accidentals follow), time signatures (the music is re-barred,
      notes split with ties), bar lines, repeats and 1st/2nd endings, grace notes, tuplets, tempo,
      and inserting, adding and deleting bars; the title and composer are edited at the top.
-   - Playback with the site's sampled piano from the selection (Space), with the notes lit as they
-     sound; notes sound as they are written or changed (can be turned off). Undo/redo for
+   - Lyrics and chord symbols are typed on the sheet, as in MuseScore: Ctrl+L opens a box under
+     the selected note (Space moves to the next note, - to the next syllable with a hyphen,
+     Shift+Space back, Enter finishes; verses are kept apart); Ctrl+K opens a box above it for a
+     chord symbol such as C, F#m7, Bbmaj7, G7sus4 or C/E (Space moves to the next beat). Symbols
+     that cannot be read are refused with an example.
+   - Playback with the site's sampled piano from the selection (Space), following repeats and
+     1st/2nd endings as practice does (the practice engine unfolds them), with the notes lit as
+     they sound; notes sound as they are written or changed (can be turned off). Undo/redo for
      everything; refused changes say why and leave the score as it was. The sheet is engraved in
      sections of about eight bars and only the sections that changed are engraved again, so long
-     scores stay quick to edit. A practice check runs after each change and shows any problem
-     (such as a tie that no longer joins after a repeat was added) without blocking the edit.
+     scores stay quick to edit. Ties never run over a repeat sign or into an ending, because
+     practice plays the repeat and such a tie could not join: notes written across one are not
+     tied, a tie there is refused, and adding a repeat or ending over tied notes takes those ties
+     off and says so. A practice check runs after each change and shows any other problem without
+     blocking the edit.
    "Use these changes" checks and engraves the score again; the edited MusicXML can be downloaded.
    When what a PDF or picture reader produced fails the checks, the page offers to fix it in the
    editor. Saved MusicXML songs have an "Edit" button in My songs; saving replaces the song's file

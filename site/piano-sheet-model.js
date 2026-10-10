@@ -383,6 +383,7 @@ const ops = {
     const target = next && !next.rest && next.notes.find(n => { const q = pitchOf(n); return q && midiOf(q) === midiOf(p); });
     if (!target) fail('A tie joins a note to the same pitch in the next chord of its hand. Make the next note the same pitch first.');
     if (gracesBefore(next).length) fail('A grace note comes before the next note, so the two cannot be tied.');
+    if (next.measure !== e.measure && repeatBetween(e.measure, next.measure)) fail('A tie cannot run over a repeat sign or into an ending: practice plays the repeat, so it would not join.');
     addTie(doc, note, 'start'); addTie(doc, target, 'stop'); fixAccidentals(target.parentNode); return note;
   },
   // the chord moves to the other staff (the other hand)
@@ -842,6 +843,82 @@ function fillBar(doc, part, m) {
   writeMeasure(m, r);
 }
 
+
+// ---------------------------------------------------------------------------------------------
+// Lyrics and chord symbols
+// ---------------------------------------------------------------------------------------------
+function lyricOf(note, verse = 1) {
+  const e = eventOf(note); if (!e) return null;
+  const l = kids(e.head, 'lyric').find(x => (x.getAttribute('number') || '1') === String(verse));
+  return l ? { text: txt(l, 'text') || '', syllabic: txt(l, 'syllabic') || 'single' } : null;
+}
+// The text below a note (verse 1, 2, …): syllabic is single, begin, middle or end, as in MusicXML
+function setLyric(doc, note, text, syllabic = 'single', verse = 1) {
+  const e = eventOf(note); if (!e || e.rest) fail('Lyrics go under notes, not rests.');
+  if (e.grace) fail('Lyrics go under main notes, not grace notes.');
+  for (const l of kids(e.head, 'lyric')) if ((l.getAttribute('number') || '1') === String(verse)) l.remove();
+  if (text && text.trim()) {
+    const l = mk(doc, 'lyric'); l.setAttribute('number', String(verse));
+    l.append(mk(doc, 'syllabic', syllabic), mk(doc, 'text', text.trim()));
+    // lyrics come after notations; verses in number order
+    const after = kids(e.head, 'lyric').find(x => Number(x.getAttribute('number') || 1) > verse) || [...e.head.children].find(c => ['play', 'listen'].includes(c.tagName));
+    e.head.insertBefore(l, after || null);
+  }
+  return note;
+}
+// Chord symbols: "C", "F#m7", "Bbmaj7/D", "Gsus4", "Edim7", "Am7b5", "D9", "C/E" …
+const KINDS = [['maj13', 'major-13th'], ['maj11', 'major-11th'], ['maj9', 'major-ninth'], ['maj7', 'major-seventh'], ['M7', 'major-seventh'], ['Δ7', 'major-seventh'], ['Δ', 'major-seventh'],
+  ['m(maj7)', 'major-minor'], ['mMaj7', 'major-minor'], ['m7b5', 'half-diminished'], ['ø7', 'half-diminished'], ['ø', 'half-diminished'], ['dim7', 'diminished-seventh'], ['°7', 'diminished-seventh'],
+  ['dim', 'diminished'], ['°', 'diminished'], ['aug7', 'augmented-seventh'], ['+7', 'augmented-seventh'], ['aug', 'augmented'], ['+', 'augmented'], ['m13', 'minor-13th'], ['m11', 'minor-11th'],
+  ['m9', 'minor-ninth'], ['m7', 'minor-seventh'], ['m6', 'minor-sixth'], ['min', 'minor'], ['m', 'minor'], ['-', 'minor'], ['sus4', 'suspended-fourth'], ['sus2', 'suspended-second'], ['sus', 'suspended-fourth'],
+  ['13', 'dominant-13th'], ['11', 'dominant-11th'], ['9', 'dominant-ninth'], ['7', 'dominant'], ['6', 'major-sixth'], ['5', 'power']];
+function parseChord(text) {
+  const t = text.trim().replace(/♯/g, '#').replace(/♭/g, 'b');
+  const m = t.match(/^([A-Ga-g])([#b]?)(.*?)(?:\/([A-Ga-g])([#b]?))?$/);
+  if (!m) fail('Write a chord symbol such as C, F#m7, Bbmaj7, Gsus4, Edim or C/E.');
+  const suffix = m[3] || '', exact = KINDS.find(([k]) => suffix === k), start = KINDS.find(([k]) => suffix.startsWith(k));
+  const kind = !suffix ? 'major' : exact ? exact[1] : start ? start[1] : 'other';
+  return { root: m[1].toUpperCase(), alter: m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0, suffix, kind, bass: m[4] ? { step: m[4].toUpperCase(), alter: m[5] === '#' ? 1 : m[5] === 'b' ? -1 : 0 } : null };
+}
+const harmonyBefore = e => { const out = []; for (let p = anchorOf(e).previousElementSibling; p && (p.tagName === 'harmony' || p.tagName === 'direction'); p = p.previousElementSibling) if (p.tagName === 'harmony') out.push(p); return out; };
+function chordOf(note) {
+  const e = eventOf(note); if (!e) return null;
+  const h = harmonyBefore(e)[0]; if (!h) return null;
+  const acc = a => ({ 1: '#', '-1': 'b' }[String(Math.round(Number(a || 0)))] || '');
+  const root = h.querySelector('root'), kind = kid(h, 'kind'), bass = h.querySelector('bass');
+  if (!root) return null;
+  const k = kind?.getAttribute('text') ?? '';
+  return txt(root, 'root-step') + acc(txt(root, 'root-alter')) + k + (bass ? '/' + txt(bass, 'bass-step') + acc(txt(bass, 'bass-alter')) : '');
+}
+function setChord(doc, note, text) {
+  const e = eventOf(note); if (!e) fail('Choose the note or rest where the chord symbol goes.');
+  for (const h of harmonyBefore(e)) h.remove();
+  if (text && text.trim()) {
+    const c = parseChord(text), h = mk(doc, 'harmony'); h.setAttribute('placement', 'above');
+    const root = mk(doc, 'root'); root.append(mk(doc, 'root-step', c.root)); if (c.alter) root.append(mk(doc, 'root-alter', c.alter)); h.append(root);
+    const kind = mk(doc, 'kind', c.kind); kind.setAttribute('text', c.suffix); h.append(kind);
+    if (c.bass) { const b = mk(doc, 'bass'); b.append(mk(doc, 'bass-step', c.bass.step)); if (c.bass.alter) b.append(mk(doc, 'bass-alter', c.bass.alter)); h.append(b); }
+    if (attributesAt(e.measure).staves > 1) h.append(mk(doc, 'staff', e.staff));
+    anchorOf(e).before(h);
+  }
+  return note;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Ties over repeat signs and into endings: practice plays the repeat, so such a tie cannot join.
+// They are taken off when a repeat or ending is added (and the editor says so).
+// ---------------------------------------------------------------------------------------------
+function untieAcrossRepeats(doc) {
+  let n = 0;
+  for (const note of [...doc.querySelectorAll('note')]) {
+    if (!kids(note, 'tie').some(t => t.getAttribute('type') === 'start')) continue;
+    const to = tiePartner(doc, note, 'start');
+    if (to && to.parentNode !== note.parentNode && repeatBetween(note.parentNode, to.parentNode)) { unTie(doc, note, 'start'); n++; }
+  }
+  if (n) doc.notice = n === 1 ? 'A tie over the new repeat sign was taken off: practice plays the repeat, so the tie could not join.' : `${n} ties over the new repeat signs were taken off: practice plays the repeats, so the ties could not join.`;
+  return n;
+}
+
 // ---------------------------------------------------------------------------------------------
 // Operations added for note input, selections and palettes
 // ---------------------------------------------------------------------------------------------
@@ -1065,6 +1142,7 @@ Object.assign(ops, {
       if (kind === 'repeat-end') { putBar(b, mk(doc, 'bar-style', 'light-heavy')); const r = mk(doc, 'repeat'); r.setAttribute('direction', 'backward'); putBar(b, r); }
       if (!b.children.length) b.remove();
     }
+    untieAcrossRepeats(doc);
     return note;
   },
   // a 1st or 2nd ending over bars a..b (indexes); the 1st ending ends with a repeat
@@ -1082,6 +1160,7 @@ Object.assign(ops, {
       const rb = barlineOf(last, 'right', true), en = mk(doc, 'ending'); en.setAttribute('number', String(number)); en.setAttribute('type', number === 1 ? 'stop' : 'discontinue'); putBar(rb, en);
       if (number === 1 && !kid(rb, 'repeat')) { putBar(rb, mk(doc, 'bar-style', 'light-heavy')); const r = mk(doc, 'repeat'); r.setAttribute('direction', 'backward'); putBar(rb, r); }
     }
+    untieAcrossRepeats(doc);
     return note;
   },
   // bars in every part: before or after this one
@@ -1133,6 +1212,8 @@ Object.assign(ops, {
     }
     return pick;
   },
+  lyric(doc, note, text, syllabic, verse) { return setLyric(doc, note, text, syllabic, verse); },
+  chordSymbol(doc, note, text) { return setChord(doc, note, text); },
   // the title and composer shown at the top
   title(doc, title, composer) {
     const root = doc.documentElement;
@@ -1264,5 +1345,5 @@ function describeAt(note, voiceList) {
 
 window.PianoSheetModel = { load, serialize, clean, byId, events, allEvents, eventOf, describe, describeAt, attributesAt, pitchOf, midiOf, noteName, valueOf, pieces, spell, spellings,
   starts, timed, locate, scoreEnd, staffVoices, eventAt, timeOf, measureLen, sound, readMeasure, writeMeasure, writeSpan, letterPitch, diatonic, fromDiatonic, keyAlter,
-  ops, range, EditError, LETTERS, ARTICULATIONS, DYNAMICS };
+  ops, range, EditError, LETTERS, ARTICULATIONS, DYNAMICS, lyricOf, chordOf, parseChord, untieAcrossRepeats };
 })();

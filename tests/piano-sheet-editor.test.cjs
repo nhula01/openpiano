@@ -396,3 +396,45 @@ test('only whole triplets are copied', () => {
   assert.equal(d.querySelectorAll('time-modification').length, 6);
   valid(d);
 });
+
+// ---- Lyrics, chord symbols, repeats ----
+test('lyrics go under notes, with syllables joined by hyphens, and verses', () => {
+  const d = M.load(SCORE);
+  ops.lyric(d, at(d, 1, 0), 'Twin', 'begin'); ops.lyric(d, at(d, 1, 1), 'kle', 'end'); ops.lyric(d, at(d, 1, 1), 'star', 'single', 2);
+  const x = M.clean(d);
+  assert.match(x, /<lyric number="1"><syllabic>begin<\/syllabic><text>Twin<\/text><\/lyric>/);
+  assert.match(x, /<lyric number="1"><syllabic>end<\/syllabic><text>kle<\/text><\/lyric><lyric number="2"><syllabic>single<\/syllabic><text>star<\/text><\/lyric>/);
+  assert.deepEqual({ ...M.lyricOf(at(d, 1, 0)) }, { text: 'Twin', syllabic: 'begin' });
+  ops.lyric(d, at(d, 1, 0), '');
+  assert.equal(M.lyricOf(at(d, 1, 0)), null);
+  assert.throws(() => ops.lyric(d, at(d, 1, 2), 'la'), /not rests/);
+  valid(d);
+});
+
+test('chord symbols are read from what is typed and written above the music', () => {
+  const d = M.load(SCORE);
+  for (const [t, kind] of [['C', 'major'], ['F#m7', 'minor-seventh'], ['Bbmaj7', 'major-seventh'], ['Gsus4', 'suspended-fourth'], ['Edim7', 'diminished-seventh'], ['Am7b5', 'half-diminished'], ['D9', 'dominant-ninth'], ['Cadd9', 'other']])
+    assert.equal(M.parseChord(t).kind, kind, t);
+  ops.chordSymbol(d, at(d, 1, 0), 'C/E'); ops.chordSymbol(d, at(d, 2, 0), 'F#m7');
+  const x = M.clean(d);
+  assert.match(x, /<harmony placement="above"><root><root-step>C<\/root-step><\/root><kind text="">major<\/kind><bass><bass-step>E<\/bass-step><\/bass>/);
+  assert.match(x, /<root-step>F<\/root-step><root-alter>1<\/root-alter><\/root><kind text="m7">minor-seventh<\/kind>/);
+  assert.equal(M.chordOf(at(d, 2, 0)), 'F#m7');
+  ops.chordSymbol(d, at(d, 2, 0), 'G7'); assert.equal((M.clean(d).match(/<harmony/g) || []).length, 2, 'replaced, not added');
+  ops.chordSymbol(d, at(d, 2, 0), null); assert.equal((M.clean(d).match(/<harmony/g) || []).length, 1);
+  assert.throws(() => ops.chordSymbol(d, at(d, 1, 1), 'H7'), /chord symbol such as/);
+  valid(d);
+});
+
+test('a repeat sign added over tied notes takes the tie off, so practice can play the repeat', () => {
+  const d = M.load(SCORE);
+  ops.step(d, at(d, 2, 0, '2'), 3); ops.tie(d, at(d, 1, 0, '2')); // C3 tied over the first barline
+  ops.barline(d, at(d, 1, 0), 'repeat-end');
+  assert.equal(d.querySelectorAll('tie').length, 0);
+  assert.match(d.notice, /tie over the new repeat sign was taken off/);
+  valid(d);
+  assert.throws(() => ops.tie(d, at(d, 1, 0, '2')), /repeat sign/);
+  const d2 = M.load(SCORE); ops.step(d2, at(d2, 2, 0, '2'), 3); ops.tie(d2, at(d2, 1, 0, '2'));
+  ops.ending(d2, at(d2, 2, 0), 1); // an ending starting where the tie ends
+  assert.equal(d2.querySelectorAll('tie').length, 0); valid(d2);
+});
