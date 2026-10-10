@@ -706,3 +706,36 @@ html.se-open,html.se-open body{overflow:hidden}
 .today-start{display:flex;align-items:center;gap:10px;margin:12px 0 0;font-size:13px}
 .today-start select{width:auto;margin:0;padding:6px 32px 6px 10px}
 @media(max-width:600px){.today-item{flex-direction:column;align-items:stretch}.today-start{flex-direction:column;align-items:stretch}}
+
+/* ---------- Reading: "Read something new" look-over and Find your level (piano-reading-gen.js, piano-placement.js) ---------- */
+.today-find{min-height:0;padding:4px 0;margin:6px 0 0;border:0;background:none;color:var(--felt);font:700 13px/1.3 var(--body);text-decoration:underline;text-underline-offset:3px}
+.today-find:hover{background:none;color:var(--felt-deep)}
+.reading-lookover{position:fixed;left:50%;bottom:max(16px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:70;width:min(560px,calc(100vw - 32px));display:grid;grid-template-columns:auto 1fr;gap:8px 16px;align-items:center;padding:14px 16px;border-radius:16px;border:1px solid var(--sg-line,var(--line));background:var(--sg-panel,var(--surface));color:var(--sg-text,var(--ink));box-shadow:0 18px 48px rgb(0 0 0 / .35);font-family:var(--sg-font,var(--body))}
+.reading-lookover p{margin:2px 0 0;font-size:14px;line-height:1.45;color:var(--sg-muted,var(--muted))}
+.reading-kicker{display:block;font:700 12px/1.3 var(--sg-font,var(--body));letter-spacing:.04em;text-transform:uppercase;color:var(--sg-lamp,var(--felt))}
+.reading-count{grid-row:span 2;min-width:2.2em;font:800 40px/1 var(--display);text-align:center;color:var(--sg-lamp,var(--felt));font-variant-numeric:tabular-nums}
+.reading-actions{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px}
+.reading-count+div+.reading-actions{grid-column:2}
+.reading-actions button{min-height:38px;padding:7px 16px;font-size:14px}
+body[data-shell=stage] .reading-actions button:not(.secondary){background:var(--sg-lamp);border-color:var(--sg-lamp);color:#1a1c27}
+body[data-shell=stage] .reading-actions button.secondary{background:transparent;color:var(--sg-text);border-color:var(--sg-line)}
+.placement-card{grid-template-columns:1fr}
+body[data-shell=stage] .reading-lookover{bottom:calc(104px + env(safe-area-inset-bottom))}
+.placement-backdrop{position:fixed;inset:0;z-index:80;display:grid;place-items:center;padding:16px;background:rgb(20 18 26 / .55)}
+.placement{width:min(520px,100%);max-height:calc(100vh - 32px);overflow:auto;padding:20px;border-radius:var(--r-lg);background:var(--surface);color:var(--ink);box-shadow:0 24px 64px rgb(0 0 0 / .3);font-family:var(--body)}
+.placement-head{position:relative;padding-right:40px;margin-bottom:8px}
+.placement-head h2{margin:2px 0 0;font-size:24px}
+.placement-kicker{font:700 12px/1.3 var(--body);letter-spacing:.04em;text-transform:uppercase;color:var(--felt)}
+.placement-close{position:absolute;top:-4px;right:-4px;width:36px;min-height:36px;padding:0;border-color:transparent;background:transparent;color:var(--muted);font-size:24px}
+.placement-close:hover{background:var(--bg);border-color:transparent;color:var(--ink)}
+.placement-choices{display:grid;gap:8px;margin:12px 0}
+.placement-choice{display:grid;justify-items:start;justify-content:stretch;align-content:start;gap:2px;width:100%;min-height:0;padding:12px 14px;border-radius:12px;border:1.5px solid var(--line-strong);background:var(--surface);color:var(--ink);text-align:left;font-weight:400}
+.placement-choice strong{font-size:16px}
+.placement-choice span{font-size:13px;color:var(--muted)}
+.placement-choice:hover,.placement-choice.current{border-color:var(--felt);background:var(--felt-soft)}
+.placement-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.placement-results{display:flex;flex-wrap:wrap;gap:6px;padding:0;margin:8px 0;list-style:none;font-size:13px}
+.placement-results li{padding:3px 10px;border-radius:999px;background:var(--bg)}
+.placement-results li.pass{background:#e4f3e8;color:#235c34}
+.placement-results li.miss{background:var(--felt-soft);color:var(--felt-deep)}
+@media(max-width:600px){.reading-lookover{grid-template-columns:auto 1fr;padding:12px}.reading-count{font-size:32px}.reading-count+div+.reading-actions{grid-column:1/-1}}
