@@ -2,7 +2,7 @@
 
 A free piano studio in the browser: complete public-domain repertoire by composer,
 skills by level, sight-reading, and practice with a MIDI keyboard or a microphone.
-Anyone can import their own MusicXML, MIDI or PDF scores and keep them private.
+Anyone can import their own MusicXML, MIDI or PDF scores, or scans and photos of printed music, and keep them private.
 
 OpenPiano is also an installable Progressive Web App. The public app shell and public
 scores a learner opens can work offline; account traffic and private uploads are not

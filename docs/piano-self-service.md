@@ -10,9 +10,9 @@ real destinations exist.
 1. **Choose a file.** MusicXML (`.musicxml`, `.xml`, `.mxl`) keeps the sheet music and printed
    fingering. MIDI (`.mid`, `.midi`) keeps every note and rhythm and practices with the note display.
    A PDF exported from notation software is read into MusicXML in the browser (see "Reading PDFs" below)
-   and attached for comparison. A scanned PDF or photo is attached for reference only: the page explains how
-   to turn it into MusicXML with Audiveris (free) or a web scanner, and offers the owner's scanner when
-   `scannerURL` is set.
+   and attached for comparison. A scanned PDF or photos of a printed score (one per page, chosen together) are
+   read in the browser too (see "Reading scans and photos" below); for hard pages the page still explains how to
+   use Audiveris (free) or a web scanner, and offers the owner's scanner when `scannerURL` is set.
 2. **Check it.** MusicXML goes through `piano-import-engine.js`, which validates the score and writes
    out repeats, numbered endings and multi-pass sections in performed order, then through
    `piano-score-import.js`, which engraves it with Verovio (the same engraver as the library) and ties
@@ -71,7 +71,7 @@ the engraver is) and rebuilds the score from their positions:
 The result goes through the same checks, engraving and pitch correction as an imported MusicXML file. The page
 lists what the reader was unsure of — measures whose voices disagree, that run past the time signature, or where
 a note fell off the keyboard — so the person knows where to compare with the PDF, and notes D.C./D.S. jumps
-(practice plays them once as printed). Scanned pages and photos hold only pictures and are reported as such.
+(practice plays them once as printed). Scanned pages and photos hold only pictures; they go to the picture reader below.
 PDFs whose music font is neither SMuFL nor carries glyph names (Sibelius's Opus, older Finale fonts), or whose
 symbols were turned into outlines (some browser "print to PDF" output), are reported as having no notation.
 
@@ -82,6 +82,47 @@ voices, unmarked tuplets). LilyPond PDFs (the library's Mutopia scores, and libr
 2.25) read the same way. `tests/piano-pdf-reader.test.cjs` reads one score engraved by both programs (key and
 time changes, a triplet, two voices in a hand, a whole-bar rest, a grace note, a repeat with first and second
 endings, a tie across the barline, clef changes, fingering) and requires exactly the source's notes.
+
+## Reading scans and photos
+
+`piano-scan-reader.js` reads printed piano music from pictures — PNG, JPEG or WebP photos (several at once, one
+per page, in file-name order) or a PDF of scanned pages (rendered at about 300 dpi with pdf.js) — entirely in the
+browser: nothing is uploaded and no model is downloaded. It finds the music in the pixels and hands it to the PDF
+reader as the drawing primitives notation software would have produced, so both readers share the same
+recognition of pitch, rhythm, voices, ties, repeats and the same checks afterwards.
+
+1. **Pixels.** Each picture is drawn at most 20 MP and turned to grey. Paper brightness is measured block by
+   block so uneven light and shadows do not matter; darkness is the ratio of a pixel to its paper.
+2. **Size and tilt.** The staff space is the commonest distance between thin dark lines down the columns; the
+   picture is scaled so it is about 18 pixels, then straightened by the angle that best lines the ink up with the
+   pixel rows.
+3. **Staves.** Vertical strips show staff lines as five evenly spaced peaks of "line-ness" (darker than the pixels
+   a little above and below, so beams and noteheads do not count). Staves are followed from strip to strip and
+   each line is traced column by column, so a slightly bent page is followed. Lines are then erased where nothing
+   crosses them.
+4. **Symbols.** Stems and barlines are tall thin strokes (barlines run from a staff's top line to a bottom line);
+   beams are straight bands of steady thickness touching stems; black noteheads are filled ovals centred on a line
+   or space; open heads are rings around a hole (half notes have a stem, whole notes are wide); flags are counted
+   beside a stem's free end; ledger lines must carry a notehead. Every other piece of ink — clefs, accidentals,
+   rests, time-signature and tuplet numbers, dots, ties — is classified by a small neural network (one hidden
+   layer of 96 units, 8-bit weights stored in the script) from its size in staff spaces, its holes, its place on
+   the staff and a 12 × 12 picture of it. Touching symbols are cut apart when every part is then a confident
+   symbol; a dark key signature is taken apart by its upright strokes; key signatures are made to agree across
+   the page.
+5. **Straightened coordinates.** Everything is mapped onto level staves (a staff space = 7 units, like points in a
+   PDF) and passed to `PianoPdfReader.recognize`. In pictures a run of accidentals after a barline is treated as
+   ordinary accidentals, not a new key.
+
+The network is trained by `scripts/scan-reader/` on pages Verovio engraves in five music fonts (Leipzig, Bravura,
+Leland, Petaluma, Gootville) from library scores and synthetic scores that use every symbol, lightly blurred,
+noised and lit unevenly; see its README to rebuild the weights.
+
+Accuracy, measured on 40 library pages engraved in those fonts and compared note by note with their MusicXML
+(pitch and onset, measures aligned): about 75% on clean renders, 53% on simulated scans (tilt, blur, noise, JPEG)
+and 47% on simulated phone photos (perspective, bending, uneven light). Simple and moderately difficult pieces do
+far better (often above 80% even as photos); dense Romantic textures, small grace notes, volta numbers and text
+are not read. Handwritten music is not supported. `tests/piano-scan-reader.test.cjs` reads a tilted, noisy scan
+and a photo-like page and requires a floor on that accuracy, the key and time, and plain refusals.
 
 ## Automatic recognition of scans and photos
 

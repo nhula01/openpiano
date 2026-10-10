@@ -4,7 +4,8 @@
 // It does not look at pixels: such PDFs keep every staff line, stem and beam as a vector line and
 // every notehead, clef, accidental and rest as a character of the music font, so the reader reads
 // those symbols directly and rebuilds the score from their positions (pdf.js does the PDF parsing).
-// Scanned pages and photos contain only pictures; they are reported, not guessed at.
+// Scanned pages and photos contain only pictures; piano-scan-reader.js reads those and hands its
+// findings to the same recognition below.
 // The MusicXML then goes through the same checks, engraving and correction as an imported file.
 (() => {
 const PDFJS_VERSION = '6.4.299';
@@ -568,7 +569,8 @@ function analyseSystem(page, B, state, report) {
       const x = run[0].x;
       const afterClef = list.some(c => c.kind === 'clef' && c.x1 <= x + 0.2 * sp && x - c.x1 < 3.5 * sp);
       const afterBar = bars.some(b => b.x1 <= x + 0.2 * sp && x - b.x1 < 3 * sp) || bars.some(b => b.x0 > x && b.x0 - (run[run.length - 1].x + run[run.length - 1].w) < 1.5 * sp && !hs.some(({ h }) => h.x > b.x0 && h.x - b.x0 < 0.5 * sp));
-      if (!afterClef && !afterBar) continue;
+      // (in a picture, accidentals after a barline are far more often a misread note than a new key)
+      if (!afterClef && (!afterBar || page.scan)) continue;
       const clef = [...list].reverse().find(c => c.kind === 'clef' && c.x < x)?.clef || state.clefs.get(pianoStaves.indexOf(st)) || { sign: pianoStaves.indexOf(st) ? 'F' : 'G', step: pianoStaves.indexOf(st) ? 6 : 2 };
       const letter = a => LETTERS[((diatonic(clef, stepOf(st, a.y)) % 7) + 7) % 7];
       let nat = 0; while (nat < run.length && run[nat].sym.v === 0) nat++;
@@ -1298,7 +1300,7 @@ async function convert(data, options = {}) {
     const music = pages.reduce((n, p) => n + p.glyphs.filter(g => g.sym.k === 'head').length, 0);
     if (!music) {
       const err = new Error(pages.some(p => p.images) ?
-        'This PDF is a scan or photo of printed music, so it holds pictures rather than notes. The built-in reader needs a PDF exported from notation software such as MuseScore; for scans, use a scanner (below) and choose its MusicXML.' :
+        'This PDF is a scan or photo of printed music, so it holds pictures rather than notes; the picture reader (piano-scan-reader.js) reads those.' :
         'No music notation was found in this PDF. The reader needs a PDF exported from notation software (MuseScore, LilyPond, Dorico, Finale, Sibelius).');
       err.code = pages.some(p => p.images) ? 'scan' : 'none'; throw err;
     }
@@ -1320,5 +1322,5 @@ async function convert(data, options = {}) {
   } finally { doc.destroy?.(); }
 }
 
-window.PianoPdfReader = { symbolFromName, findVoltas, convert, extractPage, recognize, toMusicXML, sfntGlyphNames, findStaves, groupSystems, buildSystem, analyseSystem, TICKS };
+window.PianoPdfReader = { symbolFromName, findVoltas, convert, extractPage, recognize, toMusicXML, sfntGlyphNames, findStaves, groupSystems, buildSystem, analyseSystem, loadPdfjs, TICKS };
 })();
