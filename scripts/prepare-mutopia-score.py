@@ -97,7 +97,17 @@ def _impromptu(s):
     return s[:k] + ' \\midi { }\n' + s[k:]
 
 
+def _layout_midi(s):
+    # The source plays a separately written MIDI score (with the D.S. written out); take MIDI from the printed score
+    # instead, so every attack has its notehead. The jump stays as printed; the tempo mark of the MIDI score is kept, hidden.
+    i = s.index('\\score {\n  \\unfoldRepeats %'); s = s[:i].rstrip() + '\n'
+    return s.replace('  \\layout { }\n}', '  \\layout { }\n  \\midi { \\tempo 4 = 150 }\n}')
+
+
 FIXUPS = {
+    # Hidden grace notes that only anchor an ornament's slur would sound in MIDI as extra attacks.
+    'bach-polonaise-in-f-bwv-anh-117b': lambda s: s.replace("\\grace { \\hideNotes \\stemDown a16^([ bf] \\unHideNotes }", "\\grace { s16 s16 }"),
+    'streabbog-les-etoiles-dor-no-1-valse': _layout_midi,
     'alla-turca': _alla_turca,
     'mountain-king': _mountain_king,
     'rach-prelude': _rach_prelude,
@@ -113,14 +123,20 @@ for id, path in sources.items():
         continue
     work = root / id; shutil.rmtree(work, ignore_errors=True); work.mkdir(parents=True)
     folder = path.rsplit('/', 1)[0]; stem = folder.rsplit('/', 1)[1]; main = path.rsplit('/', 1)[1]
-    try:
+    if path.startswith('Engraved/'):
+        # Engraved for OpenPiano from a public-domain scan (source URL in its header); kept in scripts/engravings/.
+        src = work / 'src'; src.mkdir(); shutil.copy(pathlib.Path('scripts/engravings') / main, src / main)
+    else:
+      try:
         data = fetch(BASE + path); src = work / 'src'; src.mkdir(); (src / main).write_bytes(data)
-    except Exception:
+      except Exception:
         zdata = fetch(f'{BASE}{folder}/{stem}-lys.zip'); src = work / 'src'; zipfile.ZipFile(io.BytesIO(zdata)).extractall(src)
     mains = list(src.rglob(main)); assert mains, (id, 'main file missing')
     original = flatten(mains[0].resolve(), (mains[0].resolve(),))
     (work / 'original.ly').write_text(original)
-    for name in (f'{stem}-a4.pdf', f'{stem}-let.pdf'):
+    if path.startswith('Engraved/'):
+        subprocess.run([str(bin_dir / 'lilypond'), '-dno-point-and-click', '-o', 'original', 'original.ly'], cwd=work, check=True, capture_output=True)
+    for name in (() if path.startswith('Engraved/') else (f'{stem}-a4.pdf', f'{stem}-let.pdf')):
         try:
             (work / 'original.pdf').write_bytes(fetch(f'{BASE}{folder}/{name}')); break
         except Exception:

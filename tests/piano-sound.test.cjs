@@ -40,7 +40,7 @@ test('notes beyond the keyboard still sound as grand piano, never as a synthesiz
 
 test('every note of every library piece lies on the 88 keys, so it plays its own recording', () => {
   const ctx = { window: { PianoRepertoire: {} } };
-  for (const f of ['piano-repertoire', 'piano-library', 'piano-additions', 'piano-famous', 'piano-pdmx', 'piano-studies', 'piano-collection']) vm.runInNewContext(fs.readFileSync(`site/${f}.js`, 'utf8'), ctx);
+  for (const f of ['piano-repertoire', 'piano-library', 'piano-additions', 'piano-famous', 'piano-pdmx', 'piano-method', 'piano-studies', 'piano-collection']) vm.runInNewContext(fs.readFileSync(`site/${f}.js`, 'utf8'), ctx);
   const R = ctx.window.PianoRepertoire; let pieces = 0;
   for (const [id, r] of Object.entries(R)) {
     let d = r;

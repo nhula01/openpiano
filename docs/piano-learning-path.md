@@ -148,6 +148,9 @@ python3 scripts/stamp-assets.py
 npm run test:piano
 ```
 
+`apply-learning-path.py` also inserts the method-book ladder pieces (`site/piano-method.js`) with the
+guidance written in `scripts/piano-method-pieces.json`; see `docs/collection.md`.
+
 `apply-learning-path.py` is idempotent. It also inserts the Level 0 level object and the 20 First
 keys curriculum entries (their prerequisites, exercise and check are written in the script), and
 prints the number of pieces per level. It exits non-zero if an override id no longer matches.

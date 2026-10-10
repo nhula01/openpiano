@@ -8,15 +8,15 @@ musical reason the model cannot see.
 
 ## Model
 
-- calibration: 135 levelled pieces (96 with RCM/Henle evidence, 39 other hand-levelled library pieces) plus 20 First keys pieces at half weight
-- new model, leave-one-out, 135 levelled pieces: 83/135 exact (61%), 125/135 within one (93%); rank correlation with level 0.85
-- new model, leave-one-out, the 96 RCM/Henle pieces: 59/96 exact (61%), 88/96 within one (92%)
-- new model, leave-one-out, the 50 hand-levelled library pieces (the old model's training set): 32/50 exact (64%), 47/50 within one (94%)
-- old collection model as shipped (no tempo, its own rounding), same 135 pieces: 30/135 exact (22%), 113/135 within one (84%) (its 48% was measured against the levels before they were anchored to RCM; on the 50 library pieces today: 27/50 exact (54%), 49/50 within one (98%))
-- old model's score with cut points re-fitted to today's levels, leave-one-out, same 135 pieces: 76/135 exact (56%), 122/135 within one (90%); rank correlation 0.80
+- calibration: 193 levelled pieces (134 with RCM/Henle evidence, 59 other hand-levelled library pieces) plus 20 First keys pieces at half weight
+- new model, leave-one-out, 193 levelled pieces: 120/193 exact (62%), 184/193 within one (95%); rank correlation with level 0.92
+- new model, leave-one-out, the 134 RCM/Henle pieces: 74/134 exact (55%), 127/134 within one (95%)
+- new model, leave-one-out, the 108 hand-levelled library pieces (the old model's training set): 72/108 exact (67%), 104/108 within one (96%)
+- old collection model as shipped (no tempo, its own rounding), same 193 pieces: 65/193 exact (34%), 171/193 within one (89%) (its 48% was measured against the levels before they were anchored to RCM; on the 108 library pieces today: 62/108 exact (57%), 107/108 within one (99%))
+- old model's score with cut points re-fitted to today's levels, leave-one-out, same 193 pieces: 84/193 exact (44%), 178/193 within one (92%); rank correlation 0.89
 - the inputs were chosen with the same leave-one-out runs, so expect a few points less on new pieces
-- weights (per standard deviation): speed +0.37, range +0.33, shifts +0.50, stretch +0.30, chords +0.20, texture -0.30, voices +0.11, key +0.49, length +0.42
-- cut points: 0.50, 1.67, 3.20, 3.68, 4.46, 5.13, 6.54
+- weights (per standard deviation): speed +0.33, range +0.44, shifts +0.42, stretch +0.31, chords +0.18, texture -0.36, voices +0.13, key +0.57, length +0.41
+- cut points: 0.33, 1.63, 3.06, 3.62, 4.59, 5.40, 6.52
 
 ## Without a reason (0)
 
@@ -24,11 +24,16 @@ These fail the test.
 
 None.
 
-## With a reason (2)
+## With a reason (7)
 
 Evidence (RCM/Henle) or a human reason decides the level; the model is shown for information.
 
 | id | level | predicted | score | measured | reason |
 |---|---|---|---|---|---|
-| mozart-minuet-in-g-k-1 | 2 | 4 | 56.9 | 6.7 notes/s at ♩=200, chords up to 2 (2 max), stretch 7 semitones, 2 voices in a hand, leaps 12 (33.3/min fast), 1 accidentals in the key, 8% chromatic, 29 s | R2, H1 |
-| mozart-lacrimosa-from-the-requiem-k-626 | 4 | 6 | 86.3 | 1.3 notes/s at ♩=57, chords up to 6 (8 max), stretch 36 semitones, 7 voices in a hand, leaps 26 (1.3/min fast), 1 accidentals in the key, 14% chromatic, 190 s | slow (1.3 notes/s) chordal reduction on three staves; the difficulty model counts the middle staff in one hand, so its chord sizes and stretches are not real |
+| mozart-minuet-in-g-k-1 | 2 | 4 | 54.9 | 6.7 notes/s at ♩=200, chords up to 2 (2 max), stretch 7 semitones, 2 voices in a hand, leaps 12 (33.3/min fast), 1 accidentals in the key, 8% chromatic, 29 s | R2, H1 |
+| mozart-lacrimosa-from-the-requiem-k-626 | 4 | 6 | 83.8 | 1.3 notes/s at ♩=57, chords up to 6 (8 max), stretch 36 semitones, 7 voices in a hand, leaps 26 (1.3/min fast), 1 accidentals in the key, 14% chromatic, 190 s | slow (1.3 notes/s) chordal reduction on three staves; the difficulty model counts the middle staff in one hand, so its chord sizes and stretches are not real |
+| bach-little-prelude-in-a-minor-bwv-942 | 5 | 3 | 47.7 | 2.7 notes/s at ♩=60, chords up to 1 (1 max), stretch 0 semitones, 1 voices in a hand, leaps 10 (0.8/min fast), 0 accidentals in the key, 18% chromatic, 76 s | R7, H4: RCM Level 7 List A |
+| fugue | 6 | 4 | 61.7 | 4.4 notes/s at ♩=66, chords up to 2 (3 max), stretch 12 semitones, 2 voices in a hand, leaps 11 (9.8/min fast), 0 accidentals in the key, 8% chromatic, 98 s | R10 (with its prelude), H6; four voices |
+| chopin-prelude-in-c-op-28-no-1 | 6 | 4 | 61.6 | 6.3 notes/s at ♩=76, chords up to 2 (2 max), stretch 12 semitones, 3 voices in a hand, leaps 19 (94.8/min fast), 0 accidentals in the key, 5% chromatic, 28 s | H6 (Henle HN 883); only half a minute long, which pulls the difficulty model down |
+| chopin-prelude-in-g-op-28-no-3 | 7 | 5 | 70.5 | 10.7 notes/s at ♩=160, chords up to 3 (4 max), stretch 11 semitones, 4 voices in a hand, leaps 9 (4.3/min fast), 1 accidentals in the key, 3% chromatic, 56 s | H7 |
+| liszt-preludio-transcendental-etude-no-1 | 7 | 5 | 75.9 | 10.7 notes/s at ♩=160, chords up to 4 (5 max), stretch 12 semitones, 5 voices in a hand, leaps 24 (31.8/min fast), 0 accidentals in the key, 15% chromatic, 36 s | Transcendental Étude |

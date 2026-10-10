@@ -41,6 +41,7 @@ const COMPOSERS = {
   'Bernhard Flies': { years: 'c. 1770–after 1800', era: 'Classical' }, 'Anton Diabelli': { years: '1781–1858', era: 'Classical' },
   'Friedrich Kuhlau': { years: '1786–1832', era: 'Classical' }, 'Henry Lemoine': { years: '1786–1854', era: 'Studies' },
   'Jean-Baptiste Duvernoy': { years: 'c. 1802–1880', era: 'Studies' }, 'Cornelius Gurlitt': { years: '1820–1901', era: 'Romantic' },
+  'Ferdinand Beyer': { years: '1803–1863', era: 'Studies' }, 'Louis Köhler': { years: '1820–1886', era: 'Studies' }, 'Franz Behr': { years: '1837–1898', era: 'Romantic' },
   'Carl Reinecke': { years: '1824–1910', era: 'Romantic' }, 'Jean Louis Streabbog': { years: '1835–1886', era: 'Romantic' },
   'John Field': { years: '1782–1837', era: 'Romantic' }, 'Felix Mendelssohn': { years: '1809–1847', era: 'Romantic' },
   'Vincenzo Bellini': { years: '1801–1835', era: 'Opera' }, 'Gioachino Rossini': { years: '1792–1868', era: 'Opera' },

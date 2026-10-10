@@ -60,6 +60,52 @@ data gzip-compressed (`practice.json.gz`, decompressed in the browser) and do no
 or page images. Each folder keeps the original transcription (`original.mxl`), the practice
 MIDI and a README with the credit.
 
+## Method-book ladders (graded teaching pieces)
+
+58 complete teaching pieces fill the early levels with the books teachers have used for 150 years.
+They live in their own manifest, `site/piano-method.js` (sources `scripts/piano-method-sources.json`,
+titles and study guidance `scripts/piano-method-pieces.json`, levels with evidence in
+`scripts/level-overrides.json`). Each score folder keeps the source file, its PDF and a README with
+the edition, the typesetter or scan and the licence.
+
+From the Mutopia Project (LilyPond sources; licence checked on each piece page, none NonCommercial):
+
+| Set | Numbers | Mutopia ids | Licence | Level |
+|---|---|---|---|---|
+| Burgmüller, 25 Études faciles, Op. 100 (Litolff) | 5, 6, 8–14 · 16–18 | 214–225, 228–230 | Public Domain | 3 · 4 |
+| Notebook for Anna Magdalena Bach (Bach-Gesellschaft) | Anh. 116, 117a, 117b, 118–121, 128 · 127 · 131 | 77, 1013–1016, 1612–1615 · 767 | Public Domain (Anh. 131: CC BY-SA 2.5) | 3 · 4 · 2 |
+| Bach, Applicatio BWV 994 (W. F. Bach notebook) | – | 66 | Public Domain | 3 |
+| Bach, Little Preludes (Bach-Gesellschaft) | BWV 924, 926, 940, 941 · 928, 936–938, 942, 943 | 978, 69, 1594, 1595 · 63, 1576, 1591, 1592, 1599, 1533 | CC BY-SA 3.0 (926, 928: Public Domain) | 4 · 5 |
+| Tchaikovsky, Children’s Album, Op. 39 (Schirmer 1904) | 1 | 2032 | Public Domain | 3 |
+| Schumann, Album for the Young, Op. 68 (Peters) | 9 · 13 | 675, 662 | CC BY-SA 2.5 | 4 · 5 |
+| Streabbog, Les étoiles d’or (1882) | 1 | 2092 | CC BY-SA 4.0 | 3 |
+| Behr, In May (c. 1903) | – | 2155 | Public Domain | 1 |
+
+Engraved in LilyPond for OpenPiano from public-domain IMSLP scans (sources in `scripts/engravings/`,
+each note checked against the scan by eye; printed fingering copied, none added; the engraving is CC0):
+
+| Set | Numbers | Edition (IMSLP file) | Level |
+|---|---|---|---|
+| Beyer, Vorschule im Klavierspiel, Op. 101 | 12–15, 24, 25, 38, 39 | Peters No. 2721, rev. Adolf Ruthardt (d. 1934), [1895] (#81208) | 1 |
+| Köhler, Die allerleichtesten Übungsstücke, Op. 190 | 2–5 · 27 | Gutheil, Moscow, c. 1880 (#105780) | 1 · 2 |
+| Köhler, Kinder-Übungen und Melodien, Op. 218 | 32, 36 | Peters, plate 7766, rev. Ruthardt (#527252) | 2 |
+| Gurlitt, The First Lessons, Op. 117 | 1–4 | Schirmer’s Library No. 324, 1895 (#400775) | 1 |
+| Czerny, 100 Progressive Studies, Op. 139 | 1 | Schirmer 1893, fingered by Max Vogrich (d. 1916) (#81113) | 2 |
+
+Levels follow the RCM 2022 syllabus where it lists the piece (for example Beyer No. 39 at
+Preparatory A, Köhler Op. 218 No. 36 at Level 1, Anh. 120 and 121 at Level 4), otherwise Henle
+levels, or the position in a progressive set next to listed numbers; each piece’s evidence is stored
+as `levelReason`. Within a level a set keeps its printed order (`order` in the curriculum).
+
+Pipeline: `python3 scripts/prepare-mutopia-score.py WORK scripts/piano-method-sources.json` (paths
+starting `Engraved/` are compiled from `scripts/engravings/`), `node scripts/read-piano-library-midi.cjs
+WORK scripts/piano-method-sources.json`, `python3 scripts/build-piano-library.py WORK
+scripts/piano-method-sources.json site/piano-method.js`, then `python3 scripts/apply-learning-path.py`.
+D.C./D.S. returns (Burgmüller Nos. 6, 8, 14; Streabbog) are kept as printed, like the rest of the
+library. Left out: Bach BWV 933 (LilyPond reports a layout error in the Mutopia source), André’s
+Sonatina Op. 34 and A. E. Müller’s Siciliano (unknown source edition), Diabelli Op. 149 and
+Op. 163 (four hands; they need a duet part the player does not have yet).
+
 ## Removing a piece
 
 Delete `site/scores/<id>/`, remove the id from `site/piano-collection.js` and its entry in

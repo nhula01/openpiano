@@ -106,6 +106,25 @@ def main():
         if folder.exists(): shutil.rmtree(folder)
     ids = {p['id'] for p in data['pieces']}
 
+    # method-book ladders (scripts/piano-method-pieces.json, optional): their curriculum entries, built from the
+    # hand-written guidance; the level comes from over['levels'] below. Only pieces built into site/piano-method.js.
+    method_file = ROOT / 'scripts/piano-method-pieces.json'
+    if method_file.exists():
+        method = json.loads(method_file.read_text())
+        built = set(re.findall(r'"([a-z0-9-]+)":\{"id"', (SITE / 'piano-method.js').read_text())) if (SITE / 'piano-method.js').exists() else set()
+        before = {p['id']: p for p in data['pieces']}
+        data['pieces'] = [p for p in data['pieces'] if p['id'] not in method['pieces']]
+        for pid, m in method['pieces'].items():
+            if pid not in built: problems.append('method piece not built ' + pid); continue
+            data['pieces'].append({'id': pid, 'level': over['levels'].get(pid, [3])[0], 'order': m['order'], 'set': m['set'],
+                                   **{k: m[k] for k in ('skill', 'prerequisites', 'pattern', 'transfer', 'exercise', 'check')}})
+            if before.get(pid, {}).get('levelReason'): data['pieces'][-1]['levelReason'] = before[pid]['levelReason']
+        ids = {p['id'] for p in data['pieces']}
+        for pid, order in method.get('order', {}).items():
+            p = next((x for x in data['pieces'] if x['id'] == pid), None)
+            if p: p['order'] = order
+            else: problems.append('no piece to order ' + pid)
+
     # levels
     changed = 0
     for key, (level, why) in over['levels'].items():

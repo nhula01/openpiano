@@ -47,8 +47,10 @@ def read_js_object(path, marker):
 
 def load_repertoire():
     rep = {}
-    for name in MANIFESTS:
-        path = SITE / f'piano-{name}.js'
+    # the known manifests first, then any other generated manifest (new imports add their own file)
+    paths = [SITE / f'piano-{name}.js' for name in MANIFESTS]
+    paths += sorted(p for p in SITE.glob('piano-*.js') if p not in paths and 'Object.assign(window.PianoRepertoire' in p.read_text()[:400])
+    for path in paths:
         if path.exists(): rep.update(read_js_object(path, 'PianoRepertoire'))
     return rep
 
