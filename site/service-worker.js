@@ -23,6 +23,7 @@ const APP_SHELL = [
   './piano-additions.js',
   './piano-famous.js',
   './piano-pdmx.js',
+  './piano-method.js',
   './piano-collection.js',
   './piano-studies.js',
   './piano-skills.js',

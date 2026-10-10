@@ -5,6 +5,8 @@ titles={'minuet':('Minuet in G major, BWV Anh. 114','Christian Petzold'),'melody
 titles.update({'ode':('Ode to Joy · theme arrangement','Ludwig van Beethoven'),'twinkle':('Twinkle, Twinkle · learning arrangement','Traditional'),'frere':('Frère Jacques · learning arrangement','Traditional')})
 titles.update({"pastoral":("La Pastorale, Op. 100 No. 3","Friedrich Burgmüller"),"reunion":("La Petite Réunion, Op. 100 No. 4","Friedrich Burgmüller")})
 titles.update({"fantaisie-impromptu":("Fantaisie-Impromptu, Op. 66","Frédéric Chopin"),"minute-waltz":("Minute Waltz, Op. 64 No. 1","Frédéric Chopin"),"raindrop":("Raindrop Prelude, Op. 28 No. 15","Frédéric Chopin"),"ballade1":("Ballade No. 1 in G minor, Op. 23","Frédéric Chopin"),"moonlight":("Moonlight Sonata · first movement","Ludwig van Beethoven"),"alla-turca":("Rondo alla Turca, K. 331 · third movement","Wolfgang Amadeus Mozart"),"rach-prelude":("Prelude in C♯ minor, Op. 3 No. 2","Sergei Rachmaninoff"),"arabesque1":("Arabesque No. 1","Claude Debussy"),"maple-leaf":("Maple Leaf Rag","Scott Joplin"),"mountain-king":("In the Hall of the Mountain King · piano version","Edvard Grieg"),"gnossienne1":("Gnossienne No. 1","Erik Satie"),"impromptu-gflat":("Impromptu in G-flat, D. 899 No. 3","Franz Schubert"),"consolation3":("Consolation No. 3, S. 172","Franz Liszt"),"brahms-waltz":("Waltz in A-flat, Op. 39 No. 15","Johannes Brahms")})
+_method=pathlib.Path('scripts/piano-method-pieces.json')  # method-book pieces keep their titles beside their guidance
+if _method.exists():titles.update({k:(v['title'],v['composer']) for k,v in json.loads(_method.read_text())['pieces'].items()})
 manifest={}
 for id,path in choices.items():
  d=root/id;dest=pathlib.Path('site/scores')/id;
@@ -45,6 +47,9 @@ for id,path in choices.items():
    if movement==0:
     firstMidi=min(n['beat'] for n in midi[0]['notes']);firstHead=min(n['beat'] for g,n in heads) if not systems else 0
     if not systems and firstHead<0:pickupShift=firstMidi-firstHead
+    elif not systems and any(n['grace'] and n['beat']==firstHead for g,n in heads):
+     # A grace note before the first beat: the MIDI starts with the grace, so every main note sounds later by its length.
+     main=min((n for g,n in heads if not n['grace']),key=lambda n:n['beat']);pickupShift=min(m['beat'] for m in midi[0]['notes'] if m['midi']==main['midi'])-main['beat']
     elif not systems:pickupShift=0
    shift+=pickupShift
    used=set()
@@ -74,7 +79,12 @@ for id,path in choices.items():
  assert all(n['hand'] for n in notes),f'{id}: a note has no hand assignment'
  title,composer=titles.get(id,(meta("title"),meta("composer")));copyright=meta('license') or meta('mutopiacopyright') or meta('copyright');number=re.search(r'Mutopia-\d{4}/\d{2}/\d{2}-(\d+)',src);url='https://www.mutopiaproject.org/cgibin/piece-info.cgi?id='+number[1] if number else 'https://www.mutopiaproject.org/ftp/'+str(pathlib.Path(path).parent)+'/'
  if path.startswith('Learning/'):url=f'scores/{id}/original.ly'
+ engraved=path.startswith('Engraved/')  # engraved for OpenPiano from a public-domain scan named in the header
+ if engraved:url=meta('sourceurl')
  fingers=sum(p['svg'].count('source-fingering') for p in pages)
+ dest.mkdir(parents=True,exist_ok=True)
+ for name in ('original.ly','original.pdf'):
+  if (d/name).exists():shutil.copy(d/name,dest/name)  # the bundled source and its PDF, as prepared
  original=dest/'original';original.mkdir(exist_ok=True);subprocess.run(['pdftoppm','-scale-to','1400','-jpeg',str(dest/'original.pdf'),str(original/'page')],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
  # Normalize Poppler's padded multi-digit page names.
  for f in original.glob('page-*.jpg'):target=original/f'page-{int(f.stem.split("-")[-1])}.jpg';f.rename(target) if f!=target else None
@@ -83,7 +93,7 @@ for id,path in choices.items():
  for start in range(0,int(end),int(meter*8)):
   if any(start<=n['beat']<start+meter*8 for n in notes):sections.append({'id':f'block-{start}','title':f'Practice block {len(sections)+1}','start':start,'end':min(end,start+meter*8)})
  if len(midi)>1:sections=[{'id':f'movement-{j+1}','title':f'Movement {j+1}','start':offsets[j],'end':offsets[j]+lengths[j]} for j in range(len(midi))]+sections
- info={'id':id,'title':title,'composer':composer,'caption':'Complete practice score'+(' · three movements' if len(midi)>1 else '')+' · repeats unfolded','sourceURL':url,'pdf':f'scores/{id}/original.pdf','midi':f'scores/{id}/practice.midi','originalPages':count,'folder':f'scores/{id}','sourceFingering':fingers>0,'attribution':composer+' · Mutopia · '+meta('maintainer')+' · '+copyright,'beatsPerMeasure':meter}
+ info={'id':id,'title':title,'composer':composer,'caption':'Complete practice score'+(' · three movements' if len(midi)>1 else '')+' · repeats unfolded','sourceURL':url,'pdf':f'scores/{id}/original.pdf','midi':f'scores/{id}/practice.midi','originalPages':count,'folder':f'scores/{id}','sourceFingering':fingers>0,'attribution':composer+(' · engraved from '+meta('source') if engraved else ' · Mutopia · '+meta('maintainer'))+' · '+copyright,'beatsPerMeasure':meter}
  if path.startswith('Learning/'):info['caption']='Complete learning arrangement of the public-domain melody · simple two-hand accompaniment';info['attribution']=composer+' · My Journey learning arrangement · CC0 1.0'
  head_keys={(round(n['beat'],5),n['midi']) for page in pages for n in page['notes']}
  assert all((round(n['beat'],5),n['midi']) in head_keys for n in notes),f'{id}: an attack is missing from the engraving'
@@ -100,7 +110,8 @@ for id,path in choices.items():
   # Every movement remains separately downloadable; the player uses the combined data.
   for j,m in enumerate(midi):shutil.copy(d/m['file'],dest/f'movement-{j+1}.midi')
   subprocess.run(['node','scripts/combine-piano-midi.cjs'],check=True)
- (dest/'README.md').write_text(f'# {title}\n\nComposer: {composer}\nTypesetting: {meta("maintainer")}\nLicense: {copyright}\nSource: {url}\n\nOriginal PDF and LilyPond source are bundled unchanged. The practice source is\nconverted to LilyPond 2.24, with repeats unfolded and tagged noteheads added.\nPrinted fingerings are retained directly from that edition; no generated\nfingerings are added. The player derives attacks and durations from the\ncompiled MIDI and assigns hands from the two MIDI staff tracks.\n\nThis engraving and practice data inherit the source license.\n')
+ if engraved:(dest/'README.md').write_text(f'# {title}\n\nComposer: {composer}\nEdition: {meta("source")}\nScan: {url}'+(f' ({meta("sourcepage")})' if meta('sourcepage') else '')+'\nEngraving: {meta("maintainer")}\nLicense: {copyright}\n\nEngraved in LilyPond for OpenPiano from the public-domain scan above; every note was\nchecked against the scan. original.ly is that engraving and original.pdf is compiled\nfrom it. Printed fingerings are copied from that edition; no generated fingerings are\nadded. The practice source unfolds repeats and adds tagged noteheads; the player derives\nattacks and durations from the compiled MIDI and hands from the two staves.\n')
+ else:(dest/'README.md').write_text(f'# {title}\n\nComposer: {composer}\nTypesetting: {meta("maintainer")}\nLicense: {copyright}\nSource: {url}\n\nOriginal PDF and LilyPond source are bundled unchanged. The practice source is\nconverted to LilyPond 2.24, with repeats unfolded and tagged noteheads added.\nPrinted fingerings are retained directly from that edition; no generated\nfingerings are added. The player derives attacks and durations from the\ncompiled MIDI and assigns hands from the two MIDI staff tracks.\n\nThis engraving and practice data inherit the source license.\n')
  version=hashlib.sha256((dest/'practice.json').read_bytes()).hexdigest()[:12]
  manifest[id]={**info,'dataURL':f'scores/{id}/practice.json?v={version}','multiMovement':len(midi)>1}
  print(id,len(notes),len(pages),'pages',fingers,'fingerings',flush=True)
