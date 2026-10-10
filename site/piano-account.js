@@ -10,7 +10,7 @@ const el = (tag, text, cls) => { const n = document.createElement(tag); if (text
 const cfg = window.PianoCloudConfig || {};
 const CLOUD = !!(cfg.supabaseUrl && cfg.supabaseAnonKey);
 const SUPABASE_JS = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.js';
-const PROGRESS_KEYS = ['my-journey-piano-pathway-v2', 'journey-piano-skills-v1', 'journey-note-passes-v1', 'openpiano-community-plans-v1'];
+const PROGRESS_KEYS = ['my-journey-piano-pathway-v2', 'journey-piano-skills-v1', 'journey-note-passes-v1', 'openpiano-community-plans-v1', 'openpiano-chords-v1'];
 const MAX_SONGS = 100;
 
 // ---------- Device storage (IndexedDB) ----------

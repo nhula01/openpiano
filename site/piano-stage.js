@@ -102,7 +102,7 @@ function build(){const p=P();if(!p)return;document.body.dataset.shell='stage';co
   switchTip.hidden=!(cur!=='MIDI'&&devs.length&&m.last!=null);switchTip.textContent=`Keyboard detected (${devs[0]||'MIDI'}): play with it`;}
  inputBox.addEventListener('toggle',()=>{if(inputBox.open){if(p.input==='MIDI'||p.inputStatus?.midi?.permission==='granted')p.probeMidi?.().then(msg=>{midiMsg=msg||'';renderInput();});renderInput();}});
  document.addEventListener('click',e=>{if(inputBox.open&&!inputBox.contains(e.target))inputBox.open=false;});
- p.on('input',d=>{if(d?.kind==='microphone'){meterBar.style.width=Math.min(100,Math.round(Math.sqrt(d.level||0)*260))+'%';if(d.heard?.length){lastHeard=d.heard;lastHeardAt=Date.now();}}if(d?.kind==='MIDI'&&d.note!=null)midiMsg='';if(inputBox.open||d?.kind!=='microphone')renderInput();});
+ p.on('input',d=>{if(d?.midi!=null)return;if(d?.kind==='microphone'){meterBar.style.width=Math.min(100,Math.round(Math.sqrt(d.level||0)*260))+'%';if(d.heard?.length){lastHeard=d.heard;lastHeardAt=Date.now();}}if(d?.kind==='MIDI'&&d.note!=null)midiMsg='';if(inputBox.open||d?.kind!=='microphone')renderInput();});
  const step=el('div',undefined,'sg-step');step.append(prevBar,go,nextBar);
  deck.append(modes.node,back,step,hands.node,tempo,loopB,clickT.node,otherT.node,inputBox,more);
  stage.append(deck);

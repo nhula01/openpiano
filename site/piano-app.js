@@ -190,15 +190,16 @@ function todayPanel(plan) {
   head.append(el('h3', 'Today'), el('p', `Level ${plan.level} · ${name.name}: ${st.learned} of ${st.exit} pieces learned to finish this level${st.total > st.exit ? ` (${st.total} to choose from)` : ''}.`, 'muted'));
   const bar = el('span', undefined, 'today-bar'), fill = el('span'); fill.style.width = Math.min(100, Math.round(100 * st.learned / Math.max(1, st.exit))) + '%'; bar.append(fill); head.append(bar);
   box.append(head);
-  const list = el('ol', undefined, 'today-list'), LABEL = { warmup: 'Warm up', piece: 'Your piece', reading: 'Read something new', review: 'Play again' };
-  for (const it of plan.items) {
+  const list = el('ol', undefined, 'today-list'), LABEL = { warmup: 'Warm up', piece: 'Your piece', reading: 'Read something new', review: 'Play again', chords: 'Chords' };
+  for (const it of window.PianoChords?.planItems ? window.PianoChords.planItems(plan) : plan.items) {
     const li = el('li', undefined, 'today-item today-' + it.kind), text = el('div');
     text.append(el('span', LABEL[it.kind], 'today-kind'), el('strong', it.title), el('span', it.note, 'today-note'));
-    const b = el('button', it.kind === 'reading' ? 'Read' : 'Play', 'secondary small'); b.type = 'button';
-    b.onclick = () => it.kind === 'piece' || it.kind === 'review' ? practicePiece(it.id) : window.dispatchEvent(new CustomEvent('piano-select-score', { detail: it.kind === 'reading' ? { id: it.id, reading: true } : it.id }));
+    const b = el('button', it.label || (it.kind === 'reading' ? 'Read' : 'Play'), 'secondary small'); b.type = 'button';
+    b.onclick = () => it.action ? it.action() : it.kind === 'piece' || it.kind === 'review' ? practicePiece(it.id) : window.dispatchEvent(new CustomEvent('piano-select-score', { detail: it.kind === 'reading' ? { id: it.id, reading: true } : it.id }));
     li.append(text, b); list.append(li);
   }
   box.append(list);
+  const route = window.PianoChords?.routeControl?.(plan); if (route) box.append(route);
   // where to start: a new learner starts at Level 0; someone who reads music can start higher
   const start = el('label', 'Start the path at', 'today-start'), sel = el('select');
   for (const l of levels) { const o = el('option', `Level ${l.id} · ${levelName(l.id).name}`); o.value = l.id; sel.append(o); }
