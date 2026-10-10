@@ -576,6 +576,98 @@
     "ravel-la-valse": [
       7,
       "755 bars, 37% chromatic, fast left-hand leaps"
+    ],
+    "a-la-claire-fontaine": [
+      1,
+      "difficulty model (predicts 0): 5.0 notes/s with both hands at ♩=100 (no marked tempo), single notes in each hand, 14 s"
+    ],
+    "rameau-tambourins-i-ii-dardanus": [
+      4,
+      "difficulty model (predicts 5): 14.6 notes/s with both hands at ♩=250, chords up to 2 notes, stretches of 17 semitones, 46 s"
+    ],
+    "beethoven-symphony-no-5-third-movement": [
+      6,
+      "difficulty model (predicts 7): 13.8 notes/s with both hands at ♩=250, chords up to 5 notes, octave stretches, 3 sharps or flats, 19% chromatic, 4 min 13 s"
+    ],
+    "bella-ciao": [
+      5,
+      "difficulty model (predicts 6): 9.2 notes/s with both hands at ♩=140, chords up to 4 notes, octave stretches, 1 min 52 s"
+    ],
+    "grieg-anitras-dance": [
+      5,
+      "difficulty model (predicts 6): 10.4 notes/s with both hands at ♩=72, chords up to 4 notes, 17% chromatic, 3 min 32 s"
+    ],
+    "lehar-merry-widow-waltz": [
+      5,
+      "difficulty model (predicts 6): 3.3 notes/s with both hands at ♩=100 (no marked tempo), chords up to 4 notes, octave stretches, 13% chromatic, 9 min 49 s"
+    ],
+    "mason-joy-to-the-world": [
+      5,
+      "difficulty model (predicts 6): 6.8 notes/s with both hands at ♩=72, chords up to 6 notes, octave stretches, 1 min 39 s"
+    ],
+    "rameau-les-sauvages": [
+      5,
+      "difficulty model (predicts 6): 9.8 notes/s with both hands at ♩=180, chords up to 3 notes, octave stretches, 1 min 47 s"
+    ],
+    "we-wish-you-a-merry-christmas": [
+      5,
+      "difficulty model (predicts 6): 7.1 notes/s with both hands at ♩=160, chords up to 4 notes, octave stretches, 1 min 06 s"
+    ],
+    "czerny": [
+      4,
+      "difficulty model (predicts 3): 8.2 notes/s with both hands at ♩=110, chords up to 3 notes, 16 s"
+    ],
+    "debussy-valse-romantique": [
+      6,
+      "difficulty model (predicts 7): 7.9 notes/s with both hands at ♩=110, chords up to 4 notes, octave stretches, 4 sharps or flats, 18% chromatic, 4 min 03 s"
+    ],
+    "rachmaninoff-piano-concerto-no-2-finale-excerpts": [
+      6,
+      "difficulty model (predicts 7): 12.2 notes/s with both hands at ♩=132, chords up to 8 notes, octave stretches, 22% chromatic, 5 min 22 s"
+    ],
+    "rimsky-korsakov-scheherazade-the-young-prince-and-princess": [
+      6,
+      "difficulty model (predicts 7): 13.3 notes/s with both hands at ♩=96, chords up to 5 notes, octave stretches, 29% chromatic, 8 min 51 s"
+    ],
+    "bach-italian-concerto-bwv-971-second-movement": [
+      5,
+      "difficulty model (predicts 4): 6.9 notes/s with both hands at ♩=48, chords up to 2 notes, 3 min 01 s"
+    ],
+    "bach-invention-no-13-in-a-minor-bwv-784": [
+      5,
+      "H4 (Henle HN 591); two independent lines, which the difficulty model cannot see; beside Invention No. 1"
+    ],
+    "bach-invention-no-3-in-d-bwv-774": [
+      5,
+      "H4 (Henle HN 591); two independent lines, which the difficulty model cannot see; beside Invention No. 1"
+    ],
+    "chopin-prelude-in-c-op-28-no-1": [
+      6,
+      "H6 (Henle HN 883); only half a minute long, which pulls the difficulty model down"
+    ],
+    "mozart-lacrimosa-from-the-requiem-k-626": [
+      4,
+      "slow (1.3 notes/s) chordal reduction on three staves; the difficulty model counts the middle staff in one hand, so its chord sizes and stretches are not real"
+    ],
+    "dacre-daisy-bell-bicycle-built-for-two-1892": [
+      4,
+      "difficulty model (predicts 5): 5.7 notes/s with both hands at ♩=165, chords up to 4 notes, octave stretches, 2 min 00 s"
+    ],
+    "pierpont-jingle-bells": [
+      4,
+      "difficulty model (predicts 5): 9.0 notes/s with both hands at ♩=180, chords up to 3 notes, 50 s"
+    ],
+    "strauss-radetzky-march-johann-strauss-i": [
+      4,
+      "difficulty model (predicts 5): 7.3 notes/s with both hands at ♩=176, chords up to 4 notes, 1 min 59 s"
+    ],
+    "ballade": [
+      4,
+      "difficulty model (predicts 5): 10.4 notes/s with both hands at ♩=104, chords up to 3 notes, 15% chromatic, 1 min 37 s"
+    ],
+    "sousa-semper-fidelis": [
+      5,
+      "difficulty model (predicts 6): 6.7 notes/s with both hands at ♩=120, chords up to 3 notes, stretches of 22 semitones, 3 min 59 s"
     ]
   },
   "chorales": {
