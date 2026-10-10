@@ -55,3 +55,11 @@ test('ringing notes alone never make a note count (no strike, no note)',()=>{
  const log=listen(new L.MicListener(rate),render([{m:45,t:.1,dur:3,amp:.3},{m:57,t:.1,dur:3,amp:.2}],{rate,seconds:2.5}),t=>t<.5?[45,57]:[64],{rate});
  assert.ok(!log.some(e=>e.on&&e.m===64),'E4 never played');
 });
+test('a piano that is out of tune (nearly a quarter tone flat or sharp) is still heard after a few notes',()=>{
+ const melody=[60,62,64,65,67,69,71,72,71,69,67,65,64,62,60,64,67,72];
+ for(const cents of [-45,45]){const notes=melody.map((m,i)=>({m,t:.3+i*.35,dur:.3,amp:.2}));
+  const log=listen(new L.MicListener(rate),render(notes,{rate,seconds:.6+melody.length*.35,cents}),t=>{const i=Math.max(0,Math.min(melody.length-1,Math.floor((t-.3)/.35)));return [melody[i]];},{rate});
+  const heardAt=melody.map((m,i)=>log.some(e=>e.on&&e.m===m&&Math.abs(e.at-(.3+i*.35))<.05));
+  assert.ok(heardAt.slice(5).every(Boolean),`${cents} cents: missed ${heardAt.map((h,i)=>h?'':E.noteName(melody[i])+'#'+i).filter(Boolean).join(' ')}`);
+  assert.ok(!log.some(e=>e.on&&!melody.includes(e.m)),`${cents} cents: stray notes`);}
+});

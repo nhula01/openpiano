@@ -6,6 +6,10 @@
 (function(root){
 'use strict';
 const A4=440,LOW=21,HIGH=108;
+// Mistake checks: a neighbouring key wins when its partials explain RIVAL_RATIO times more of the new sound (and at
+// least RIVAL_MIN of its loudest peak); a note's odd partials are missing below ODD_MISSING of its even ones, judged
+// only where they were below ODD_QUIET of them before the strike.
+const RIVAL_MIN=.8,RIVAL_RATIO=3,ODD_MISSING=.08,ODD_QUIET=.3;
 const freq=m=>A4*2**((m-69)/12);
 const twiddles=new Map();
 // In-place radix-2 FFT of (re, im); length must be a power of two.
@@ -44,12 +48,13 @@ function pitch(samples,rate,{gate=.006,clarityMin=.72}={}){
 const stretch=m=>.00012*2**((m-21)/22);
 // Pianos are tuned stretched: the bass a little flat, the treble sharp (about +30 cents at the top).
 const railsback=m=>m<69?-15*((69-m)/48)**2:30*((m-69)/39)**2;
-const partialFreq=(m,k)=>k*freq(m)*2**(railsback(m)/1200)*Math.sqrt(1+stretch(m)*k*k);
+const partialFreq=(m,k,cents=0)=>k*freq(m)*2**((railsback(m)+cents)/1200)*Math.sqrt(1+stretch(m)*k*k);
 
 /* MicListener: listens strike by strike, the way a piano sounds.
    1. Strikes: a sudden rise across the frequencies that are sounding, or on the partials of the notes the
       score wants (a soft note over loud ringing ones), checked every ~11 ms against the room's own noise, so
-      loud and quiet rooms behave alike. A key let go is no strike.
+      loud and quiet rooms behave alike. A key let go is no strike. A peak that nearly reaches the threshold still
+      counts if a wanted note is plainly new in it (a soft note under the pedal).
    2. About 0.1 s after a strike (longer in the bass, or as soon as the next strike comes) it compares the
       spectrum of the stretch just after the strike with the stretch just before it. Only what got louder is
       new; notes still ringing (or held with the pedal) cancel out, and a swell of ringing strings is too
@@ -70,11 +75,11 @@ class MicListener{
   // Strike detection: spectra of 2048 samples every 512 samples (about 11 ms), 80 Hz to 6 kHz.
   this.shortSize=2048;this.hop=512;this.swin=hann(this.shortSize);this.sre=new Float64Array(this.shortSize);this.sim=new Float64Array(this.shortSize);
   this.sLo=Math.floor(80*this.shortSize/rate);this.sHi=Math.ceil(6000*this.shortSize/rate);
-  this.layout();
+  this.tune=0;this.tunes=[];this.semis=0;this.slips={down:0,up:0};this.layout();
   this.reset();}
  // Partial frequencies (and weights) for every key.
- layout(){this.notes=[];for(let m=LOW;m<=HIGH;m++){const ps=[];for(let k=1;k<=16;k++){const f=partialFreq(m,k);if(f>Math.min(8000,this.rate*.45))break;ps.push({k,f,w:(freq(m)+27)/(k*freq(m)+320)});}this.notes[m]=ps;}}
- reset(){this.held=new Map();this.pending=null;this.recent=new Map();this.lastStrike=null;this.noise=null;this.start=null;this.specs=[];this.flux=[];this.done=null;this.t=0;this.calls=0;this.lastOnset=-1;}
+ layout(){this.notes=[];for(let m=LOW;m<=HIGH;m++){const ps=[];for(let k=1;k<=16;k++){const f=partialFreq(m,k,this.tune);if(f>Math.min(8000,this.rate*.45))break;ps.push({k,f,w:(freq(m)+27)/(k*freq(m)+320)});}this.notes[m]=ps;}}
+ reset(){this.info=new Map();this.cand=null;this.lastAny=null;this.lastStrong=0;this.held=new Map();this.pending=null;this.recent=new Map();this.lastStrike=null;this.noise=null;this.start=null;this.specs=[];this.flux=[];this.done=null;this.t=0;this.calls=0;this.lastOnset=-1;}
  // Power spectrum of the long window (2.9 Hz bins at 48 kHz).
  spectrum(samples){const {re,im,window,size}=this;re.fill(0);im.fill(0);const start=samples.length-size;for(let i=0;i<size;i++)re[i]=(samples[start+i]||0)*window[i];fft(re,im);const p=new Float64Array(this.fftSize/2);for(let i=0;i<p.length;i++)p[i]=re[i]*re[i]+im[i]*im[i];return p;}
  // Log power (dB) of 2048 samples ending at index `end`, 80 Hz–6 kHz.
@@ -98,12 +103,22 @@ class MicListener{
    // the previous step is a strike if it is a peak above the threshold
    // (in the first quarter second the room's noise is not known yet: only a clear strike counts)
    const n=this.flux.length;if(n<3)continue;const early=n<24;const p=this.flux[n-2],hist=this.flux.slice(0,n-2).map(x=>x.f).sort((x,y)=>x-y),med=hist.length?hist[hist.length>>1]:0;
-   // a strike: a peak well above the recent typical change (`strength` is how far above)
-   const ref=Math.max(1.5,med*1.5+1.5),thr=ref,hg=this.flux.slice(0,n-2).map(x=>x.g).sort((x,y)=>x-y),mg=hg.length?hg[hg.length>>1]:0,thg=Math.max(1.2,mg*1.5+1);
-   const byAll=p.f>thr&&p.f>=this.flux[n-3].f&&p.f>this.flux[n-1].f,byNote=p.g>thg&&p.g>=this.flux[n-3].g&&p.g>this.flux[n-1].g;
-   // (right after a strike its slower low partials still swell: a weak rise then is no new strike)
+   // a strike: a peak well above the recent typical change (`strength` is how far above); the threshold follows the
+   // lower third of the recent change, since in a quick passage the strikes themselves fill the middle of it
+   const low=hist.length?hist[Math.floor(hist.length*.3)]:0,ref=Math.max(1.5,med*1.5+1.5),thr=Math.max(.5,low*3+.3),hg=this.flux.slice(0,n-2).map(x=>x.g).sort((x,y)=>x-y),mg=hg.length?hg[hg.length>>1]:0,thg=Math.max(1.2,mg*1.5+1);
+   const peakF=p.f>=this.flux[n-3].f&&p.f>this.flux[n-1].f,peakG=p.g>=this.flux[n-3].g&&p.g>this.flux[n-1].g,byAll=p.f>thr&&peakF,byNote=p.g>thg&&peakG;
+   // a faint peak (over 60% of the threshold) may be a soft note under the pedal: it counts only if a wanted note
+   // is plainly new in it (judge)
+   const faint=!byAll&&!byNote&&(p.f>thr*.6&&peakF||p.g>thg*.6&&peakG);
+   // (right after a strike its slower low partials still swell: a weak rise then is no new strike, a far stronger one is)
    const sinceLast=p.t-this.lastOnset,strong=Math.max(p.f/ref,p.g/thg);
-   if((byAll||byNote)&&sinceLast>.075&&(sinceLast>.1||strong>1.6)&&(!early||strong>3)){out.push(p.t);this.lastOnset=p.t;this.lastFlux=strong;this.lastByNote=!byAll;}}
+   // A weak or faint strike waits 80 ms: a far stronger one right after it is the real strike and replaces it (its
+   // notes must not be judged on a cut-short stretch). Each strike keeps the notes wanted when it was heard.
+   const emit=s=>{out.push(s.t);this.lastAny=s.t;this.info.set(s.t,s);};if(this.cand&&p.t-this.cand.t>.08){emit(this.cand);this.cand=null;}
+   if((byAll||byNote)&&(sinceLast>.075&&(sinceLast>.1||strong>1.6)||sinceLast>.035&&strong>Math.max(3,4*this.lastStrong))&&(!early||strong>3)){
+    const c=this.cand;if(c&&!c.faint&&!(strong>Math.max(3,4*c.flux)))emit(c);this.cand=null;
+    this.lastOnset=p.t;this.lastStrong=strong;const s={t:p.t,flux:strong,byNote:!byAll,want:this.curWant,next:this.curNext};if(strong<1.6)this.cand=s;else emit(s);}
+   else if(faint&&!this.cand&&p.t-(this.lastAny??-1)>.1&&!early)this.cand={t:p.t,flux:strong,byNote:true,faint:true,want:this.curWant,next:this.curNext};}
   return out;}
  // The real peak nearest a frequency in a magnitude spectrum: a local maximum whose (interpolated) frequency
  // lies within `spread` of f. The skirt of a loud neighbouring note does not count.
@@ -119,7 +134,7 @@ class MicListener{
  // Which notes were struck, from a spectrum of new sound (magnitudes). Wanted notes are checked first, highest
  // to lowest, each removing what it explains; then the next group's notes; then any other clear note is a
  // candidate wrong note. heard: magnitudes of everything heard after the strike.
- analyse(mag,expected,current=expected,heard=null){const lo=Math.floor(45/this.bin),hi=Math.ceil(5000/this.bin);let top=0;const part=[];for(let i=lo;i<hi;i++){part.push(mag[i]);if(mag[i]>top)top=mag[i];}part.sort((a,b)=>a-b);
+ analyse(mag,expected,current=expected,heard=null,ringing=[]){this.ringingNow=ringing;const lo=Math.floor(45/this.bin),hi=Math.ceil(5000/this.bin);let top=0;const part=[];for(let i=lo;i<hi;i++){part.push(mag[i]);if(mag[i]>top)top=mag[i];}part.sort((a,b)=>a-b);
   // a partial must stand out from the new sound and from everything heard (the room's noise and echo)
   let hf=0;if(heard){const hp=[];for(let i=lo;i<hi;i++)hp.push(heard[i]);hp.sort((a,b)=>a-b);hf=hp[hp.length>>1]||0;}
   const floor=Math.max(part[Math.floor(part.length*.5)]||0,top*1e-3,hf*1.5);if(top<=0)return [];
@@ -128,7 +143,9 @@ class MicListener{
   // Highest first: an upper note takes its partials, and the lower note keeps its own odd ones. The notes wanted
   // now come first; the next group's notes are then checked on what is left, and must not be overtones of the
   // notes wanted now (found or not).
-  const verify=(m,threshold)=>{const ps=this.partialPeaks(mag,m),first=ps.filter(p=>p.k<=6),clear=first.filter(p=>clearAt(p.value));
+  // a peak found for a partial of m that sits nearer a partial of another wanted note belongs to that note
+  const nearer=(m,k,at)=>{if(at<0)return false;const f=at*this.bin,d=Math.abs(this.notes[m][k-1].f-f);return current.some(o=>o!==m&&this.notes[o]?.some(x=>x.k<=8&&Math.abs(x.f-f)<d&&Math.abs(x.f-this.notes[m][k-1].f)/x.f>.006));};
+  const verify=(m,threshold)=>{const ps=this.partialPeaks(mag,m).map(p=>nearer(m,p.k,p.at)?{...p,value:0}:p),first=ps.filter(p=>p.k<=6),clear=first.filter(p=>clearAt(p.value));
    // an odd partial that a note already found also has counts at half its original height (it cannot be told apart)
    const sh=k=>this.notes[m][k-1]&&found.some(f=>this.notes[f.m].some(q=>Math.abs(q.f-this.notes[m][k-1].f)/q.f<.015));
    const v=k=>ps.find(p=>p.k===k)?.value||0,vo=k=>sh(k)?Math.max(v(k),.5*this.peak(orig,this.notes[m][k-1].f,this.spreadFor(m,k)).value):v(k);
@@ -142,13 +159,20 @@ class MicListener{
    const ownBest=f=>Math.max(0,...own.filter(f).map(p=>p.value));
    // a chord note with low partials of its own (not shared with the other notes) must show at least one of them
    const harmonic=(k,o)=>{const r=k*freq(m)/freq(o),j=Math.round(r);return j>=1&&Math.abs(1200*Math.log2(r/j))<25;},mine=ps.filter(p=>p.k<=4&&!others.some(o=>harmonic(p.k,o))),unproven=m>=57&&others.length&&mine.length&&mine.length<4&&!mine.some(p=>clearAt(p.value)&&p.value>=top*threshold*.5);
+   // An odd partial shared with another note may be all that keeps the note from looking an octave too high. Then
+   // its own odd partials must not be missing: a struck string (not one still ringing) shows its third, or its
+   // fundamental where the microphone hears it, wherever no other note sits.
+   const rawOdd=Math.max(0,...[1,3,5].filter(k=>!sh(k)).map(v),sharing?ownBest(p=>p.k%2):0),evenRef=sharing?ownBest(p=>p.k%2===0):evenBest,
+    octaveUp=()=>now&&rawOdd<Math.max(top*.04,evenRef*.12)&&!(this.ringNow||[]).includes(m)&&this.oddMissing(orig,m,current.filter(o=>o!==m));
    const why=sharing?(own.filter(p=>clearAt(p.value)).length<Math.min(m<57?2:1,own.length)?'partials':ownBest(()=>true)<top*threshold*.5?'weak'
-     :Math.max(oddBest,ownBest(p=>p.k%2))<Math.max(top*.04,ownBest(p=>p.k%2===0)*.12)?'even-only':this.undertone(orig,m,current.includes(m)?new Set(current):known)?'undertone':'')
+     :Math.max(oddBest,ownBest(p=>p.k%2))<Math.max(top*.04,ownBest(p=>p.k%2===0)*.12)||octaveUp()?'even-only':this.undertone(orig,m,current.includes(m)?new Set(current):known,undefined,Math.max(4*floor,top*.03))?'undertone':'')
     :clear.length<Math.min(m>=72?1:2,first.length)?'partials':lowBest<top*threshold?'weak'
     // a note an octave above sounds only on the even partials: the fundamental or the third must be there too
-    :oddBest<Math.max(top*.04,evenBest*.12)?'even-only'
+    :oddBest<Math.max(top*.04,evenBest*.12)||octaveUp()?'even-only'
     // and the note must not be an overtone of a lower note that was struck instead (octave, twelfth, two octaves)
-    :this.undertone(orig,m,current.includes(m)?new Set(current):known)?'undertone':unproven?'shared':'';const ok=!why;if(this.debug)this.debug[m]=why||'ok';this.why[m]=why;
+    :this.undertone(orig,m,current.includes(m)?new Set(current):known,undefined,Math.max(4*floor,top*.03))?'undertone':unproven?'shared'
+    // a next-group note must show its own fundamental or octave (not only higher partials, which a played note may own)
+    :!now&&Math.max(v(1),v(2))<top*.15?'ahead-weak':'';const ok=!why;if(this.debug)this.debug[m]=why||'ok';this.why[m]=why;
    if(ok){found.push({m,expected:true,strength:Math.max(lowBest,...own.map(p=>p.value))/top,shared:sharing});this.remove(mag,m);}
 };
   for(const m of [...current].sort((a,b)=>b-a))if(this.notes[m]?.length)verify(m,m>=96?.03:.1);
@@ -158,16 +182,17 @@ class MicListener{
    for(const g of found){if(g.m>=m||g.shared)continue;const r=f0/this.notes[g.m][0].f,j=Math.round(r);if(j<2||Math.abs(r-j)/j>.03)continue;
     const h=k=>this.notes[g.m][k-1]?this.peak(orig,this.notes[g.m][k-1].f,this.spreadFor(g.m,k)).value:0;const ref=j===2?Math.max(h(3),h(5)*1.5):Math.max(h(j-1),h(j+1));
     if(at<ref*.5){found.splice(found.indexOf(f),1);break;}}}
+  // A wanted note is not taken when a key a step or two away explains far more of the new sound than it does
+  // (a slip of the finger: the neighbour's partials are loud and the wanted note shows only a stray peak, such as
+  // one half of the neighbour's beating fundamental). Partials the other wanted notes have are left out of both.
+  for(const f of [...found]){const m=f.m,oth=current.filter(o=>o!==m),e=this.comb(orig,m,oth);
+   for(const d of [-2,-1,1,2]){const r=m+d;if(r<LOW||r>HIGH||current.includes(r))continue;const v=this.comb(orig,r,oth);if(v>=top*RIVAL_MIN&&v>=e*RIVAL_RATIO){found.splice(found.indexOf(f),1);this.why[m]='rival';if(this.debug)this.debug[m]='rival';break;}}}
   const overtone=m=>current.some(c=>this.notes[c].some(q=>Math.abs(q.f-this.notes[m][0].f)/q.f<.02));
   for(const m of expected.filter(x=>!current.includes(x)).sort((a,b)=>b-a))if(this.notes[m]?.length&&!overtone(m))verify(m,.25);
-  // A wanted note taken for an overtone of a lower note can be cleared by the next notes found in the same strike
-  // (a quick grace note or chord right after explains those partials).
-  const soon=found.filter(f=>!current.includes(f.m)).map(f=>f.m);
-  if(soon.length)for(const m of current)if(this.why?.[m]==='undertone'&&!this.undertone(orig,m,new Set(current),[...current,...soon])){if(this.debug)this.debug[m]='ok';found.push({m,expected:true,strength:this.peak(orig,freq(m),.023).value/top});this.remove(mag,m);}
   // Other notes: only clear, harmonic ones count as wrong notes.
   // (partials of a wanted note count as explained even when that note was not confirmed: a deep note the
   // microphone barely hears must not turn into wrong notes on its upper partials)
-  const explained=f0=>[...found.map(f=>f.m),...current].some(o=>this.notes[o]?.length&&Array.from({length:24},(_,i)=>partialFreq(o,i+1)).some((x,i)=>Math.abs(x-f0)/f0<(i<5?.015:.03)));
+  const explained=f0=>[...found.map(f=>f.m),...current].some(o=>this.notes[o]?.length&&Array.from({length:24},(_,i)=>partialFreq(o,i+1,this.tune)).some((x,i)=>Math.abs(x-f0)/f0<(i<5?.015:.03)));
   for(let round=0;round<3;round++){let best=-1,bestS=0;for(let m=LOW;m<=HIGH;m++){if(known.has(m)||found.some(f=>f.m===m))continue;const sal=this.salience(mag,m);if(sal>bestS){bestS=sal;best=m;}}if(best<0)break;
    // (high notes have nearly no overtones: their fundamental must stand alone)
    const ps=this.partialPeaks(mag,best),need=ps.slice(0,best>=76?1:3);
@@ -175,25 +200,42 @@ class MicListener{
    const real=!heard||ps.slice(0,2).every(p=>{const h=this.peak(heard,this.notes[best][p.k-1].f,this.spreadFor(best,p.k));return h.at>=0&&Math.abs(h.at-p.at)<=1;});
    // a note far above a struck deep note cannot be told from that note's dense upper partials
    const dense=[...found.map(f=>f.m),...current].some(o=>freq(o)<freq(best)/10);
-   if(!(ps[0].value>=top*.3&&need.every(p=>clearAt(p.value))&&!explained(freq(best))&&real&&!dense))break;
+   if(!(ps[0].value>=top*.3&&need.every(p=>clearAt(p.value))&&!explained(this.notes[best][0].f)&&real&&!dense))break;
    found.push({m:best,expected:false,strength:ps[0].value/top});this.remove(mag,best);}
   return found;}
+ // How much of the new sound note m's partials explain: the sum of its first 8 partial peaks (relative), leaving out
+ // partials that another note in `others` also has, and peaks that sit nearer another note's partial than m's.
+ comb(mag,m,others){let s=0;for(const q of this.notes[m].slice(0,8)){if(others.some(o=>this.notes[o].some(x=>Math.abs(x.f-q.f)/q.f<.015)))continue;const p=this.peak(mag,q.f,this.spreadFor(m,q.k));if(p.at<0)continue;const f=p.at*this.bin;if(others.some(o=>this.notes[o].some(x=>Math.abs(x.f-f)<Math.abs(q.f-f))&&this.notes[o].some(x=>Math.abs(x.f-f)/f<this.spreadFor(o,x.k))))continue;s+=p.value;}return s;}
+ // Are note m's own odd partials missing from the new sound (an octave above was struck)? Its fundamental (where
+ // a small microphone hears it, above ~250 Hz) and third, where no other note in `others` has a partial, were quiet
+ // before the strike and stayed below a tenth of its even partials (and so did its fifth, in the bass).
+ oddMissing(mag,m,others){const ps=this.notes[m],near=f=>others.some(o=>this.notes[o].some(x=>Math.abs(x.f-f)<f*.023+18)),pk=(k,s=mag)=>ps[k-1]?this.peak(s,ps[k-1].f,this.spreadFor(m,k)).value:0;
+  const even=Math.max(pk(2),pk(4),pk(6)),lim=even*ODD_MISSING;if(!even)return false;
+  const own=[1,3,5].filter(k=>ps[k-1]&&ps[k-1].f>=120&&!near(ps[k-1].f)),test=own.filter(k=>(k===1&&ps[0].f>=250)||(k===3&&ps[2].f>=200));
+  if(!test.length||own.filter(k=>k<5||m<55).some(k=>pk(k)>=lim))return false;
+  return !this.priorNow||test.some(k=>pk(k,this.priorNow)<even*ODD_QUIET);}
  // Was a lower note u (an octave, a twelfth or two octaves below m) struck, rather than m? u shows on its own
  // partials that m cannot explain (for an octave: f/2 and 3f/2).
- undertone(mag,m,known,cover=known){
+ undertone(mag,m,known,cover=known,minV=0){
   // the note's own strength: its fundamental, or half its next partials (a small microphone loses deep fundamentals)
-  const pp=this.partialPeaks(mag,m),base=Math.max(this.peak(mag,freq(m),.012).value,.5*Math.max(pp[1]?.value||0,pp[2]?.value||0));if(!base)return false;
-  const others=[...cover].filter(x=>x!==m),covered=(f,list)=>list.some(o=>{for(let k=1;k<=24;k++){const x=partialFreq(o,k);if(x>f*1.03)return false;if(Math.abs(x-f)/f<.012)return true;}return false;});
-  for(const [d,r] of [[12,2],[19,3],[24,4]]){const u=m-d;if(u<LOW||known.has(u))continue;const o2=others.filter(x=>x!==u);
+  const pp=this.partialPeaks(mag,m),base=Math.max(this.peak(mag,this.notes[m][0].f,.012).value,.5*Math.max(pp[1]?.value||0,pp[2]?.value||0));if(!base)return false;
+  const others=[...cover].filter(x=>x!==m),covered=(f,list,tol=.012)=>list.some(o=>{for(let k=1;k<=24;k++){const x=partialFreq(o,k,this.tune);if(x>f*(1+tol))return false;if(Math.abs(x-f)/f<tol)return true;}return false;});
+  for(const [d,r] of [[12,2],[19,3],[24,4]]){const u=m-d;if(u<LOW||known.has(u))continue;
+   // a note played a moment ago still settles (its fundamental builds up): its partials then prove less
+   const x=(this.ringingNow||[]).includes(u)?2:1;const o2=others.filter(x=>x!==u);
    // u's own partials (not shared with m, not explained by another expected note); its fundamental (or, deep in
    // the bass, its third partial) must be among them. A real string's fundamental often beats, which splits its
    // peak in two a few per cent either side, so the fundamental is looked for more widely.
-   const own=this.notes[u].slice(0,8).filter(q=>q.k%r!==0&&!covered(q.f,o2)).map(q=>({k:q.k,v:this.peak(mag,q.f,q.k===1?.045:.012).value}));
-   const strong=own.filter(q=>q.v>=base*.3);if(strong.length>=2&&strong.some(q=>q.k<=3))return true;
+   // (a partial near another wanted note's partial may be that note's split, beating peak: within about 18 Hz of it,
+   // beyond the width searched; the other note's distant high partials do not hide u's)
+   const own=this.notes[u].slice(0,8).filter(q=>q.k%r!==0&&!covered(q.f,o2,(q.k===1?.045:.012)+18/q.f)).map(q=>{const v=this.peak(mag,q.f,q.k===1?.045:.012).value;return {k:q.k,v:v>=minV?v:0};});
+   const strong=own.filter(q=>q.v>=base*.3*x);if(this.debug)(this.debugU=this.debugU||[]).push([m,u,own.map(q=>q.k+':'+(q.v/base).toFixed(2)).join(' ')]);if(strong.length>=2&&strong.some(q=>q.k<=3))return true;
    // or several of its own partials together (a real piano's lower partials can each be faint)
-   const some=own.filter(q=>q.v>=base*.1);if(some.length>=2&&some.some(q=>q.k<=3)&&some.reduce((a,q)=>a+q.v,0)>=base*1)return true;
+   const some=own.filter(q=>q.v>=base*.1*x);if(some.length>=2&&some.some(q=>q.k<=3)&&some.reduce((a,q)=>a+q.v,0)>=base*x*(known.size>1?1:.5))return true;
    // an octave below shows its own fundamental clearly (its odd partials can be faint)
-   if(r===2&&own.some(q=>q.k===1&&q.v>=base*.3))return true;}
+   // (or, fainter, its fundamental together with another of its own odd partials)
+   if(r===2&&own.some(q=>q.k===1&&q.v>=base*.3*x))return true;
+   if(r===2&&own.some(q=>q.k===1&&q.v>=base*.15*x)&&own.some(q=>q.k>1&&q.v>=base*.1*x))return true;}
   return false;}
  // Take a found note's partials out of the spectrum, keeping what is louder than its smooth partial envelope
  // (that excess belongs to another note on the same frequency).
@@ -229,11 +271,11 @@ class MicListener{
   const next=[...new Set(upcoming)].filter(m=>m>=LOW&&m<=HIGH);const power=this.spectrum(samples);
   // 1 · strikes; each one is analysed when the next arrives or about 0.1 s after it (longer in the bass)
   // (the first moments only learn the room: a microphone switching on is no strike)
-  if(this.start==null)this.start=now;const found=this.strikes(samples,now,[...new Set([...want,...next])]).filter(at=>at>this.start);
-  for(const at of found){let want2=want;if(this.pending){const n=out.events.length;this.resolve(this.pending,samples,now,want,out,next,at,power);
+  if(this.start==null)this.start=now;this.curWant=want;this.curNext=next;const found=this.strikes(samples,now,[...new Set([...want,...next])]);
+  for(const at of found){const s=this.info.get(at);this.info.delete(at);if(at<=this.start)continue;let want2=s.want;if(this.pending){const n=out.events.length;this.resolve(this.pending,samples,now,want,out,next,at,power);
     // notes this strike just answered are no longer wanted from the next one (the score moves on)
-    const got=new Set(out.events.slice(n).filter(e=>e[1]).map(e=>e[0]));want2=want.filter(m=>!got.has(m));}
-   this.pending={t:at,want:want2,next,flux:this.lastFlux,byNote:this.lastByNote};}
+    const got=new Set(out.events.slice(n).filter(e=>e[1]).map(e=>e[0]));want2=want2.filter(m=>!got.has(m));}
+   this.pending={t:at,want:want2,next:s.next,flux:s.flux,byNote:s.byNote,faint:s.faint};}
   if(this.pending){const p=this.pending,low=Math.min(...p.want,...want,108),wait=low<45?.16:low<57?.12:.1;if(now-p.t>=wait+.004){this.resolve(p,samples,now,want,out,next,null,power);this.pending=null;}}
   // 2 · notes fade: a held note ends when it has fallen far below its strike (or the room goes quiet)
   const loud=out.rms>this.gate;
@@ -241,31 +283,60 @@ class MicListener{
   out.heard=[...this.held.keys()];return out;}
  // Which notes a strike holds. before/after: power spectra just before and just after the strike;
  // expected: the notes wanted now; ahead: the next group's notes; young: notes struck so shortly before that
- // they are still starting; ringing: notes played in the last moments (they may swell, not wrong notes).
- judge(before,after,expected,ahead=[],young=[],ringing=[],strength=1){const n=after.length,mag=new Float64Array(n);let fresh=0,all=0;
+ // they are still starting; ringing: notes played in the last moments (they may swell, not wrong notes);
+ // faint: a strike that only nearly reached the threshold.
+ judge(before,after,expected,ahead=[],young=[],ringing=[],strength=1,faint=false){const n=after.length,mag=new Float64Array(n);let fresh=0,all=0;
   // New sound: what got at least twice as loud (3 dB) as just before the strike. Ringing notes that swell a
   // little (their strings beat) stay out.
   let prior=0;for(let i=0;i<n;i++){const d=after[i]-before[i]*2;mag[i]=d>0?Math.sqrt(d):0;fresh+=d>0?d:0;all+=after[i];prior+=before[i];}
   // a note stopping (its key let go) is not a strike: the new sound must be more than a click next to what was sounding
-  if(fresh<prior*.03)return {ok:[],wrong:[]};
+  this.lastPriorShare=fresh/Math.max(prior,1e-30);if(fresh<prior*.008)return {ok:[],wrong:[]};
   // A strike brings plenty of new sound: in the octave where the struck note is loudest, most of the sound is
   // new (a ringing string that swells brings only a little). Too little is no strike; a wrong note needs a clear one.
   // `strength`: how far the strike stood out when it was detected (1 = just at the threshold).
   let share=0;for(let lo=80;lo<6000;lo*=2){const a=Math.round(lo/this.bin),b=Math.min(n,Math.round(lo*2/this.bin));let fb=0,ab=0;for(let i=a;i<b;i++){const d=after[i]-before[i]*2;if(d>0)fb+=d;ab+=after[i];}if(ab>=all*.01)share=Math.max(share,fb/ab);}
-  this.lastFresh=share;const clear=share*Math.sqrt(Math.min(4,strength));if(clear<.3||(strength<1.3&&share<.6))return {ok:[],wrong:[]};
-  // A wanted note played again a moment ago (its damper was still stopping it just before): any growth counts.
-  for(const m of expected)if(ringing.includes(m)&&!young.includes(m))for(const q of this.notes[m].slice(0,8)){const c=Math.round(q.f/this.bin),w=Math.ceil(q.f*.012/this.bin)+2;for(let j=Math.max(0,c-w);j<=Math.min(n-1,c+w);j++){const d=after[j]-before[j]*1.2;mag[j]=Math.max(mag[j],d>0?Math.sqrt(d):0);}}
+  this.lastFresh=share;const clear=share*Math.sqrt(Math.min(4,strength));
+  // A note plainly new: nearly all of the sound on its own partials is new, and at least two of them (the fundamental
+  // of a high note) rose 9 dB and stand out from the loudest sound. A soft note under the pedal brings little new
+  // sound to its octave, yet its own partials leap.
+  let amax=0;for(let i=Math.floor(45/this.bin);i<Math.ceil(5000/this.bin);i++)amax=Math.max(amax,after[i]);const was=i=>Math.max(before[i-1],before[i],before[i+1]);
+  const plain=m=>{if(young.includes(m))return false;let c=0,sum=0,gain=0;for(const q of this.notes[m].slice(0,6)){const p=this.peak(after,q.f,this.spreadFor(m,q.k));if(p.at<0)continue;const a=p.value,b=was(p.at);sum+=a;gain+=Math.max(0,a-2*b);if(a>=8*b&&a>=amax*1e-3)c++;}return c>=(m>=72?1:2)&&gain>=sum*.7;};
+  // too little new sound (or a faint strike) counts only for the wanted notes plainly new in it, never for a wrong note
+  const weak=faint||clear<.3||(strength<1.3&&share<.6);if(weak&&!expected.some(plain))return {ok:[],wrong:[]};
+  // A wanted note played again a moment ago (its damper was still stopping it just before): any growth counts, once
+  // one of its partials at least doubled (a string still ringing from before only wavers).
+  const grew=m=>this.notes[m].slice(0,6).some(q=>{const p=this.peak(after,q.f,this.spreadFor(m,q.k));return p.at>=0&&p.value>=amax*1e-4&&p.value>=2*was(p.at);});
+  for(const m of expected)if(ringing.includes(m)&&!young.includes(m)&&grew(m))for(const q of this.notes[m].slice(0,8)){const c=Math.round(q.f/this.bin),w=Math.ceil(q.f*.012/this.bin)+2;for(let j=Math.max(0,c-w);j<=Math.min(n-1,c+w);j++){const d=after[j]-before[j]*1.2;mag[j]=Math.max(mag[j],d>0?Math.sqrt(d):0);}}
   for(const m of young)for(const q of this.notes[m]){const c=Math.round(q.f/this.bin),w=Math.ceil(q.f*this.spreadFor(m,q.k)/this.bin)+2;for(let j=Math.max(0,c-w);j<=Math.min(n-1,c+w);j++)mag[j]=0;}
-  ahead=ahead.filter(m=>!expected.includes(m));
-  const heard=after.map(Math.sqrt),found=this.analyse(mag,[...expected,...ahead],expected,heard);
-  const ok=found.filter(f=>f.expected);
-  const wrong=share<.45?[]:found.filter(f=>!f.expected&&
+  ahead=weak?[]:ahead.filter(m=>!expected.includes(m));
+  this.priorNow=before.map(Math.sqrt);this.ringNow=ringing;const heard=after.map(Math.sqrt),found=this.analyse(mag,[...expected,...ahead],expected,heard);
+  // (a next group's note heard now must be plainly new: not a string still ringing, nor an overtone of this strike)
+  const ok=found.filter(f=>f.expected&&(expected.includes(f.m)?!faint||plain(f.m):plain(f.m)));
+  const wrong=share<.45||weak?[]:found.filter(f=>!f.expected&&
    // an overtone or undertone of a struck expected note is not a separate note
    !(ok.some(o=>[12,19,24,28,31,36,-12,-19,-24].includes(f.m-o.m))&&f.strength<.7)&&
    // nor is a note played a moment ago that is still sounding
    !(ringing.includes(f.m)&&f.strength<.6));
+  // A wanted note heard more faintly than a clear wrong note a step or an octave away was most likely that
+  // wrong note (a slip of the finger), not both.
+  const okKept=ok.filter(o=>!wrong.some(w=>[1,2,12].includes(Math.abs(w.m-o.m))&&w.strength>o.strength));
+  if(okKept.length<ok.length){ok.length=0;ok.push(...okKept);}
   // the notes of the current group first, then those of the next one
   return {ok:[...ok.filter(f=>expected.includes(f.m)),...ok.filter(f=>!expected.includes(f.m)).sort((x,y)=>ahead.indexOf(x.m)-ahead.indexOf(y.m))],wrong};}
+ /* How this piano is tuned (a home piano is often 20-50 cents flat or sharp): the loudest peaks of each strike,
+    measured against the nearest key, averaged over recent strikes (as directions on a circle, a semitone around). */
+ learnTune(power){const lo=Math.ceil(60/this.bin),hi=Math.floor(1500/this.bin);let top=0;for(let i=lo;i<hi;i++)top=Math.max(top,power[i]);if(!top)return;
+  const pk=[];for(let i=lo+1;i<hi-1;i++){const v=power[i];if(v<top*.01||v<power[i-1]||v<power[i+1]||v<power[i-2]||v<power[i+2])continue;const l=Math.log(power[i-1]+1e-30),c=Math.log(v),r=Math.log(power[i+1]+1e-30),d=l-2*c+r,x=d?Math.max(-.5,Math.min(.5,(l-r)/(2*d))):0;pk.push({f:(i+x)*this.bin,w:Math.sqrt(v)});}
+  pk.sort((a,b)=>b.w-a.w);let X=0,Y=0,W=0;
+  for(const p of pk.slice(0,12)){const c=1200*Math.log2(p.f/A4)+6900,m=Math.round(c/100);if(m<LOW||m>HIGH)continue;const dev=c-100*m-railsback(m),a=2*Math.PI*dev/100;X+=p.w*Math.cos(a);Y+=p.w*Math.sin(a);W+=p.w;}
+  if(!W)return;this.tunes.push({x:X/W,y:Y/W});if(this.tunes.length>10)this.tunes.shift();if(this.tunes.length<3)return;
+  let x=0,y=0;for(const t of this.tunes){x+=t.x;y+=t.y;}const R=Math.hypot(x,y)/this.tunes.length;if(R<.5)return;
+  const est=100*Math.atan2(y,x)/(2*Math.PI)+100*this.semis;if(Math.abs(est-this.tune)>3){this.tune=Math.round(est);this.layout();}}
+ // A piano more than a quarter tone off sounds nearer the neighbouring key: when the strikes keep landing a
+ // semitone from the wanted notes (and nothing else), the tuning is taken to be a semitone further that way.
+ checkSlip(expected,ok,wrong){if(ok.length||!wrong.length||Math.abs(this.tune-100*this.semis)<20){if(ok.length)this.slips={down:0,up:0};return;}
+  if(expected.some(e=>wrong.some(w=>w.m===e-1)))this.slips.down++;else if(expected.some(e=>wrong.some(w=>w.m===e+1)))this.slips.up++;else return;
+  const d=this.slips.down>=3?-1:this.slips.up>=3?1:0;if(d&&Math.abs(this.semis+d)<=1){this.semis+=d;this.tune+=100*d;this.slips={down:0,up:0};this.layout();}}
  // Judge a pending strike. `cut`: the time the next strike began (the stretch after this one must end there).
  resolve(p,samples,now,want,out,next=[],cut=null,power=null){
   // the exact start, not earlier than just after the previous strike
@@ -273,11 +344,14 @@ class MicListener{
   const avail=end-at-Math.round(this.rate*.004)-(cut!=null?Math.max(0,Math.round((now-cut)*this.rate)):0);
   // the stretch before the strike starts after the previous strike's attack, so that note is already whole in it
   const since=this.lastStrike!=null?t-this.lastStrike:9,room=Math.round(Math.max(.04,since-.015)*this.rate);
-  const {before,after,len}=this.strikeSpectra(samples,at,Math.min(avail,room,Math.round(this.rate*.16)));this.lastStrike=t;
+  const {before,after,len}=this.strikeSpectra(samples,at,Math.min(avail,room,Math.round(this.rate*.16)));const last=this.lastStrike;this.lastStrike=t;this.learnTune(after);
   const expected=[...new Set([...p.want,...want])],ahead=[...new Set([...(p.next||[]),...next])];
   // notes struck so shortly before that they are still starting in that stretch are left out
   const young=[...this.recent].filter(([,s])=>t-s<Math.max(.1,len/this.rate+.008)&&t-s>=0).map(([m])=>m),ringing=[...this.recent].filter(([,s])=>now-s<1.5).map(([m])=>m);
-  const {ok,wrong:w}=this.judge(before,after,expected,ahead,young,ringing,p.flux??1);
+  const {ok,wrong:w}=this.judge(before,after,expected,ahead,young,ringing,p.flux??1,p.faint);
+  // a faint rise that held no wanted note was no strike
+  if(p.faint&&!ok.length){this.lastStrike=last;return;}
+  this.checkSlip(expected,ok,w);
   // a strike seen only on the wanted notes' own partials can confirm them, never report a wrong note
   const wrong=p.byNote?[]:w;const ago=Math.max(0,now-t);
   // Wrong notes go first, so a wrong note can never be taken for the next note of the score.
