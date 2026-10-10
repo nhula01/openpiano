@@ -25,8 +25,14 @@ test('a wrong octave or a wrong note does not count, and the wrong note is repor
  assert.equal(run([],[60]).length,0,'silence');
 });
 test('a repeated note is heard again, even while the first one still rings',()=>{
- assert.equal(run([{m:60,t:.2,dur:.5},{m:60,t:.7}],[60]).filter(e=>e.m===60&&e.on).length,2);
- assert.equal(run([{m:60,t:.2,dur:2},{m:60,t:.8}],[60]).filter(e=>e.m===60&&e.on).length,2);
+ // (as in the app, the score moves on to the next C4 once the first is heard)
+ const twice=(notes,at)=>{const a=[60],b=[60];return listen(new L.MicListener(rate),render(notes,{rate,seconds:1.4}),t=>t<at?a:b,{rate}).filter(e=>e.m===60&&e.on).length;};
+ assert.equal(twice([{m:60,t:.2,dur:.5},{m:60,t:.7}],.6),2);
+ assert.equal(twice([{m:60,t:.2,dur:2},{m:60,t:.8}],.6),2);
+});
+test('a note still sounding is not reported again while the score waits on the same notes',()=>{
+ const log=run([{m:60,t:.2,dur:2},{m:64,t:.2,dur:.05,amp:.03},{m:64,t:.8,dur:.05,amp:.03}],[60]);
+ assert.equal(log.filter(e=>e.m===60&&e.on).length,1);
 });
 test('wait-mode practice of Für Elise passes by microphone, with pedal, and stops at a skipped note',()=>{
  const groups=[[76],[75],[76],[75],[76],[71],[74],[72],[45,69],[52],[57],[60],[64],[69],[40,71],[52],[56],[64],[68],[71],[45,72],[52],[57],[64]];
