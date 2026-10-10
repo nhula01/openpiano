@@ -2,7 +2,7 @@
 
 Composer: Franz Behr
 Typesetting: John Mamoun
-License: 
+License: Public Domain
 Source: https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=2155
 
 Original PDF and LilyPond source are bundled unchanged. The practice source is

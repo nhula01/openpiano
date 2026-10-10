@@ -3,8 +3,8 @@
 Composer: Louis Köhler
 Edition: Die allerleichtesten Übungsstücke, Op. 190 (Moscow: A. Gutheil, c. 1880, plate A. 1714 G.)
 Scan: https://imslp.org/wiki/Special:ImagefromIndex/105780 (scan page 3)
-Engraving: {meta("maintainer")}
-License: {copyright}
+Engraving: OpenPiano
+License: Public Domain (music and c. 1880 edition); engraving CC0 1.0
 
 Engraved in LilyPond for OpenPiano from the public-domain scan above; every note was
 checked against the scan. original.ly is that engraving and original.pdf is compiled
