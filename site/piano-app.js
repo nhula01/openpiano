@@ -196,7 +196,7 @@ function todayPanel(plan) {
   const bar = el('span', undefined, 'today-bar'), fill = el('span'); fill.style.width = Math.min(100, Math.round(100 * st.learned / Math.max(1, st.exit))) + '%'; bar.append(fill); head.append(bar);
   box.append(head);
   const list = el('ol', undefined, 'today-list'), LABEL = { warmup: 'Warm up', piece: 'Your piece', reading: 'Read something new', review: 'Play again, cold', chords: 'Play by chords' };
-  for (const it of plan.items) {
+  for (const it of window.PianoChords?.planItems ? window.PianoChords.planItems(plan) : plan.items) {
     const li = el('li', undefined, 'today-item today-' + it.kind), text = el('div');
     const kind = el('span', LABEL[it.kind] || it.kind, 'today-kind'); if (it.stage && it.stage !== 'new') kind.append(el('span', window.PianoProgress?.LABEL[it.stage] || it.stage, 'stage-tag stage-' + it.stage));
     text.append(kind, el('strong', it.title), el('span', it.note, 'today-note'));
@@ -205,6 +205,7 @@ function todayPanel(plan) {
     li.append(text, b); list.append(li);
   }
   box.append(list);
+  const route = window.PianoChords?.routeControl?.(plan); if (route) box.append(route);
   // where to start: a new learner starts at Level 0; someone who reads music can start higher
   const start = el('label', 'Start the path at', 'today-start'), sel = el('select');
   for (const l of levels) { const o = el('option', `Level ${l.id} · ${levelName(l.id).name}`); o.value = l.id; sel.append(o); }
