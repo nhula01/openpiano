@@ -2440,7 +2440,7 @@
   "pdmxTitle": "Wolfgang Amadeus Mozart - Piano Concerto No. 21 Movement II Andante 2 piano L"
  },
  "mozart-sonata-in-a-k-331-theme": {
-  "title": "Sonata in A, K. 331 · theme",
+  "title": "Sonata in A, K. 331 · theme (simplified arrangement in C major)",
   "composer": "Wolfgang Amadeus Mozart",
   "shelf": "Classical",
   "source": "https://musescore.com/user/9424386/scores/5744456",
@@ -2463,14 +2463,7 @@
   "credit": "Wolfgang Amadeus Mozart · transcription by Derek Benton (MuseScore) · CC0 1.0",
   "pdmxTitle": "Mozart - Sonata in Bb K 570 Movement I"
  },
- "mozart-sonata-in-c-k-279-first-movement": {
-  "title": "Sonata in C, K. 279 · first movement",
-  "composer": "Wolfgang Amadeus Mozart",
-  "shelf": "Classical",
-  "source": "https://musescore.com/user/2396561/scores/1014626",
-  "credit": "Wolfgang Amadeus Mozart · transcription by Tienne Simons (MuseScore) · CC0 1.0",
-  "pdmxTitle": "Sonata in C - Full First Movement"
- },
+ 
  "mozart-sonata-in-c-k-330-third-movement": {
   "title": "Sonata in C, K. 330 · third movement",
   "composer": "Wolfgang Amadeus Mozart",
@@ -2719,14 +2712,7 @@
   "credit": "Sergei Rachmaninoff · transcription by Y.Murakami@TYO (MuseScore) · CC0 1.0",
   "pdmxTitle": "Prelude (S.Rachmaninoff Op.23.No.6)"
  },
- "rachmaninoff-prelude-in-g-minor-op-23-no-5": {
-  "title": "Prelude in G minor, Op. 23 No. 5",
-  "composer": "Sergei Rachmaninoff",
-  "shelf": "Romantic",
-  "source": "https://musescore.com/user/2641386/scores/1052311",
-  "credit": "Sergei Rachmaninoff · transcription by Lakme (MuseScore) · Public Domain Mark",
-  "pdmxTitle": "Op.23.5 Rachmaninoff"
- },
+ 
  "rameau-la-poule-the-hen": {
   "title": "La Poule (The Hen)",
   "composer": "Jean-Philippe Rameau",

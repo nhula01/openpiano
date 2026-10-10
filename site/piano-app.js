@@ -148,6 +148,7 @@ function apply(route, opts = {}) {
   current = route;
 }
 window.addEventListener('hashchange', () => apply(location.hash.slice(1)));
+window.addEventListener('piano-progress-changed', () => { if (document.body.dataset.view === 'home') renderHome(); });
 
 // Other scripts scroll to their sections; open the tab that holds the section first.
 const origScroll = Element.prototype.scrollIntoView;
@@ -161,22 +162,50 @@ Element.prototype.scrollIntoView = function (...args) {
 };
 
 // ---------- Home ----------
-function selectedId() { const s = read(PATH_KEY).selected; return pieces.some(p => p.id === s) ? s : 'ode'; }
+function selectedId() { const s = read(PATH_KEY).selected; if (pieces.some(p => p.id === s)) return s; const n = window.PianoPath?.upNext().id; return pieces.some(p => p.id === n) ? n : 'ode'; }
 function renderHome() {
   if (!pieces.length) return;
-  const p = pieces.find(p => p.id === selectedId()), card = $('#up-next'), lv = levelName(p.level);
+  const P = window.PianoPath, plan = P ? P.today() : null, nextId = plan?.next.id;
+  const p = pieces.find(x => x.id === nextId) || pieces.find(x => x.id === selectedId()), card = $('#up-next'), lv = levelName(p.level);
   card.replaceChildren();
   const art = portrait(p.composer, 'large');
   const body = el('div', undefined, 'up-next-body');
   body.append(el('p', 'Up next', 'kicker'), el('h2', p.title), el('p', [p.composer === 'Folk songs' ? 'Traditional' : p.composer, p.note].filter(Boolean).join(', '), 'up-next-sub'));
   const meta = el('p', undefined, 'pill-row'); meta.append(el('span', 'Level ' + p.level, 'pill'), el('span', lv.name, 'pill quiet')); body.append(meta);
+  if (plan) body.append(el('p', plan.next.why, 'muted up-next-why'));
   const actions = el('div', undefined, 'actions');
   const play = el('button', p.reference ? 'Open lesson' : 'Practice now'); play.onclick = () => p.reference ? openLesson(p.id) : practicePiece(p.id);
   const lesson = el('button', 'Lesson steps', 'secondary'); lesson.onclick = () => openLesson(p.id);
   actions.append(play); if (!p.reference) actions.append(lesson);
   body.append(actions);
   card.append(art, body);
+  if (plan) card.append(todayPanel(plan));
   renderRange();
+}
+// Today: a short plan worked out from what the learner has played (piano-path.js): a warm-up, the
+// piece, one fresh first-reading piece and one review; plus where they are on the path.
+function todayPanel(plan) {
+  const box = el('div', undefined, 'today'), st = plan.state, name = levelName(plan.level);
+  const head = el('div', undefined, 'today-head');
+  head.append(el('h3', 'Today'), el('p', `Level ${plan.level} · ${name.name}: ${st.learned} of ${st.exit} pieces learned to finish this level${st.total > st.exit ? ` (${st.total} to choose from)` : ''}.`, 'muted'));
+  const bar = el('span', undefined, 'today-bar'), fill = el('span'); fill.style.width = Math.min(100, Math.round(100 * st.learned / Math.max(1, st.exit))) + '%'; bar.append(fill); head.append(bar);
+  box.append(head);
+  const list = el('ol', undefined, 'today-list'), LABEL = { warmup: 'Warm up', piece: 'Your piece', reading: 'Read something new', review: 'Play again' };
+  for (const it of plan.items) {
+    const li = el('li', undefined, 'today-item today-' + it.kind), text = el('div');
+    text.append(el('span', LABEL[it.kind], 'today-kind'), el('strong', it.title), el('span', it.note, 'today-note'));
+    const b = el('button', it.kind === 'reading' ? 'Read' : 'Play', 'secondary small'); b.type = 'button';
+    b.onclick = () => it.kind === 'piece' || it.kind === 'review' ? practicePiece(it.id) : window.dispatchEvent(new CustomEvent('piano-select-score', { detail: it.kind === 'reading' ? { id: it.id, reading: true } : it.id }));
+    li.append(text, b); list.append(li);
+  }
+  box.append(list);
+  // where to start: a new learner starts at Level 0; someone who reads music can start higher
+  const start = el('label', 'Start the path at', 'today-start'), sel = el('select');
+  for (const l of levels) { const o = el('option', `Level ${l.id} · ${levelName(l.id).name}`); o.value = l.id; sel.append(o); }
+  const chosen = read(PATH_KEY).startLevel; sel.value = String(Number.isInteger(chosen) ? chosen : levels[0]?.id ?? 0);
+  sel.onchange = () => { window.PianoPath.setStartLevel(Number(sel.value)); const s = read(PATH_KEY); delete s.selected; try { localStorage.setItem(PATH_KEY, JSON.stringify(s)); } catch {} renderHome(); };
+  start.append(sel); box.append(start);
+  return box;
 }
 function levelProgress(id) {
   const skills = read(SKILL_KEY).checks || {}, path = read(PATH_KEY).levelChecks || {};
@@ -190,7 +219,7 @@ function renderRange() {
   const box = $('#range-keys'); if (!box) return; box.replaceChildren();
   const dimKey = black => { const k = el('span', undefined, black ? 'k b dim' : 'k w dim'); return k; };
   const lead = el('span', undefined, 'octave edge'); lead.append(dimKey(false), dimKey(false)); const lb = el('span', undefined, 'k b dim'); lb.style.left = 'calc(50% - var(--bw) / 2)'; lead.append(lb); box.append(lead);
-  for (const l of levels) {
+  for (const l of levels.filter(l => l.id > 0)) {
     const pr = levelProgress(l.id), lit = pr.total ? Math.round(7 * pr.checksDone / pr.total) : 0, name = levelName(l.id);
     const oct = el('button', undefined, 'octave'); oct.type = 'button';
     oct.setAttribute('aria-label', `Level ${l.id}, ${name.name}: ${pr.unitsDone} of ${pr.units} skill units, ${pr.checksDone} of ${pr.total} readiness checks. Open level.`);
@@ -243,9 +272,9 @@ function renderBrowse(filter = {}) {
   // Every word must appear somewhere: "chopin noct" finds Chopin's nocturnes.
   const words = term.split(/\s+/).filter(Boolean), fold = t => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   const match = p => { const hay = fold([p.full, p.composer, p.credit, p.skill, p.pattern, p.shelf].join(' ')); return words.every(w => hay.includes(fold(w))); };
-  const composerRow = row.closest('section'); if (composerRow) composerRow.hidden = !!(filter.level || filter.shelf);
+  const composerRow = row.closest('section'); if (composerRow) composerRow.hidden = !!(filter.level != null || filter.shelf);
   // The practice panel belongs to the library front page, not to search results or a See-all list.
-  const forYou = $('.for-you'); if (forYou) forYou.hidden = !!(filter.level || filter.shelf || term);
+  const forYou = $('.for-you'); if (forYou) forYou.hidden = !!(filter.level != null || filter.shelf || term);
   for (const name of names) {
     const list = byComposer.get(name); if (term && !list.some(match) && !fold(name).includes(fold(term))) continue;
     const a = el('a', undefined, 'composer' + (isCollection(name) ? ' collection' : '')); a.href = '#library/composer/' + slug(name);
@@ -261,14 +290,14 @@ function renderBrowse(filter = {}) {
     shelves.append(sec); return;
   }
   // One level or one genre, every piece.
-  if (filter.level || filter.shelf) {
+  if (filter.level != null || filter.shelf) {
     const g = GENRES.find(g => slug(g[0]) === filter.shelf);
-    const list = filter.level ? pieces.filter(p => p.level === filter.level) : pieces.filter(p => g && p.shelf === g[0]);
+    const list = filter.level != null ? pieces.filter(p => p.level === filter.level) : pieces.filter(p => g && p.shelf === g[0]);
     const back = el('a', 'Library', 'back'); back.href = '#library';
-    const name = filter.level ? levelName(filter.level) : { name: g?.[1] || 'Pieces', sub: g?.[2] || '' };
-    const h = el('h2', undefined, 'shelf-title'); if (filter.level) h.append(el('span', String(filter.level), 'lvl-num')); h.append(document.createTextNode(name.name));
+    const name = filter.level != null ? levelName(filter.level) : { name: g?.[1] || 'Pieces', sub: g?.[2] || '' };
+    const h = el('h2', undefined, 'shelf-title'); if (filter.level != null) h.append(el('span', String(filter.level), 'lvl-num')); h.append(document.createTextNode(name.name));
     const sec = el('section', undefined, 'shelf'); const head = el('div', undefined, 'shelf-head'); head.append(h, el('p', `${name.sub ? name.sub + ' · ' : ''}${list.length} pieces`, 'shelf-sub'));
-    const grid = el('div', undefined, 'tiles wrap'); list.sort((a, b) => a.level - b.level || a.title.localeCompare(b.title)).forEach(p => grid.append(pieceCard(p)));
+    const grid = el('div', undefined, 'tiles wrap'); list.sort((a, b) => a.level - b.level || (a.order ?? 999) - (b.order ?? 999) || a.title.localeCompare(b.title)).forEach(p => grid.append(pieceCard(p)));
     sec.append(back, head, grid); shelves.append(sec); return;
   }
   const famous = FAMOUS.map(id => pieces.find(p => p.id === id)).filter(Boolean);
@@ -459,7 +488,7 @@ const renderPicks = tab => tab === 'repertoire' ? renderRepertoire() : renderRec
 function renderRecommended() {
   const list = $('#rec-list'), note = $('#rec-note'); if (!list) return;
   const log = practiceLog(), current = continuePiece(log);
-  const level = current?.level || 1, rank = id => { const i = FAMOUS.indexOf(id); return i < 0 ? 999 : i; };
+  const level = current?.level ?? 1, rank = id => { const i = FAMOUS.indexOf(id); return i < 0 ? 999 : i; };
   const fresh = p => !p.reference && !log[p.id] && p.id !== current?.id;
   const order = (a, b) => (rank(a.id) - rank(b.id)) || (!!a.collection - !!b.collection) || a.title.localeCompare(b.title);
   const here = pieces.filter(p => fresh(p) && p.level === level).sort(order);

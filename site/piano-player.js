@@ -273,5 +273,5 @@ const api={
  elements:{root,score:scoreBox,keyboard:scoreView?.keyboard,original:scoreView?.details,provenance,fingeringNote,device:deviceLabel,monitor:monitorLabel,soundCredit,section:sectionLabel}
 };
 window.PianoPractice=api;
-song.value=repertoire.entertainer?'entertainer':'ode';builtin(song.value);requestAnimationFrame(()=>renderScore());
+song.value=(()=>{let sel=null;try{sel=JSON.parse(localStorage.getItem('my-journey-piano-pathway-v2'))?.selected;}catch{}return sel&&repertoire[sel]?sel:repertoire['first-01']?'first-01':repertoire.entertainer?'entertainer':'ode';})();builtin(song.value);requestAnimationFrame(()=>{if(matcher)renderScore();});
 })();

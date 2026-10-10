@@ -34,6 +34,7 @@ PWA installation and service workers require HTTP on localhost or HTTPS in produ
 
 - `docs/launch-checklist.md` — what the maintainer must set up before inviting people.
 - `docs/accounts-setup.md` — sign-in and private storage (Supabase).
+- `docs/piano-learning-path.md` — the levels, the Today plan and how piece levels are corrected.
 - `docs/piano-study-pathway.md` — how the library and study levels are built.
 - `docs/collection.md` — how the large public-domain collection was chosen and built.
 - `docs/piano-self-service.md` — how My songs reads, checks and stores people's own scores.

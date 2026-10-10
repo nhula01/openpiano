@@ -1,0 +1,617 @@
+{
+  "_about": "Human-reviewed level corrections, applied to site/piano-curriculum.js by scripts/apply-learning-path.py (run it after any script that regenerates the curriculum). Levels follow docs/piano-learning-path.md: L0 First keys, L1 RCM Prep A-B, L2 RCM 1-2, L3 RCM 3-4, L4 RCM 5-6, L5 RCM 7-8, L6 RCM 9-10, L7 ARCT and concert. Evidence codes: R = RCM 2022 syllabus level, H = Henle difficulty level, M = measured difficulty from the score data (speed, chords, stretches, leaps). An id ending in * matches the one piece whose id starts with that text.",
+  "levels": {
+    "down-by-the-salley-gardens": [
+      1,
+      "measured as easy as the Level 1 core (single notes or simple accompaniment, slow, few accidentals): RCM Prep B–1 territory"
+    ],
+    "lightly-row": [
+      1,
+      "measured as easy as the Level 1 core (single notes or simple accompaniment, slow, few accidentals): RCM Prep B–1 territory"
+    ],
+    "bingo": [
+      1,
+      "measured as easy as the Level 1 core (single notes or simple accompaniment, slow, few accidentals): RCM Prep B–1 territory"
+    ],
+    "wade-o-come-all-ye-faithful": [
+      1,
+      "measured as easy as the Level 1 core (single notes or simple accompaniment, slow, few accidentals): RCM Prep B–1 territory"
+    ],
+    "yankee-doodle": [
+      1,
+      "measured as easy as the Level 1 core (single notes or simple accompaniment, slow, few accidentals): RCM Prep B–1 territory"
+    ],
+    "skip-to-my-lou": [
+      1,
+      "measured as easy as the Level 1 core (single notes or simple accompaniment, slow, few accidentals): RCM Prep B–1 territory"
+    ],
+    "gurlitt-sonatina-in-c-op-214": [
+      1,
+      "measured as easy as the Level 1 core (single notes or simple accompaniment, slow, few accidentals): RCM Prep B–1 territory"
+    ],
+    "scarborough-fair": [
+      1,
+      "measured as easy as the Level 1 core (single notes or simple accompaniment, slow, few accidentals): RCM Prep B–1 territory"
+    ],
+    "mozart-minuet-in-f-k-5": [
+      2,
+      "H2; Nannerl notebook, beside K.2/K.3 (R1)"
+    ],
+    "mozart-allegro-in-b-flat-k-3": [
+      2,
+      "R1, H2"
+    ],
+    "mozart-minuet-in-g-k-1": [
+      2,
+      "R2, H1"
+    ],
+    "beethoven-ecossaise-in-g-woo-23": [
+      2,
+      "R2"
+    ],
+    "beethoven-russian-folk-song-op-107-no-3": [
+      2,
+      "R1"
+    ],
+    "schumann-soldiers-march-op-68-no-2": [
+      2,
+      "R2, H2"
+    ],
+    "lemoine-etudes-enfantines-op-37-no-4": [
+      2,
+      "early number of a progressive set (Op.37/17 is R3)"
+    ],
+    "innocence": [
+      3,
+      "R3-type: 5 notes/s at its tempo with three-note left-hand chords (M score at the Level 3 median)"
+    ],
+    "bach-musette-in-d-major-bwv-anh-126": [
+      3,
+      "R3, H1"
+    ],
+    "schumann-little-study-op-68-no-14": [
+      3,
+      "H3"
+    ],
+    "reinecke-sonatina-op-136": [
+      3,
+      "Op.136/1 R3, H3"
+    ],
+    "czerny-study-op-599-no-63": [
+      3,
+      "Op.599 is Czerny's beginner method"
+    ],
+    "haydn-sonata-in-g-hob-xvi-8": [
+      4,
+      "Henle Easy Piano Pieces vol. I; short early sonata"
+    ],
+    "bach-little-prelude-in-c-minor-bwv-999": [
+      4,
+      "R6, H3"
+    ],
+    "grieg-arietta-op-12-no-1": [
+      4,
+      "R6, H4"
+    ],
+    "joplin-the-entertainer-easy-version": [
+      4,
+      "42-bar simplification with smaller chords and stretches than the original (Level 5); learn it first"
+    ],
+    "chopin-prelude-in-a-op-28-no-7": [
+      4,
+      "H4"
+    ],
+    "chopin-prelude-in-c-minor-op-28-no-20": [
+      4,
+      "H4"
+    ],
+    "chopin-waltz-in-a-minor-b-150-posth": [
+      4,
+      "R6, H3"
+    ],
+    "schumann-first-loss-op-68-no-16": [
+      4,
+      "H4"
+    ],
+    "schumann-reapers-song-op-68-no-18": [
+      4,
+      "H4"
+    ],
+    "schumann-little-romance-op-68-no-19": [
+      4,
+      "R5, H4"
+    ],
+    "schumann-hunting-song-op-68-no-7": [
+      4,
+      "R5, H3"
+    ],
+    "bach-little-prelude-in-c-major-bwv-939": [
+      4,
+      "R5"
+    ],
+    "bach-minuet-in-g-minor-bwv-842": [
+      4,
+      "R5"
+    ],
+    "czerny-etude-in-g-minor-op-849-no-26": [
+      5,
+      "Op.849 comes before Op.299; right-hand single line, left-hand chords of at most three notes"
+    ],
+    "traumerei": [
+      5,
+      "R8; slow and sparse (1.9 notes/s) but needs voicing"
+    ],
+    "liszt-consolation-no-1": [
+      5,
+      "R8, H4"
+    ],
+    "liszt-nuages-gris": [
+      5,
+      "sparse but 30% chromatic, octave-wide right-hand chords, pedal and voicing"
+    ],
+    "ravel-prelude-1913": [
+      5,
+      "chromatic, hand crossings, octave spans"
+    ],
+    "debussy-the-little-shepherd": [
+      5,
+      "R8, H4"
+    ],
+    "mendelssohn-venetian-boat-song-op-19-no-6": [
+      5,
+      "H4"
+    ],
+    "czerny-school-of-velocity-op-299-no-1": [
+      5,
+      "Op.299 comes after Op.849; Op.299/3 is R8"
+    ],
+    "czerny-school-of-velocity-op-299-no-2": [
+      5,
+      "Op.299 comes after Op.849"
+    ],
+    "czerny-school-of-velocity-op-299-no-3": [
+      5,
+      "R8"
+    ],
+    "brahms-waltz": [
+      5,
+      "four-note chords in both hands, thirds and sixths; Op.39/11 is R8"
+    ],
+    "mountain-king": [
+      5,
+      "8 notes/s at its tempo, three-note chords in both hands, octave stretches"
+    ],
+    "chopin-nocturne-in-f-op-15-no-1": [
+      6,
+      "R10, H6"
+    ],
+    "chopin-nocturne-in-f-sharp-op-15-no-2": [
+      6,
+      "R10, H6"
+    ],
+    "fugue": [
+      6,
+      "R10 (with its prelude), H6; four voices"
+    ],
+    "chopin-prelude-in-f-sharp-op-28-no-13": [
+      6,
+      "R9, H6"
+    ],
+    "chopin-prelude-in-b-flat-op-28-no-21": [
+      6,
+      "H6"
+    ],
+    "chopin-prelude-in-f-op-28-no-23": [
+      6,
+      "H6"
+    ],
+    "chopin-prelude-in-b-op-28-no-11": [
+      6,
+      "H7, short"
+    ],
+    "raindrop": [
+      6,
+      "R9, H5"
+    ],
+    "nocturne-csharp": [
+      6,
+      "R9, H5"
+    ],
+    "waltz-csharp": [
+      6,
+      "R9, H6"
+    ],
+    "chopin-nocturne-in-e-minor-op-72-no-1": [
+      6,
+      "R10, H5"
+    ],
+    "chopin-nocturne-in-e-flat-op-55-no-2": [
+      6,
+      "H6"
+    ],
+    "chopin-mazurka-in-b-minor-op-33-no-4": [
+      6,
+      "H6"
+    ],
+    "chopin-funeral-march-sonata-no-2-third-movement": [
+      6,
+      "sonata movement, H about 6"
+    ],
+    "debussy-reverie": [
+      6,
+      "R9, H5"
+    ],
+    "debussy-mazurka": [
+      6,
+      "R9"
+    ],
+    "debussy-danseuses-de-delphes*": [
+      6,
+      "H5; five-note chords, stretches of a 10th"
+    ],
+    "debussy-des-pas-sur-la-neige": [
+      6,
+      "H5"
+    ],
+    "debussy-the-sunken-cathedral": [
+      6,
+      "H6; four- and five-note chords over a range of 80 semitones"
+    ],
+    "debussy-the-girl-with-the-flaxen-hair": [
+      6,
+      "R9, H5"
+    ],
+    "debussy-passepied-suite-bergamasque": [
+      6,
+      "R10"
+    ],
+    "debussy-sarabande-pour-le-piano": [
+      6,
+      "H6"
+    ],
+    "debussy-la-plus-que-lente": [
+      6,
+      "H6"
+    ],
+    "debussy-les-sons-et-les-parfums*": [
+      6,
+      "H6; dense chords, wide left-hand leaps"
+    ],
+    "debussy-minstrels": [
+      6,
+      "H6"
+    ],
+    "tchaikovsky-april-snowdrop-the-seasons": [
+      6,
+      "R9"
+    ],
+    "tchaikovsky-october-autumn-song-the-seasons": [
+      6,
+      "R9"
+    ],
+    "tchaikovsky-february-carnival-the-seasons": [
+      6,
+      "R10"
+    ],
+    "tchaikovsky-march-from-the-nutcracker*": [
+      6,
+      "octave stretches, 9-10 notes/s"
+    ],
+    "tchaikovsky-russian-dance-trepak": [
+      6,
+      "octave stretches, 9-10 notes/s"
+    ],
+    "tchaikovsky-chinese-dance*": [
+      6,
+      "octave stretches, 9-10 notes/s"
+    ],
+    "scriabin-prelude-in-c-op-11-no-1": [
+      6,
+      "fast left-hand arpeggios; Op.11 Nos.9/10/13 are R9"
+    ],
+    "scriabin-etude-in-c-sharp-minor-op-2-no-1": [
+      6,
+      "R10-type"
+    ],
+    "schumann-chopin-from-carnaval-op-9": [
+      6,
+      "dense voicing; Carnaval movement"
+    ],
+    "ravel-a-la-maniere-de-borodine": [
+      6,
+      "R9-type harmony and texture"
+    ],
+    "ravel-pavane*": [
+      6,
+      "R10-type"
+    ],
+    "bach-sinfonia-no-3-in-d-bwv-789": [
+      6,
+      "R9, H5"
+    ],
+    "alla-turca": [
+      6,
+      "H6"
+    ],
+    "consolation3": [
+      6,
+      "H5; D-flat major, 2 against 3"
+    ],
+    "mozart-fantasia-in-d-minor-k-397": [
+      6,
+      "R9"
+    ],
+    "mozart-sonata-in-b-flat-k-570": [
+      6,
+      "H6"
+    ],
+    "schubert-moment-musical-no-3-in-f-minor": [
+      6,
+      "R9, H5"
+    ],
+    "schumann-slumber-song-op-124-no-16": [
+      6,
+      "R9"
+    ],
+    "grieg-march-of-the-dwarfs-op-54-no-3": [
+      6,
+      "H6"
+    ],
+    "grieg-album-leaf-op-47-no-2": [
+      6,
+      "H6"
+    ],
+    "beethoven-sonata-in-f-minor-op-2-no-1-first-movement": [
+      6,
+      "R10, H6"
+    ],
+    "brahms-ballade-in-d-minor-edward-op-10-no-1": [
+      6,
+      "R10"
+    ],
+    "brahms-intermezzo-in-a-op-118-no-2": [
+      6,
+      "late Brahms, ARCT-range"
+    ],
+    "brahms-intermezzo-in-e-op-116-no-4": [
+      6,
+      "late Brahms"
+    ],
+    "rachmaninoff-etude-tableau-op-39-no-2": [
+      6,
+      "concert piece, slow"
+    ],
+    "rachmaninoff-moment-musical-in-b-minor-op-16-no-3": [
+      6,
+      "concert piece"
+    ],
+    "rachmaninoff-prelude-in-d-op-23-no-4": [
+      6,
+      "concert prelude"
+    ],
+    "czerny-the-art-of-finger-dexterity-op-740-no-1": [
+      6,
+      "Op.740 follows Op.299"
+    ],
+    "chopin-etude-in-c-op-10-no-1": [
+      7,
+      "H9; 11.7 notes/s, right-hand arpeggios over 77 semitones"
+    ],
+    "chopin-etude-in-e-flat-op-10-no-11": [
+      7,
+      "H7; rolled chords spanning a 12th"
+    ],
+    "chopin-etude-in-e-minor-op-25-no-5": [
+      7,
+      "H8"
+    ],
+    "chopin-etude-in-f-minor-op-25-no-2": [
+      7,
+      "H7"
+    ],
+    "chopin-etude-in-g-sharp-minor-op-25-no-6": [
+      7,
+      "H9; thirds at 9.6 notes/s"
+    ],
+    "chopin-scherzo-no-4-in-e-op-54": [
+      7,
+      "concert repertoire"
+    ],
+    "chopin-prelude-in-g-op-28-no-3": [
+      7,
+      "H7"
+    ],
+    "chopin-prelude-in-g-sharp-minor-op-28-no-12": [
+      7,
+      "H8"
+    ],
+    "chopin-prelude-in-e-flat-op-28-no-19": [
+      7,
+      "H7"
+    ],
+    "chopin-prelude-in-f-minor-op-28-no-18": [
+      7,
+      "H7"
+    ],
+    "chopin-prelude-in-b-flat-minor-op-28-no-16": [
+      7,
+      "H8"
+    ],
+    "chopin-prelude-in-d-minor-op-28-no-24": [
+      7,
+      "H9"
+    ],
+    "chopin-nocturne-in-f-sharp-minor-op-48-no-2": [
+      7,
+      "H6; the Op.48 nocturnes are ARCT repertoire; 169 bars, 32% chromatic"
+    ],
+    "debussy-prelude-suite-bergamasque": [
+      7,
+      "H7"
+    ],
+    "debussy-hommage-a-rameau": [
+      7,
+      "H7"
+    ],
+    "beethoven-les-adieux-sonata-op-81a": [
+      7,
+      "late middle-period sonata"
+    ],
+    "schubert-erlkonig-d-328-arr-liszt": [
+      7,
+      "Liszt transcription: repeated octaves, four-note chords"
+    ],
+    "schubert-standchen*": [
+      7,
+      "Liszt transcription"
+    ],
+    "liszt-paysage*": [
+      7,
+      "Transcendental Étude"
+    ],
+    "liszt-preludio*": [
+      7,
+      "Transcendental Étude"
+    ],
+    "ravel-le-gibet-gaspard-de-la-nuit": [
+      7,
+      "Gaspard de la nuit"
+    ],
+    "scriabin-sonata-no-4-first-movement": [
+      7,
+      "concert sonata"
+    ],
+    "czerny-etude-in-g-minor-op-740-no-50": [
+      7,
+      "last étude of Op.740"
+    ],
+    "pathetique": [
+      7,
+      "H7"
+    ],
+    "tristesse": [
+      7,
+      "H7"
+    ],
+    "liebestraum": [
+      7,
+      "ARCT"
+    ],
+    "rach-prelude": [
+      7,
+      "ARCT"
+    ],
+    "chopin-ballade-no-2*": [
+      7,
+      "concert repertoire"
+    ],
+    "chopin-ballade-no-3*": [
+      7,
+      "concert repertoire"
+    ],
+    "chopin-scherzo-no-2-in-b-flat-minor-op-31": [
+      7,
+      "concert repertoire"
+    ],
+    "chopin-etude-in-c-minor-op-25-no-12-ocean": [
+      7,
+      "H8"
+    ],
+    "chopin-etude-in-d-flat-op-25-no-8": [
+      7,
+      "H8"
+    ],
+    "chopin-etude-in-e-flat-minor-op-10-no-6": [
+      7,
+      "H7"
+    ],
+    "chopin-etude-in-f-op-10-no-8": [
+      7,
+      "H8"
+    ],
+    "bach-prelude-and-fugue-in-c-sharp-major-bwv-848*": [
+      7,
+      "ARCT"
+    ],
+    "bach-prelude-and-fugue-in-f-minor-bwv-857": [
+      7,
+      "ARCT"
+    ],
+    "bach-prelude-and-fugue-in-b-minor-bwv-869": [
+      7,
+      "ARCT"
+    ],
+    "bach-english-suite-no-3*": [
+      7,
+      "ARCT"
+    ],
+    "beethoven-hammerklavier-sonata-op-106-first-movement": [
+      7,
+      "H9"
+    ],
+    "beethoven-tempest-sonata-third-movement": [
+      7,
+      "H8"
+    ],
+    "liszt-gnomenreigen": [
+      7,
+      "13 notes/s, concert étude"
+    ],
+    "liszt-mephisto-waltz-no-3*": [
+      7,
+      "concert repertoire"
+    ],
+    "liszt-transcendental-etude-no-2*": [
+      7,
+      "Transcendental Étude"
+    ],
+    "rimsky-korsakov-flight-of-the-bumblebee*": [
+      7,
+      "concert transcription"
+    ],
+    "brahms-rhapsody-in-b-minor-op-79-no-1": [
+      7,
+      "concert repertoire"
+    ],
+    "ravel-la-valse": [
+      7,
+      "755 bars, 37% chromatic, fast left-hand leaps"
+    ]
+  },
+  "chorales": {
+    "_about": "Four-voice hymn and carol settings: two notes in each hand on nearly every beat and left-hand stretches beyond an octave are chorale reading (Schumann Op.68/4, H3), not a first-year texture. They move from Level 2 to Level 3.",
+    "level": 3,
+    "ids": [
+      "auld-lang-syne",
+      "bourgeois-doxology-old-hundredth",
+      "bradbury-jesus-loves-me",
+      "o-come-o-come-emmanuel",
+      "praise-to-the-lord-the-almighty",
+      "beethoven-joyful-joyful-we-adore-thee",
+      "hastings-rock-of-ages",
+      "murray-away-in-a-manger",
+      "kumbaya",
+      "converse-what-a-friend-we-have-in-jesus",
+      "lo-how-a-rose-eer-blooming",
+      "glaser-o-for-a-thousand-tongues-to-sing",
+      "schumann-chorale-op-68-no-4",
+      "o-christmas-tree",
+      "go-tell-it-on-the-mountain",
+      "go-down-moses",
+      "sussex-carol",
+      "the-holly-and-the-ivy",
+      "dykes-holy-holy-holy",
+      "mason-nearer-my-god-to-thee",
+      "handel-sarabande-in-d-minor-hwv-437"
+    ]
+  },
+  "remove": {
+    "rachmaninoff-prelude-in-g-minor-op-23-no-5": "the transcription holds only 7 bars of an 86-bar prelude: an incomplete work (AGENTS.md: complete works only)",
+    "mozart-sonata-in-c-k-279-first-movement": "the file is Mozart's K.545 first movement (its notes match `mozart545`), not K.279",
+    "waltz": "reference-only card for Chopin's A-minor Waltz B.150; the playable copy chopin-waltz-in-a-minor-b-150-posth is in the library"
+  },
+  "titles": {
+    "innocence": "La Candeur (Candour), Op. 100 No. 1",
+    "mozart-sonata-in-a-k-331-theme": "Sonata in A, K. 331 · theme (simplified arrangement in C major)"
+  }
+}

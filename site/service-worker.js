@@ -41,6 +41,7 @@ const APP_SHELL = [
   './piano-skill-studio.js',
   './piano-import.js',
   './piano-support.js',
+  './piano-path.js',
   './piano-app.js',
   './piano-stage.js',
   './piano-cloud-config.js',
