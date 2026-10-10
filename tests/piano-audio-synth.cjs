@@ -7,6 +7,7 @@ function render(notes,{rate=48000,seconds=2,noise=.0015,seed=7,lowcut=90}={}){
   const i0=Math.round(t*rate),i1=Math.min(n,Math.round((t+dur)*rate));
   for(let i=i0;i<i1;i++){const tt=(i-i0)/rate,att=Math.min(1,tt/.004),rel=i>i1-rate*.05?(i1-i)/(rate*.05):1;let v=0;for(const p of ks)v+=p.a*Math.exp(-tt/p.tau)*Math.sin(2*Math.PI*p.f*tt+p.ph);out[i]+=v*att*rel;}}
  for(let i=0;i<n;i++)out[i]+=noise*(rnd()*2-1);return out;}
-// Run a listener over audio, asking for `expected(t)` at each 45 ms frame.
-function listen(L,audio,expected,{rate=48000,hop=.045,size=8192}={}){const log=[];for(let t=hop;t*rate<audio.length;t+=hop){const end=Math.round(t*rate);if(end<size)continue;const frame=audio.subarray(end-size,end);const r=L.frame(frame,typeof expected==='function'?expected(t):expected);for(const [m,on] of r.events)log.push({t:+t.toFixed(3),m,on});}return log;}
+// Run a listener over audio the way the player does (the latest 16384 samples every 45 ms, with the audio time),
+// asking for `expected(t)`. Each log entry has the frame time t and the strike time `at` the listener reported.
+function listen(L,audio,expected,{rate=48000,hop=.045,size=16384,upcoming=[]}={}){const log=[];for(let t=hop;t*rate<audio.length;t+=hop){const end=Math.round(t*rate);const frame=new Float32Array(size);const from=end-size;for(let i=0;i<size;i++)frame[i]=from+i>=0?audio[from+i]:0;const r=L.frame(frame,typeof expected==='function'?expected(t):expected,t,typeof upcoming==='function'?upcoming(t):upcoming);for(const [m,on,ago] of r.events)log.push({t:+t.toFixed(3),m,on,at:+(t-ago).toFixed(3)});}return log;}
 module.exports={render,listen,freq};

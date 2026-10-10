@@ -26,9 +26,15 @@ function editorialFingering(events,hand,source,sections=[]){
   return {fingers:Object.fromEntries(Object.entries(printed).filter(([n])=>e.notes.includes(Number(n))&&(!e.members?.length||e.members.some(m=>m.midi===Number(n)&&m.hand===hand)))),warning:'',source:'editorial'};
  });
 }
+// A grace note: very short and followed at once by the next notes.
+function isGrace(events,i){const e=events[i],n=events[i+1];return !!(e&&n&&e.duration<=.0625&&n.beat-e.beat<=.0625+1e-6);}
 class Matcher{
- constructor(events){this.events=events;this.index=0;this.errors=0;this.held=new Set();this.releaseRequired=new Set();}
- input(midi,on){if(!on){this.held.delete(midi);this.releaseRequired.delete(midi);return 'release';}if(this.held.has(midi))return 'held';this.held.add(midi);if(this.index>=this.events.length)return 'complete';const expected=this.events[this.index].notes;if(!expected.includes(midi)){this.errors++;return 'wrong';}if(this.releaseRequired.has(midi))return 'release-first';if(expected.every(n=>this.held.has(n)&&!this.releaseRequired.has(n))){expected.forEach(n=>this.releaseRequired.add(n));this.index++;return this.index===this.events.length?'complete':'correct';}return 'partial';}
+ // graceOptional: a grace note may be passed over when the note it leads to is played (for the microphone,
+ // which can miss a grace note played within a few milliseconds of the main note).
+ constructor(events,{graceOptional=false}={}){this.events=events;this.index=0;this.errors=0;this.held=new Set();this.releaseRequired=new Set();this.graceOptional=graceOptional;this.skipped=0;}
+ input(midi,on){if(!on){this.held.delete(midi);this.releaseRequired.delete(midi);return 'release';}if(this.held.has(midi))return 'held';this.held.add(midi);if(this.index>=this.events.length)return 'complete';let expected=this.events[this.index].notes;
+  if(!expected.includes(midi)&&this.graceOptional){let j=this.index;while(isGrace(this.events,j)&&!this.events[j].notes.includes(midi))j++;if(j>this.index&&this.events[j]?.notes.includes(midi)){this.skipped+=j-this.index;this.index=j;expected=this.events[j].notes;}}
+  if(!expected.includes(midi)){this.errors++;return 'wrong';}if(this.releaseRequired.has(midi))return 'release-first';if(expected.every(n=>this.held.has(n)&&!this.releaseRequired.has(n))){expected.forEach(n=>this.releaseRequired.add(n));this.index++;return this.index===this.events.length?'complete':'correct';}return 'partial';}
 }
 // Timing score for one note group: full marks within 50 ms of the beat, then less the further off,
 // down to nothing at the edge of the window (a note outside the window does not count at all).
@@ -52,5 +58,5 @@ class GuidedClock {
  constructor(events,bpm,first,now=0){this.events=events;this.bpm=bpm;this.beat=first;this.last=now;}
  advance(now,index){const elapsed=Math.max(0,now-this.last);this.last=now;const target=this.events[index]?.beat??this.beat;this.beat=Math.min(target,this.beat+elapsed*this.bpm/60);return this.beat;}
 }
-const api={noteName,pitch,parseMidi,groups,editorialFingering,Matcher,TimedMatcher,GuidedClock,timingScore,timingWindow};if(typeof module!=='undefined')module.exports=api;else root.PianoEngine=api;
+const api={noteName,pitch,parseMidi,groups,editorialFingering,isGrace,Matcher,TimedMatcher,GuidedClock,timingScore,timingWindow};if(typeof module!=='undefined')module.exports=api;else root.PianoEngine=api;
 })(typeof window!=='undefined'?window:globalThis);

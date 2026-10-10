@@ -29,3 +29,11 @@ test('every piece in the large collection is complete, two-handed, engraved note
   const moving=new Set(d.engraving.systems.flatMap(s=>[...s.svg.matchAll(/class="score-note"[^>]*data-midi="(\d+)"[^>]*data-beat="([^"]+)"/g)].map(m=>Number(m[2]).toFixed(5)+':'+m[1])));assert.ok(d.notes.every(n=>moving.has(n.beat.toFixed(5)+':'+n.midi)),id+' moving score');
   for(let i=1;i<d.engraving.systems.length;i++)assert.ok(d.engraving.systems[i-1].start<d.engraving.systems[i].start,id+' system order');
   const b=fs.readFileSync('site/'+d.midi),m=parseMidi(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength));assert.equal(m.length,d.notes.length,id+' MIDI notes');}});
+test('with the microphone a grace note can be passed over when the main note is heard; with MIDI it cannot',()=>{
+ const E=require('../site/piano-engine.js');
+ const ev=[{beat:0,notes:[64],duration:1},{beat:1,notes:[79],duration:.026},{beat:1.026,notes:[81],duration:.026},{beat:1.05,notes:[52,83],duration:.25},{beat:2,notes:[60],duration:1}];
+ assert.ok(E.isGrace(ev,1)&&E.isGrace(ev,2)&&!E.isGrace(ev,3)&&!E.isGrace(ev,0));
+ const mic=new E.Matcher(ev,{graceOptional:true});mic.input(64,true);assert.equal(mic.input(52,true),'partial','grace notes skipped');assert.equal(mic.index,3);assert.equal(mic.input(83,true),'correct');assert.equal(mic.errors,0);
+ const midi=new E.Matcher(ev);midi.input(64,true);assert.equal(midi.input(52,true),'wrong');
+ const strict=new E.Matcher(ev,{graceOptional:true});strict.input(64,true);assert.equal(strict.input(60,true),'wrong','only the note right after the grace notes');
+});
