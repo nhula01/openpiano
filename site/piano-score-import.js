@@ -363,5 +363,5 @@ async function fromFile(file, meta = {}) {
   if (file.size > MAX_XML) throw new Error('Choose a file smaller than 8 MB.');
   return fromMusicXML(file, meta);
 }
-window.PianoScoreImport = { fromFile, fromXML, readMusicXML, prepare, mergeParts };
+window.PianoScoreImport = { fromFile, fromXML, readMusicXML, prepare, mergeParts, loadVerovio };
 })();

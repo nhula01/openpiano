@@ -1,6 +1,7 @@
 'use strict';
 // "Add a song" on the My songs page: choose a MusicXML, MIDI or PDF file (or photos of a printed
-// score), check it, correct a pitch or the hands if needed, then save it to My songs
+// score), check it, fix its notes in the sheet editor (piano-sheet-editor.js) or set the hands of a
+// MIDI file if needed, then save it to My songs
 // (piano-account.js) or practice it right away. A PDF exported from notation software is read into
 // MusicXML here (piano-pdf-reader.js); scans and photos are read by piano-scan-reader.js.
 // Everything runs in this browser; a file only leaves it when the person saves to their account
@@ -32,7 +33,7 @@ const scanIntro = el('p', 'If the result needs a lot of fixing, a dedicated musi
 const steps = el('ol');
 for (const t of ['Open the PDF or photo in Audiveris, a free open-source scanner for your computer, and export MusicXML. A web scanner such as Soundslice also works; its own limits and pricing apply.',
   'Check the export in a notation editor such as MuseScore: both staves, every page, repeats, rests, ties and the last bar. Fix recognition mistakes there.',
-  'Choose the MusicXML here, check the sheet, and correct single pitches below if needed.']) steps.append(el('li', t));
+  'Choose the MusicXML here, check the sheet, and fix any remaining notes in the sheet editor.']) steps.append(el('li', t));
 scan.append(scanIntro, steps);
 for (const [title, url] of [['Audiveris (free)', 'https://audiveris.github.io/audiveris/_pages/tutorials/quick/'], ['Soundslice scanner', 'https://www.soundslice.com/sheet-music-scanner/']]) {
   const a = el('a', title, 'secondary'); a.href = url; a.target = '_blank'; a.rel = 'noopener'; scan.append(a, ' ');
@@ -124,8 +125,18 @@ async function useRead(result, title, token) {
     current = null;
     const src = result.scanned ? 'pictures' : 'PDF';
     const dl = el('a', 'Download what was read (MusicXML)', 'secondary'); dl.href = blobURL(new Blob([result.xml], { type: XML_TYPE })); dl.download = name;
-    review.replaceChildren(el('p', `The notes read from these ${src} did not pass the checks: ` + (e.message || e), 'note warn'),
-      el('p', result.scanned ? 'Open the download in a notation editor such as MuseScore, fix the measure it names, and choose the corrected file here. A sharper, straighter photo or a 300 dpi scan reads better.' : 'Open the download in a notation editor such as MuseScore, fix the measure it names, and choose the corrected file here. Exporting MusicXML from the program that made the PDF gives the best result.', 'muted'), dl);
+    const fix = el('button', 'Fix it in the sheet editor'); fix.type = 'button';
+    const problem = `The notes read from these ${src} did not pass the checks: ` + (e.message || e);
+    // the editor opens what was read as it is, so the measure named can be put right here
+    const repair = (xml, notice) => editSheet(xml, { notice, onCancel: () => useRead(result, title, ++revision), onDone: async fixed => {
+      const t = ++revision; current = { name, fromPdf: result, title: result.title, composer: result.composer };
+      try { await loadXML(fixed, name, t, null); if (current && t === revision) { current.corrected = true; draw(); say('Fixed. Check the sheet again, then save.'); } }
+      catch (err) { if (t === revision) { current = null; const msg = 'Not yet: ' + (err.message || err); say(msg, true); repair(fixed, msg); } }
+    } });
+    fix.onclick = () => repair(result.xml, problem.replace('these PDF', 'this PDF'));
+    review.replaceChildren(el('p', problem.replace('these PDF', 'this PDF'), 'note warn'),
+      el('p', result.scanned ? 'Fix the measure it names in the sheet editor, or download what was read and fix it in a notation editor such as MuseScore. A sharper, straighter photo or a 300 dpi scan reads better.' : 'Fix the measure it names in the sheet editor, or download what was read and fix it in a notation editor such as MuseScore. Exporting MusicXML from the program that made the PDF gives the best result.', 'muted'), el('div', undefined, 'actions'));
+    review.lastChild.append(fix, dl);
     say(`The ${src} were read, but the result needs fixing before practice.`.replace('PDF were', 'PDF was'), true);
   }
 }
@@ -174,9 +185,12 @@ function draw() {
     const systems = e.engraving.systems, shown = systems.slice(0, 4), sheet = el('div', undefined, 'import-sheet-preview');
     sheet.innerHTML = shown.map(x => x.svg).join('');
     review.append(sheet, el('p', systems.length > shown.length ? `The first ${shown.length} of ${systems.length} lines. The whole score appears in Practice.` : 'The whole score is shown above.', 'muted'));
-    if (r.records?.length) review.append(corrections(r.records));
-    const dl = el('a', c.corrected ? 'Download the corrected MusicXML' : 'Download this MusicXML', 'secondary'); dl.href = blobURL(new Blob([c.xml], { type: XML_TYPE })); dl.download = baseName(c.name) + (c.corrected ? ' (corrected)' : '') + '.musicxml';
-    review.append(dl);
+    const edit = el('button', c.corrected ? 'Edit the sheet again' : 'Edit the sheet'); edit.type = 'button'; edit.id = 'import-edit';
+    edit.onclick = () => editSheet(c.xml, { onCancel: () => { draw(); say('No changes made.'); }, onDone: (xml, { changed }) => changed ? useEdit(xml, c) : (draw(), say('No changes made.')) });
+    const fixRow = el('div', undefined, 'actions import-edit'); fixRow.append(edit);
+    review.append(el('p', 'A wrong note, rhythm or hand? Edit the sheet: click a note and change it, add notes and chords, or move them.', 'muted'), fixRow);
+    const dl = el('a', c.corrected ? 'Download the edited MusicXML' : 'Download this MusicXML', 'secondary'); dl.href = blobURL(new Blob([c.xml], { type: XML_TYPE })); dl.download = baseName(c.name).replace(/ \(edited\)$/, '') + (c.corrected ? ' (edited)' : '') + '.musicxml';
+    fixRow.append(dl);
   } else {
     review.append(el('p', 'MIDI has no sheet music or fingering. Practice uses the falling-note display with every note and rhythm in the file.', 'muted'));
     if (r.tracks.length) {
@@ -198,7 +212,7 @@ function draw() {
 function pdfNotes(p) {
   const box = el('div', undefined, 'import-pdf-notes');
   const src = p.scanned ? (p.pages === 1 ? 'picture' : 'pictures') : 'PDF';
-  box.append(el('p', `Read from your ${src}: ${p.measures} measures on ${p.pages} ${p.pages === 1 ? 'page' : 'pages'}. Play it through or compare the sheet with your ${src} before practicing; a misread note can be corrected below.`, 'note'));
+  box.append(el('p', `Read from your ${src}: ${p.measures} measures on ${p.pages} ${p.pages === 1 ? 'page' : 'pages'}. Play it through or compare the sheet with your ${src} before practicing; a misread note can be fixed in the sheet editor below.`, 'note'));
   for (const w of p.warnings) box.append(el('p', w, 'note warn'));
   if (p.flagged.length) {
     const list = el('details', undefined, 'fold'); list.open = p.flagged.length <= 5;
@@ -211,27 +225,28 @@ function pdfNotes(p) {
   return box;
 }
 
-function corrections(records) {
-  const box = el('details', undefined, 'fold');
-  box.append(el('summary', 'Correct a wrong note'), el('p', 'Pick the note and type the right pitch; the sheet and practice update together. For rhythm, hands or repeats, fix the file in your notation editor and choose it again.', 'muted'));
-  const row = el('div', undefined, 'trainer-controls'), nl = el('label', 'Note'), select = el('select'); select.id = 'import-note';
-  const name = n => window.PianoEngine.noteName(n.midi).replace('♯', '#');
-  records.forEach((n, i) => { const o = el('option', `Measure ${n.measure} · ${n.hand} hand · ${name(n)}${n.grace ? ' (grace)' : ''}`); o.value = i; select.append(o); });
-  nl.append(select);
-  const pl = el('label', 'Correct pitch'), pitch = el('input'); pitch.id = 'import-pitch'; pitch.placeholder = 'C4, F#4 or Bb3'; pitch.value = name(records[0]); pl.append(pitch);
-  select.onchange = () => { pitch.value = name(records[Number(select.value)]); };
-  const apply = el('button', 'Apply correction'); apply.type = 'button';
-  apply.onclick = async () => {
-    apply.disabled = true; const c = current, token = ++revision;
-    try {
-      const fixed = window.PianoImportEngine.editPitch(c.xml, records[Number(select.value)].id, pitch.value);
-      await loadXML(fixed, c.name, token, null);
-      if (current && token === revision) { current.corrected = true; draw(); say('Corrected. Check the sheet again, then save.'); }
-    } catch (err) { say(err.message, true); }
-    finally { apply.disabled = false; }
-  };
-  row.append(nl, pl, apply); box.append(row);
-  return box;
+// ---- Edit the sheet (piano-sheet-editor.js) ----
+async function editSheet(xml, opts) {
+  revision++;
+  say('Opening the sheet editor… (the first time, the engraver takes a moment to download)');
+  try {
+    await window.PianoSheetEditor.open(review, xml, { heading: '2 · Edit the sheet', doneLabel: 'Use these changes', ...opts });
+    say('Click a note or a rest on the sheet to change it.');
+    review.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  } catch (e) { say(e.message || String(e), true); if (current?.entry) draw(); }
+}
+// the edited score is checked and engraved again like a newly chosen file
+async function useEdit(xml, c) {
+  const token = ++revision;
+  try {
+    await loadXML(xml, c.name, token, null);
+    if (current && token === revision) { current.corrected = true; draw(); say('Changes applied. Check the sheet again, then save.'); }
+  } catch (e) {
+    if (token !== revision) return;
+    current = c; const msg = 'These changes don’t pass the checks yet: ' + (e.message || e);
+    editSheet(xml, { notice: msg, onCancel: () => { draw(); say('Your changes were not used.'); }, onDone: (x, { changed }) => useEdit(changed ? x : xml, c) });
+    say(msg, true);
+  }
 }
 
 // ---- 3 · Save ----
@@ -252,7 +267,7 @@ function saveForm() {
     ev.preventDefault(); if (!ok.checked) return; save.disabled = true;
     try {
       const m = meta();
-      const file = c.format === 'midi' ? c.file : (!c.corrected && c.file ? c.file : new File([c.xml], baseName(c.name).replace(/ \(corrected\)$/, '') + '.musicxml', { type: XML_TYPE }));
+      const file = c.format === 'midi' ? c.file : (!c.corrected && c.file ? c.file : new File([c.xml], baseName(c.name).replace(/ \((corrected|edited)\)$/, '') + '.musicxml', { type: XML_TYPE }));
       const rec = await window.PianoSongs.save(file, { ...m, format: c.format, settings: c.hands ? { hands: c.hands } : {}, original });
       reset(); say(`Saved “${rec.title}” to My songs.`);
       await window.PianoSongs.open(rec);

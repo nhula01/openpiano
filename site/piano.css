@@ -569,3 +569,23 @@ button.small{min-height:34px;padding:5px 12px;font-size:13px}
 /* Zoomed past the window width, pages scroll sideways; the score window itself keeps its width. */
 .stacked-sheet.zoomed{contain:inline-size}
 .stacked-sheet.zoomed .sheet-page{max-width:none;width:var(--page-max,100%)}
+/* Sheet editor (piano-sheet-editor.js) */
+.sheet-editor{outline:none}
+.sheet-editor:focus-visible .sheet-pages{box-shadow:0 0 0 3px var(--felt-soft)}
+.sheet-tools{display:flex;flex-wrap:wrap;gap:8px 14px;margin:12px 0 8px;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+.sheet-group{display:flex;flex-wrap:wrap;align-items:center;gap:4px}
+.sheet-group-name{margin-right:4px;font:700 11px/1 var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.sheet-tools button.small{min-width:34px;padding:5px 9px}
+.sheet-status{min-height:1.5em;margin:6px 0;font-weight:700}
+.sheet-status.bad{color:#a4262c}
+.sheet-pages{background:white;max-height:72vh;overflow:auto;padding:8px 12px;border:1px solid var(--line);border-radius:12px;touch-action:pan-x pan-y;user-select:none;-webkit-user-select:none}
+.sheet-pages svg{display:block;width:100%;height:auto}
+.sheet-pages svg+svg{margin-top:10px;border-top:1px dashed var(--line)}
+.sheet-pages g.note,.sheet-pages g.rest,.sheet-pages g.mRest{cursor:pointer}
+.sheet-pages g.ed-sel,.sheet-pages g.ed-sel *{fill:#c2410c;color:#c2410c}
+.sheet-pages g.ed-chord,.sheet-pages g.ed-chord *{fill:#e8803e;color:#e8803e}
+.sheet-keys ul{margin:.4rem 0 0;padding-left:1.2rem;font-size:14px}
+.sheet-actions{margin-top:14px}
+.import-edit{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:.5rem 0 1rem}
+.mine-editor{margin:0 0 1rem}
+@media(max-width:600px){.sheet-tools{gap:6px 10px;padding:8px}.sheet-group-name{width:100%}.sheet-pages{max-height:62vh;padding:4px}}

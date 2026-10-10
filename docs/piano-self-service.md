@@ -24,10 +24,22 @@ real destinations exist.
    before their main note (a short fixed lead-in, as in the library), not with expressive timing.
    Anything else the checker flags, such as an overfull bar (often a misread tuplet), is shown with
    its measure number so the person can fix it before practicing.
-3. **Fix it.** A single wrong pitch can be corrected in the browser (sheet and practice update
-   together) and the corrected MusicXML downloaded. For MIDI with several tracks, the person picks
-   which hand plays each track. Rhythm, hands and layout are fixed in a notation editor.
-4. **Save it or practice it.** "Save to My songs and practice" stores the file (the corrected
+3. **Fix it.** "Edit the sheet" opens the score in the sheet editor (`piano-sheet-editor.js`): the
+   person clicks a note or rest on the engraved sheet (or moves with the arrow keys) and changes its
+   pitch (step, accidental, octave, a letter A–G, or by dragging it up or down), its length (16th to
+   whole, dotted), turns it into a rest or back into a note, adds chord notes, ties it to the next
+   note, moves it to the other hand or earlier/later in its bar, and adds or deletes bars. Every
+   change edits the MusicXML itself: a longer note takes the room of what follows in its voice (never
+   past the barline), a shorter one leaves rests on the beat, beams and accidentals are redone, tied
+   notes change pitch together, and refused changes say why and leave the score as it was. Changes
+   can be undone and redone. A bar that runs short or long (a misread beat) can be filled or trimmed
+   by changing a note's length. "Use these changes" checks and engraves the score again; the edited
+   MusicXML can be downloaded. When what a PDF or picture reader produced fails the checks, the page
+   offers to fix it in the editor. Saved MusicXML songs have an "Edit" button in My songs; saving
+   replaces the song's file and keeps its title, settings and attached sheet. Tuplets keep their
+   lengths and repeats, ornaments and layout are left as they are (a notation editor does those). For
+   MIDI with several tracks, the person picks which hand plays each track.
+4. **Save it or practice it.** "Save to My songs and practice" stores the file (the edited
    MusicXML when edited), the MIDI hand choices and any attached PDF/photo. "Practice without saving"
    opens it once. Both require confirming the music may be used for the person's own practice.
 

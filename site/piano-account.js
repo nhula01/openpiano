@@ -268,7 +268,9 @@ function render() {
     const row = el('div', undefined, 'tile-actions mine-actions');
     const play = el('button', 'Play', 'play'); play.onclick = () => open(rec);
     const del = el('button', 'Delete', 'secondary small'); del.onclick = async () => { if (!confirmDelete(del)) return; try { await store().remove(rec); await refresh(); say(`Deleted “${rec.title}”.`); } catch (e) { say(e.message, true); } };
-    row.append(play, del); b.append(row); card.append(art, b); list.append(card);
+    row.append(play);
+    if (rec.format !== 'midi') { const edit = el('button', 'Edit', 'secondary small'); edit.title = 'Change the notes of this song on its sheet'; edit.onclick = () => editSong(rec); row.append(edit); }
+    row.append(del); b.append(row); card.append(art, b); list.append(card);
   }
   const grid = el('div', undefined, 'mine-grid');
   const left = el('div'); left.append(list);
@@ -355,6 +357,38 @@ async function open(rec) {
     const entry = await window.PianoScoreImport.fromFile(file, { id: 'mine-' + rec.id, title: rec.title, composer: rec.composer, hands: rec.settings?.hands });
     say(''); present(entry, original, 'my song');
   } catch (e) { say(e.message || String(e), true); }
+}
+
+// Edit a saved MusicXML song in the sheet editor (piano-sheet-editor.js); saving replaces the
+// song's file, keeping its title, composer, settings and attached sheet.
+async function editSong(rec) {
+  const body = section.querySelector('.mine-body');
+  say(`Opening “${rec.title}” in the sheet editor…`);
+  try {
+    const xml = await window.PianoScoreImport.readMusicXML(await store().file(rec));
+    const panel = el('div', undefined, 'mine-editor'); body.replaceChildren(panel); // in place first, so the sheet is laid out at its width
+    const back = () => { render(); section.scrollIntoView({ block: 'start' }); };
+    await window.PianoSheetEditor.open(panel, xml, {
+      heading: `Edit “${rec.title}”`, doneLabel: 'Save changes',
+      onCancel: () => { back(); say('No changes saved.'); },
+      onDone: async (edited, { changed }) => {
+        if (!changed) { back(); say('No changes to save.'); return; }
+        try {
+          await window.PianoScoreImport.fromXML(edited, { id: 'mine-check', title: rec.title }); // the practice checks
+          const saved = await replace(rec, new File([edited], (rec.name || rec.path || 'score').split('/').pop().replace(/\.(mxl|xml|musicxml)$/i, '') + '.musicxml', { type: 'application/vnd.recordare.musicxml+xml' }));
+          say(`Saved your changes to “${saved.title}”.`);
+        } catch (e) { panel.querySelector('.sheet-status')?.replaceChildren(document.createTextNode('Not saved: ' + (e.message || e))); panel.querySelector('.sheet-status')?.classList.add('bad'); }
+      },
+    });
+    say(''); panel.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  } catch (e) { render(); say(e.message || String(e), true); }
+}
+// a song's file replaced by a new one: the new record is added first, then the old one removed
+async function replace(rec, file) {
+  const s = store(), meta = { title: rec.title, composer: rec.composer || '', format: 'musicxml', settings: rec.settings || {}, original: await s.original(rec) };
+  const fresh = await s.add(file, meta);
+  try { await s.remove(rec); } catch (e) { await s.remove(fresh).catch(() => {}); throw e; }
+  await refresh(); return fresh;
 }
 
 async function save(file, meta) {
