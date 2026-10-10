@@ -10,7 +10,7 @@ const el = (tag, text, cls) => { const n = document.createElement(tag); if (text
 const cfg = window.PianoCloudConfig || {};
 const CLOUD = !!(cfg.supabaseUrl && cfg.supabaseAnonKey);
 const SUPABASE_JS = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.js';
-const PROGRESS_KEYS = ['my-journey-piano-pathway-v2', 'journey-piano-skills-v1', 'journey-note-passes-v1', 'openpiano-community-plans-v1', 'openpiano-progress-v1', 'openpiano-practice-log-v1', 'openpiano-stage-parts-v1'];
+const PROGRESS_KEYS = ['my-journey-piano-pathway-v2', 'journey-piano-skills-v1', 'journey-note-passes-v1', 'openpiano-community-plans-v1', 'openpiano-progress-v1', 'openpiano-practice-log-v1', 'openpiano-stage-parts-v1', 'openpiano-reading-v1'];
 // Numbers in the practice log (seconds per day and per piece, attempts, best) only grow: sync keeps the larger.
 const MAX_KEYS = new Set(['openpiano-practice-log-v1']);
 const MAX_SONGS = 100;

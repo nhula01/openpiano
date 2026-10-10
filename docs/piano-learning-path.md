@@ -123,6 +123,42 @@ first-reading level played through at 90%), median timing on cold plays, the sha
 passed, and minutes this week (Monday to today, from the practice log). Instead of a streak, a
 weekly goal of practice days (a day counts with at least a minute; default 4, stored as
 `my-journey-piano-pathway-v2.weeklyGoal`).
+## Reading: new pieces, the staircase and Find your level
+
+- **Generated pieces** (`site/piano-reading-gen.js`, `window.PianoReadingGen`): `generate(level, seed)`
+  writes an eight-bar first-reading piece in the browser, the same piece for the same seed: practice
+  notes for the player plus MusicXML that Verovio engraves when the piece is opened. The rules are a
+  port of the reading generator in `scripts/build-piano-studies.py` (keys, meters, rhythm cells and
+  left-hand patterns per level, two four-bar phrases with a half cadence and an ending on the tonic,
+  the melodic rules); run with the build script's search settings it reproduces every seeded
+  `reading-L-3…10` piece note for note (tested). The browser keeps the best of three melodies instead
+  of twelve: about 3 ms for a piece on a desktop (under 20 ms at worst). Level 0 is new: right hand
+  alone in C position, quarters and halves, steps and skips. Never any fingering. Generated music is
+  original and CC0.
+- **Offering a piece:** `next(level)` registers `gen-reading-<level>-<seed>` in `PianoRepertoire`
+  (kind `reading`, `studyLevel`) and returns it; the seed is the lowest one not opened yet, so the
+  same piece is offered until it is opened. Opened ids are kept in `openpiano-reading-v1.seen` (and in
+  `journey-piano-skills-v1.seen`). The music is written the first time it is needed. Any
+  `gen-reading-*` id can be selected (`piano-select-score`) at any time, also after a reload. The
+  player prepares an in-memory score before loading it (`entry.prepare()`, used for the engraving).
+- **Read something new:** selecting a reading piece with `{ id, reading: true }` shows it as a whole
+  page (one large line on a phone) at the level's reading tempo (`TEMPO`, 60 down to 46 BPM) with a
+  30-second look-over; then In time starts. "Start now" skips the wait.
+- **Reading staircase** (`openpiano-reading-v1`: `{ level, seen, history: { <time>: { id, level,
+  accuracy, timing } } }`, synced with the account): the first complete In-time run of a reading
+  piece (static `reading-*` or generated), both hands or the only hand written, is a success at 90%
+  notes and 75% timing. A success moves the level up a whole step, a miss down half a step (two up,
+  one down in half steps), between 0 and 7. Later runs of the same piece, Wait mode, loops and runs
+  from the middle do not count. `PianoReadingGen.level()` gives the level; a new learner starts at 0
+  (or at `READING[level]` once the path level is above 0).
+- **Find your level** (`site/piano-placement.js`, `PianoPlacement.open()`, linked under "Start the
+  path at" on Home): one question (never played / a little / for years) picks the first piece (Level
+  0 suggested at once, Level 2, Level 4); then up to four generated pieces at sight, In time, with the
+  person's MIDI keyboard, microphone or tap keys: up a level after a clean reading, down after a miss
+  or "Too hard", stopping when one level is read cleanly and the next is not. It suggests that level
+  in one sentence; "Start at Level N" sets the path's start level and the reading level, "Choose
+  myself" goes back to the select. Without an input (or with "I can't play right now") it suggests
+  from the answer alone, a step lower (1 or 3). Placement pieces do not move the staircase.
 
 ## Levels of library pieces
 

@@ -211,6 +211,8 @@ function todayPanel(plan) {
   const chosen = read(PATH_KEY).startLevel; sel.value = String(Number.isInteger(chosen) ? chosen : levels[0]?.id ?? 0);
   sel.onchange = () => { window.PianoPath.setStartLevel(Number(sel.value)); const s = read(PATH_KEY); delete s.selected; try { localStorage.setItem(PATH_KEY, JSON.stringify(s)); } catch {} renderHome(); };
   start.append(sel); box.append(start);
+  // someone who already plays can take a short reading check instead (piano-placement.js)
+  const find = el('button', 'Not a beginner? Find your level', 'today-find'); find.type = 'button'; find.onclick = () => window.PianoPlacement?.open(); box.append(find);
   return box;
 }
 // The stage of a piece in plain words, with the exact next requirement (piano-progress.js).
