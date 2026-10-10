@@ -173,6 +173,7 @@ def crop(tree, left, right, y0, y1, notes=None, extents=None):
     extents: page_extents(tree), when several systems are cut from the same page."""
     extents = extents if extents is not None else page_extents(tree)
     cropped = copy.copy(tree)
+    cropped.attrib = dict(tree.attrib)  # a shallow copy shares attributes; keep the page's own viewBox intact
     for child in list(cropped):
         cropped.remove(child)
     drawn = []

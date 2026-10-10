@@ -15,7 +15,8 @@ for id,path in choices.items():
  for n in lengths[:-1]:offsets.append(offsets[-1]+n)
  notes=[]
  for j,m in enumerate(midi):
-  tracks=sorted(set(n['track'] for n in m['notes']));assert len(tracks)>=2,(id,tracks)
+  # Original one-hand learning pieces (Level 0) have a single sounding staff; hands then come from the engraving.
+  tracks=sorted(set(n['track'] for n in m['notes']));assert len(tracks)>=2 or path.startswith('Learning/'),(id,tracks)
   # Scores with more MIDI tracks (extra staves or per-voice tracks) take every hand from the tagged engraving below.
   for n in m['notes']:notes.append({'midi':n['midi'],'beat':n['beat']+offsets[j],'duration':n['duration'],'hand':('right' if n['track']==tracks[0] else 'left') if len(tracks)==2 else None})
  notes.sort(key=lambda n:(n['beat'],n['midi']));pages=[];systems=[];movement=0;previousStart=-1
