@@ -13,6 +13,8 @@ repository; the maintainer's personal journal lives in a separate project.
 - The music must be public domain worldwide: composer (and arranger) died in 1955 or
   earlier and the work was published in 1930 or earlier, or it is traditional. See
   `docs/collection.md`.
+- Songs whose lyricist died after 1955 (e.g. Gershwin's "Swanee", "I Got Rhythm") stay in the
+  library as instrumental piano scores: never add or show their lyrics.
 - Copyrighted songs (e.g. current pop songs) are never added to the public library;
   people may import their own files privately.
 
