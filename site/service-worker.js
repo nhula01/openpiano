@@ -45,6 +45,7 @@ const APP_SHELL = [
   './piano-stage.js',
   './piano-cloud-config.js',
   './piano-score-import.js',
+  './piano-sheet-model.js',
   './piano-sheet-editor.js',
   './piano-account.js',
   './piano-profile.js',

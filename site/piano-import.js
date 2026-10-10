@@ -230,9 +230,8 @@ async function editSheet(xml, opts) {
   revision++;
   say('Opening the sheet editor… (the first time, the engraver takes a moment to download)');
   try {
-    await window.PianoSheetEditor.open(review, xml, { heading: '2 · Edit the sheet', doneLabel: 'Use these changes', ...opts });
-    say('Click a note or a rest on the sheet to change it.');
-    review.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    await window.PianoSheetEditor.open(review, xml, { doneLabel: 'Use these changes', ...opts });
+    say('Editing the sheet…');
   } catch (e) { say(e.message || String(e), true); if (current?.entry) draw(); }
 }
 // the edited score is checked and engraved again like a newly chosen file

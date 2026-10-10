@@ -24,21 +24,39 @@ real destinations exist.
    before their main note (a short fixed lead-in, as in the library), not with expressive timing.
    Anything else the checker flags, such as an overfull bar (often a misread tuplet), is shown with
    its measure number so the person can fix it before practicing.
-3. **Fix it.** "Edit the sheet" opens the score in the sheet editor (`piano-sheet-editor.js`): the
-   person clicks a note or rest on the engraved sheet (or moves with the arrow keys) and changes its
-   pitch (step, accidental, octave, a letter A–G, or by dragging it up or down), its length (16th to
-   whole, dotted), turns it into a rest or back into a note, adds chord notes, ties it to the next
-   note, moves it to the other hand or earlier/later in its bar, and adds or deletes bars. Every
-   change edits the MusicXML itself: a longer note takes the room of what follows in its voice (never
-   past the barline), a shorter one leaves rests on the beat, beams and accidentals are redone, tied
-   notes change pitch together, and refused changes say why and leave the score as it was. Changes
-   can be undone and redone. A bar that runs short or long (a misread beat) can be filled or trimmed
-   by changing a note's length. "Use these changes" checks and engraves the score again; the edited
-   MusicXML can be downloaded. When what a PDF or picture reader produced fails the checks, the page
-   offers to fix it in the editor. Saved MusicXML songs have an "Edit" button in My songs; saving
-   replaces the song's file and keeps its title, settings and attached sheet. Tuplets keep their
-   lengths and repeats, ornaments and layout are left as they are (a notation editor does those). For
-   MIDI with several tracks, the person picks which hand plays each track.
+3. **Fix it.** "Edit the sheet" opens the full-window sheet editor (`piano-sheet-editor.js`, with
+   the edit operations in `piano-sheet-model.js`), designed after MuseScore, Flat and Noteflight.
+   - *Select mode:* click a note, rest or empty part of a bar (Shift+click or Shift+arrows for a
+     range, Ctrl+A for everything) and change it with the toolbar, a palette, the keyboard, or by
+     dragging a note up or down. ↑ ↓ change a semitone (spelled for the key), Alt+Shift+↑ ↓ a step,
+     Ctrl+↑ ↓ an octave; A–G rename a note (Shift adds it to the chord, Alt+1–9 adds an interval);
+     2–7 and . set the length (a longer note takes the room of what follows, never past the
+     barline; a shorter one leaves rests on the beat); 0 makes a rest; Delete removes.
+   - *Write mode (N or ✎):* choose a length, then type A–G, click the staff where the note goes (a
+     shadow note shows the pitch), press a key of the on-screen piano (P) or play a MIDI keyboard
+     (notes played together become a chord). Notes are written at the blue cursor over what was
+     there, tied across barlines when they are too long for the bar, and the cursor moves on; bars
+     are added at the end as needed. Shift adds to the chord, 0 writes a rest, T a tied note, Ctrl+3
+     a triplet, Backspace undoes the last note, Alt+↑ ↓ moves to the other hand's staff.
+   - Voices 1–4 per staff (colored as in MuseScore), copy/cut/paste and R (repeat) of notes or
+     ranges over both hands, transposing a range, ties, slurs, triplets and 5-/6-tuplets, flipping
+     stems, respelling, moving a note to the other hand.
+   - Palettes: articulations, dynamics, fingering (printed fingering is shown in practice), clefs,
+     key signatures (pitches stay, accidentals follow), time signatures (the music is re-barred,
+     notes split with ties), bar lines, repeats and 1st/2nd endings, grace notes, tuplets, tempo,
+     and inserting, adding and deleting bars; the title and composer are edited at the top.
+   - Playback with the site's sampled piano from the selection (Space), with the notes lit as they
+     sound; notes sound as they are written or changed (can be turned off). Undo/redo for
+     everything; refused changes say why and leave the score as it was. The sheet is engraved in
+     sections of about eight bars and only the sections that changed are engraved again, so long
+     scores stay quick to edit. A practice check runs after each change and shows any problem
+     (such as a tie that no longer joins after a repeat was added) without blocking the edit.
+   "Use these changes" checks and engraves the score again; the edited MusicXML can be downloaded.
+   When what a PDF or picture reader produced fails the checks, the page offers to fix it in the
+   editor. Saved MusicXML songs have an "Edit" button in My songs; saving replaces the song's file
+   and keeps its settings and attached sheet (a title changed in the editor becomes the song's
+   title); if saving fails, the editor opens again with the edits. Leaving with unsaved edits asks
+   first. For MIDI with several tracks, the person picks which hand plays each track.
 4. **Save it or practice it.** "Save to My songs and practice" stores the file (the edited
    MusicXML when edited), the MIDI hand choices and any attached PDF/photo. "Practice without saving"
    opens it once. Both require confirming the music may be used for the person's own practice.

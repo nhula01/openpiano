@@ -1,12 +1,12 @@
-// The sheet editor (site/piano-sheet-editor.js) changes an imported score's MusicXML: pitches,
+// The sheet editor's model (site/piano-sheet-model.js) changes an imported score's MusicXML: pitches,
 // lengths, rests, chords, ties, hands, the order of notes and whole bars. Every change must leave a
 // score the practice engine accepts (each bar full, no overlaps) and change only what was asked.
 const test = require('node:test'), assert = require('node:assert/strict'), fs = require('node:fs'), vm = require('node:vm'), { JSDOM } = require('jsdom');
 const dom = new JSDOM('');
 const ctx = { console, DOMParser: dom.window.DOMParser, XMLSerializer: dom.window.XMLSerializer, document: dom.window.document };
 ctx.window = ctx; vm.createContext(ctx);
-for (const f of ['piano-import-engine.js', 'piano-sheet-editor.js']) vm.runInContext(fs.readFileSync('site/' + f, 'utf8'), ctx);
-const E = ctx.PianoImportEngine, M = ctx.PianoSheetEditor.model, ops = M.ops;
+for (const f of ['piano-import-engine.js', 'piano-sheet-model.js']) vm.runInContext(fs.readFileSync('site/' + f, 'utf8'), ctx);
+const E = ctx.PianoImportEngine, M = ctx.PianoSheetModel, ops = M.ops;
 
 // A two-staff piano score: bar 1 right hand C4–E4 chord, D4, half rest; left hand C3 whole.
 // Bar 2 right hand four eighths E F G A then a half G; left hand G2 whole. Bar 3 a whole-bar rest
@@ -205,4 +205,194 @@ test('a voice that runs past the barline gets shorter when a note is shortened',
   const doc = M.load(long); ops.length(doc, at(doc, 1, 2), 1);
   assert.equal(written(doc)[0], 'C4+E4/quarter D4/quarter r/quarter G4/quarter');
   heard(M.clean(doc));
+});
+
+// ---- Note input, voices, tuplets, selections, palettes (like MuseScore's) ----
+const part = d => d.querySelector('part');
+const cur = (d, q, staff = '1', voice = '1') => ({ part: part(d), staff, voice, q });
+const valid = d => heard(M.clean(d));
+
+test('note input writes at the cursor and moves on; letters land near the previous note', () => {
+  const d = M.load(SCORE); let c = cur(d, 0);
+  for (const L of ['G', 'A', 'B', 'C']) c = ops.enter(d, c, 1, { letter: L }).next;
+  assert.equal(c.q, 4);
+  assert.equal(written(d)[0], 'G4/quarter A4/quarter B4/quarter C5/quarter');
+  valid(d);
+});
+
+test('a note longer than the room left in the bar is tied across the barline', () => {
+  const d = M.load(SCORE);
+  const r = ops.enter(d, cur(d, 3), 2, { pitches: [{ step: 'F', octave: 4, alter: 1 }] });
+  assert.equal(r.next.q, 5);
+  assert.equal(written(d)[0], 'C4+E4/quarter D4/quarter r/quarter F#4/quarter');
+  assert.equal(written(d)[1].split(' ')[0], 'F#4/quarter');
+  assert.ok(heard(M.clean(d)).includes('1:3 r F#4 2'), 'the tied note sounds once for two beats');
+});
+
+test('writing at the end of the score adds bars; rests are entered like notes', () => {
+  const d = M.load(SCORE); let c = cur(d, 8);
+  c = ops.enter(d, c, 4, { rest: true }).next; c = ops.enter(d, c, 4, { letter: 'E' }).next;
+  assert.equal(d.querySelectorAll('part > measure').length, 4);
+  assert.equal(written(d)[3], 'E4/whole');
+  valid(d);
+});
+
+test('chord notes and intervals are added to a note', () => {
+  const d = M.load(SCORE), n = at(d, 1, 1); // D4
+  ops.interval(d, n, 2); // a third above: F4
+  ops.addPitch(d, n, { step: 'A', octave: 4, alter: 0 });
+  assert.equal(written(d)[0], 'C4+E4/quarter D4+F4+A4/quarter r/half');
+  valid(d);
+});
+
+test('a triplet replaces a quarter with three triplet eighths, which note input then fills', () => {
+  const d = M.load(SCORE), first = ops.tuplet(d, at(d, 1, 1));
+  assert.equal(written(d)[0], 'C4+E4/quarter D4/eighth r/eighth r/eighth r/half');
+  assert.equal(d.querySelectorAll('time-modification').length, 3);
+  let c = cur(d, 1 + 1 / 3);
+  c = ops.enter(d, c, 1, { letter: 'E' }).next; c = ops.enter(d, c, 1, { letter: 'F' }).next; // each takes the triplet length
+  assert.ok(Math.abs(c.q - 2) < 1e-9);
+  const h = heard(M.clean(d)).filter(x => x.startsWith('1:1') && / r /.test(x));
+  assert.equal(h.length, 3);
+  assert.ok(first);
+});
+
+test('a second voice holds notes against the first; gaps stay empty and the score stays valid', () => {
+  const d = M.load(SCORE), g = at(d, 2, 4); // the half G4 in bar 2
+  ops.addPitch(d, g, { step: 'B', octave: 4, alter: 0 });
+  const b = at(d, 2, 4).nextElementSibling;
+  const moved = ops.voice(d, b, 1);
+  assert.equal(M.eventOf(moved).voice, '2');
+  const h = heard(M.clean(d));
+  assert.ok(h.includes('2:6 r B4 2') && h.includes('2:6 r G4 2'));
+  // more notes in voice 2 by note input
+  ops.enter(d, { part: part(d), staff: '1', voice: '2', q: 4 }, 2, { pitches: [{ step: 'C', octave: 5, alter: 0 }] });
+  assert.ok(heard(M.clean(d)).includes('2:4 r C5 2'));
+  assert.equal(ops.erase(d, moved), null);
+  valid(d);
+});
+
+test('copy and paste a selection; clear and transpose it', () => {
+  const d = M.load(SCORE), r = { part: part(d), staves: ['1'], from: 4, to: 6 }; // E F G A of bar 2
+  const clip = M.range.copy(d, r);
+  const out = M.range.paste(d, clip, { part: part(d), staff: '1', q: 8 });
+  assert.equal(written(d)[2], 'E4/eighth F4/eighth G4/eighth A4/eighth r/half');
+  assert.deepEqual([...out.range.staves], ['1']);
+  M.range.transpose(d, { part: part(d), staves: ['1'], from: 8, to: 10 }, 'octave', 1);
+  assert.equal(written(d)[2], 'E5/eighth F5/eighth G5/eighth A5/eighth r/half');
+  M.range.transpose(d, { part: part(d), staves: ['1'], from: 8, to: 10 }, 'chromatic', 1);
+  assert.equal(written(d)[2], 'F5/eighth F#5/eighth G#5/eighth A#5/eighth r/half');
+  M.range.clear(d, { part: part(d), staves: ['1', '2'], from: 8, to: 12 });
+  assert.equal(written(d)[2], 'r/whole');
+  valid(d);
+});
+
+test('both hands are copied together', () => {
+  const d = M.load(SCORE), clip = M.range.copy(d, M.range.ofMeasures(d, part(d), 0, 0));
+  M.range.paste(d, clip, { part: part(d), staff: '1', q: 8 });
+  assert.equal(written(d)[2], written(d)[0]);
+  assert.equal(written(d, '2')[2], 'C3/whole');
+  valid(d);
+});
+
+test('a new time signature re-bars the music, splitting notes with ties', () => {
+  const d = M.load(SCORE);
+  ops.time(d, at(d, 1, 0), 3, 4);
+  const bars = d.querySelectorAll('part > measure');
+  assert.equal(bars.length, 4); // 12 beats in 3/4
+  assert.match(M.clean(d), /<time><beats>3<\/beats><beat-type>4<\/beat-type><\/time>/);
+  const h = heard(M.clean(d)), before = heard(SCORE);
+  assert.equal(h.length, before.length, 'every note still sounds once');
+  assert.ok(h.includes('1:0 l C3 4'), 'the whole note C3 is tied over the new barline and sounds four beats');
+  valid(d);
+  ops.time(d, at(d, 1, 0), 6, 8); valid(d);
+});
+
+test('key signatures keep the pitches and redo the accidentals', () => {
+  const d = M.load(SCORE); ops.key(d, at(d, 1, 0), 1); // G major: the F4 of bar 2 now needs a natural
+  assert.match(M.clean(d), /<key><fifths>1<\/fifths><\/key>/);
+  const f = at(d, 2, 1); assert.equal(f.querySelector('accidental').textContent, 'natural');
+  valid(d);
+});
+
+test('clefs, barlines, repeats and endings are written where they belong', () => {
+  const d = M.load(SCORE);
+  ops.clef(d, at(d, 2, 0, '2'), 'G', 2); // treble clef for the left hand from bar 2
+  assert.match(M.clean(d), /<measure number="2"><attributes><clef number="2"><sign>G<\/sign><line>2<\/line><\/clef><\/attributes>/);
+  ops.clef(d, at(d, 2, 2), 'F', 4); // mid-bar
+  ops.barline(d, at(d, 1, 0), 'repeat-start'); ops.barline(d, at(d, 2, 0), 'repeat-end'); ops.barline(d, at(d, 3, 0), 'final');
+  ops.ending(d, at(d, 2, 0), 1);
+  const x = M.clean(d);
+  assert.match(x, /<barline location="left"><bar-style>heavy-light<\/bar-style><repeat direction="forward"\/><\/barline>/);
+  assert.match(x, /<ending number="1" type="stop"\/><repeat direction="backward"\/>/);
+  assert.match(x, /<bar-style>light-heavy<\/bar-style><\/barline><\/measure>\s*<\/part>/);
+  const h = heard(x); assert.ok(h.length > heard(SCORE).length, 'the repeat is played');
+});
+
+test('articulations, fingering, dynamics, tempo, slurs, grace notes, stems and spelling', () => {
+  const d = M.load(SCORE), n = at(d, 1, 1);
+  ops.articulation(d, n, 'staccato'); ops.articulation(d, n, 'accent'); ops.articulation(d, n, 'fermata');
+  ops.fingering(d, n, '2'); ops.fingering(d, n, '3');
+  ops.dynamic(d, n, 'mf'); ops.dynamic(d, n, 'p'); ops.tempo(d, at(d, 1, 0), 72);
+  ops.slur(d, at(d, 2, 0), at(d, 2, 3)); ops.respell(d, n); ops.flip(d, n);
+  const g = ops.grace(d, at(d, 2, 4)); ops.step(d, g, 1);
+  const x = M.clean(d);
+  assert.match(x, /<articulations><staccato\/><accent\/><\/articulations>/);
+  assert.match(x, /<fermata\/>/);
+  assert.equal((x.match(/<fingering>/g) || []).length, 1); assert.match(x, /<fingering>3<\/fingering>/);
+  assert.equal((x.match(/<dynamics>/g) || []).length, 1); assert.match(x, /<dynamics><p\/><\/dynamics>/);
+  assert.match(x, /<per-minute>72<\/per-minute>/);
+  assert.equal((x.match(/<slur /g) || []).length, 2);
+  assert.match(x, /<stem>up<\/stem>/);
+  assert.match(x, /<step>E<\/step><alter>-2<\/alter>/, 'D respelled as E double flat');
+  assert.match(x, /<grace slash="yes"\/><pitch><step>A<\/step>/);
+  const parsed = E.parse(x); assert.ok(parsed.notes.some(k => k.fingerings.includes('3')), 'practice sees the finger number');
+  ops.articulation(d, n, 'staccato'); ops.slur(d, at(d, 2, 0)); ops.dynamic(d, n, null);
+  assert.doesNotMatch(M.clean(d), /<staccato|<slur |<dynamics/);
+});
+
+test('bars are inserted and deleted in every part; the title and composer are set', () => {
+  const d = M.load(SCORE);
+  ops.insertMeasures(d, at(d, 1, 0), 'before', 2);
+  assert.equal(d.querySelectorAll('part > measure').length, 5);
+  assert.match(M.clean(d), /<measure number="1"><attributes><divisions>2<\/divisions>/, 'the signatures move to the new first bar');
+  ops.deleteMeasures(d, 0, 1);
+  assert.equal(heard(M.clean(d)).join(), heard(SCORE).join());
+  ops.appendMeasures(d, at(d, 1, 0), 2); assert.equal(d.querySelectorAll('part > measure').length, 5);
+  ops.title(d, 'My piece', 'Me'); ops.title(d, null, '');
+  assert.match(M.clean(d), /<work-title>My piece<\/work-title>/); assert.doesNotMatch(M.clean(d), /creator/);
+  valid(d);
+});
+
+test('playback hears tied notes once, at the tempo marked', () => {
+  const d = M.load(SCORE); ops.tempo(d, at(d, 1, 0), 120);
+  ops.step(d, at(d, 2, 0, '2'), 3); ops.tie(d, at(d, 1, 0, '2'));
+  const s = M.sound(d);
+  assert.equal(s.bpm, 120);
+  const c3 = s.notes.filter(n => n.midi === 48);
+  assert.equal(c3[0].len, 8);
+  assert.equal(s.notes[0].q, 0);
+});
+
+test('the key and direction decide how a key number is spelled', () => {
+  assert.deepEqual({ ...M.spell(66, 0, 1) }, { step: 'F', octave: 4, alter: 1 });
+  assert.deepEqual({ ...M.spell(66, -3, -1) }, { step: 'G', octave: 4, alter: -1 });
+  assert.deepEqual({ ...M.spell(70, -1) }, { step: 'B', octave: 4, alter: -1 });
+  assert.deepEqual({ ...M.spell(60, 7) }, { step: 'B', octave: 3, alter: 1 }, 'C♯ major spells C as B♯');
+});
+
+test('a note written over a repeat sign is not tied into the next bar', () => {
+  const d = M.load(SCORE); ops.barline(d, at(d, 1, 0), 'repeat-end');
+  ops.enter(d, cur(d, 3), 2, { pitches: [{ step: 'G', octave: 4, alter: 0 }] });
+  assert.equal(d.querySelectorAll('tie').length, 0);
+  valid(d);
+});
+
+test('only whole triplets are copied', () => {
+  const d = M.load(SCORE); ops.tuplet(d, at(d, 1, 1));
+  assert.throws(() => M.range.copy(d, { part: part(d), staves: ['1'], from: 1, to: 1.5 }), /whole triplets/);
+  const clip = M.range.copy(d, { part: part(d), staves: ['1'], from: 1, to: 2 });
+  M.range.paste(d, clip, { part: part(d), staff: '1', q: 9 });
+  assert.equal(d.querySelectorAll('time-modification').length, 6);
+  valid(d);
 });
